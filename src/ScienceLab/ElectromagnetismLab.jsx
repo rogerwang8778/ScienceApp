@@ -153,7 +153,7 @@ export default function ElectromagnetismLab() {
             理化實驗室：國三下 單元六《電與磁互動實驗室》
           </h2>
           <p className="text-xs text-slate-400 mt-1">
-            重構冷次定律為正統前後立體螺線管，修復說明區文字箭頭與安培右手定則
+            重構冷次定律黃色感應電流巡航方向、安培右手定則與立體螺線管透視
           </p>
         </div>
 
@@ -520,7 +520,7 @@ export default function ElectromagnetismLab() {
       )}
 
       {/* ==========================================
-          3. 冷次定律 (斜向 3D 透視前後立體螺線管)
+          3. 冷次定律 (黃色電流粒子巡航方向校正)
       ========================================== */}
       {activeTab === 'lenz' && (
         <div className="space-y-6">
@@ -583,7 +583,7 @@ export default function ElectromagnetismLab() {
               <g>
                 <text x="170" y="22" textAnchor="middle" fill="#a855f7" fontSize="12" fontWeight="bold">感應螺線管線圈</text>
 
-                {/* 1. 螺線管後側 (視角後方：細虛線，從右下斜繞回左上) */}
+                {/* 1. 螺線管後側 (細虛線) */}
                 {[0, 1, 2, 3, 4].map((i) => (
                   <path
                     key={`coil-back-${i}`}
@@ -617,7 +617,7 @@ export default function ElectromagnetismLab() {
                   B感應 ({lenzRes.bDir === 'right' ? '向右 →' : '向左 ←'})
                 </text>
 
-                {/* 2. 螺線管前側 (視角前方：粗實線，從左上斜貫穿至右下) */}
+                {/* 2. 螺線管前側 (粗實線) */}
                 {[0, 1, 2, 3, 4].map((i) => (
                   <path
                     key={`coil-front-${i}`}
@@ -628,7 +628,7 @@ export default function ElectromagnetismLab() {
                   />
                 ))}
 
-                {/* 3. 底部完整迴路連接線與檢流計 */}
+                {/* 3. 底部迴路與檢流計 */}
                 <path
                   d="M 90 135 L 90 200 L 140 200 M 190 200 L 248 200 L 248 135"
                   fill="none"
@@ -649,7 +649,7 @@ export default function ElectromagnetismLab() {
                   strokeWidth="2.5"
                 />
 
-                {/* 線圈兩端感應磁極標記 (N / S) */}
+                {/* 線圈兩端極性 (N / S) */}
                 <text x="50" y="115" textAnchor="middle" fill={lenzRes.leftIndPole === 'N' ? '#3b82f6' : '#ef4444'} fontSize="18" fontWeight="bold">
                   {lenzRes.leftIndPole}
                 </text>
@@ -657,9 +657,9 @@ export default function ElectromagnetismLab() {
                   {lenzRes.rightIndPole}
                 </text>
 
-                {/* 4. 動態感應電流黃色粒子 (沿正統 3D 螺旋路徑環繞) */}
+                {/* 4. 動態感應電流黃色粒子 (校正方向：frontIUp 為 true 時，前方實線上的粒子向上巡航) */}
                 {isRunning && [0, 1, 2, 3, 4].map((i) => {
-                  const dir = lenzRes.frontIUp ? -1 : 1;
+                  const dir = lenzRes.frontIUp ? 1 : -1; // 精準轉向修正
                   const t = (animOffset * 4 + i * 72) * Math.PI / 180;
                   const cx = 105 + i * 32 + 15 * Math.cos(t);
                   const cy = 110 + dir * 40 * Math.sin(t);
@@ -680,7 +680,7 @@ export default function ElectromagnetismLab() {
                 })}
               </g>
 
-              {/* 右側磁鐵與擴大視窗範圍後的動作箭頭 */}
+              {/* 右側磁鐵與動作說明 */}
               {sourceType === 'magnet' ? (
                 <g>
                   {(() => {
@@ -699,7 +699,6 @@ export default function ElectromagnetismLab() {
                         <text x={magnetX + 25} y="115" textAnchor="middle" fill="#ffffff" fontSize="14" fontWeight="bold">{leftPole}</text>
                         <text x={magnetX + 75} y="115" textAnchor="middle" fill="#ffffff" fontSize="14" fontWeight="bold">{rightPole}</text>
 
-                        {/* 動作說明與高相容性箭頭標示 */}
                         <g>
                           <text x={magnetX + 50} y="72" textAnchor="middle" fill="#38bdf8" fontSize="12" fontWeight="bold">
                             {actionType === 'approach' ? '向左靠近 ←' : '向右遠離 →'}
@@ -759,7 +758,6 @@ export default function ElectromagnetismLab() {
               )}
             </svg>
 
-            {/* 下方卡片文字徹底排查：改用標準相容箭頭，解決破圖亂碼 */}
             <div className="bg-slate-900 p-3.5 rounded-xl border border-slate-800 text-xs space-y-1 w-full mt-2 font-sans">
               <p className="text-purple-300 font-bold">🎯 冷次定律電磁感應幾何與物理對照：</p>
               <p className="text-slate-300">• 感應磁極：線圈左端為 <strong className="text-blue-400">{lenzRes.leftIndPole} 極</strong>，右端為 <strong className="text-rose-400">{lenzRes.rightIndPole} 極</strong>。</p>
