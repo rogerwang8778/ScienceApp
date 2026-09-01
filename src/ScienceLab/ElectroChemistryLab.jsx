@@ -501,7 +501,6 @@ export default function ElectroChemistryLab() {
                           <text x={107 + (animOffset % 55)} y="164" textAnchor="middle" fill="#ffffff" fontSize="11" fontWeight="bold">
                             {curVoltaic.negIon}
                           </text>
-                          <path d={`M ${107 + (animOffset % 55) - 18} 160 L ${107 + (animOffset % 55) - 26} 160`} stroke="#38bdf8" strokeWidth="2" markerEnd="url(#arrow)" />
                         </g>
 
                         {/* 右杯：陽離子 (Cu2+/Ag+) 從右杯深處朝右極棒 (x=393) 靠攏 */}
@@ -510,7 +509,6 @@ export default function ElectroChemistryLab() {
                           <text x={340 + (animOffset % 50)} y="194" textAnchor="middle" fill="#ffffff" fontSize="11" fontWeight="bold">
                             {curVoltaic.posIon}
                           </text>
-                          <path d={`M ${340 + (animOffset % 50) + 18} 190 L ${340 + (animOffset % 50) + 26} 190`} stroke="#a855f7" strokeWidth="2" />
                         </g>
                       </>
                     ) : (
@@ -758,7 +756,7 @@ export default function ElectroChemistryLab() {
 
                     {/* 陽離子游向陰極 (x=300) */}
                     <circle cx={245 + (animOffset % 45)} cy="175" r="13" fill="#0284c7" stroke="#ffffff" strokeWidth="1.5" />
-                    <text x={245 + (animOffset % 45)} y={179" textAnchor="middle" fill="#ffffff" fontSize="9" fontWeight="bold">
+                    <text x={245 + (animOffset % 45)} y="179" textAnchor="middle" fill="#ffffff" fontSize="9" fontWeight="bold">
                       {curElectro.cathodeIon}
                     </text>
                   </g>
