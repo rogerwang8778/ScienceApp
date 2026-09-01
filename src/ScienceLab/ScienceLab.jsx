@@ -15,6 +15,7 @@ import OrganicChemistryLab from './OrganicChemistryLab';
 import MechanicsLab from './MechanicsLab';
 import KinematicsLab from './KinematicsLab';
 import NewtonLab from './NewtonLab'; // 引入牛頓實驗室
+import WorkEnergyLab from './WorkEnergyLab';
 
 export default function ScienceLab({ onAddExp }) {
   const [currentLab, setCurrentLab] = useState(null);
@@ -161,6 +162,16 @@ export default function ScienceLab({ onAddExp }) {
       isAvailable: true,
     },
     {
+      id: 'work-energy',
+      title: '功與能 (功能定理與力學能守恆)',
+      unit: '國三理化 上學期 - 單元三 (功與能)',
+      desc: '探索外力作功轉換動能與垂直上拋動能位能相互轉換之力學能守恆律。',
+      icon: Zap,
+      color: 'from-amber-500/20 to-yellow-500/20 border-amber-500/50 text-amber-400',
+      badge: '全新上線',
+      isAvailable: true,
+    },
+    {
       id: 'circuit',
       title: '歐姆定律與串並聯電路',
       unit: '國三理化 上學期 - 單元三',
@@ -186,6 +197,7 @@ export default function ScienceLab({ onAddExp }) {
   if (currentLab === 'mechanics') return (<div className="space-y-4"><button onClick={() => setCurrentLab(null)} className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700 transition-all shadow-md"><ArrowLeft className="w-4 h-4 text-amber-400" /> 返回理化實驗室大廳</button><MechanicsLab onAddExp={onAddExp} /></div>);
   if (currentLab === 'kinematics') return (<div className="space-y-4"><button onClick={() => setCurrentLab(null)} className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700 transition-all shadow-md"><ArrowLeft className="w-4 h-4 text-purple-400" /> 返回理化實驗室大廳</button><KinematicsLab onAddExp={onAddExp} /></div>);
   if (currentLab === 'newton') return (<div className="space-y-4"><button onClick={() => setCurrentLab(null)} className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700 transition-all shadow-md"><ArrowLeft className="w-4 h-4 text-amber-400" /> 返回理化實驗室大廳</button><NewtonLab onAddExp={onAddExp} /></div>);
+  if (currentLab === 'work-energy') return (<div className="space-y-4"><button onClick={() => setCurrentLab(null)} className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700 transition-all shadow-md"><ArrowLeft className="w-4 h-4 text-amber-400" /> 返回理化實驗室大廳</button><WorkEnergyLab onAddExp={onAddExp} /></div>);
 
   return (
     <div className="bg-slate-800 border border-slate-700 rounded-2xl p-4 md:p-6 shadow-xl">
