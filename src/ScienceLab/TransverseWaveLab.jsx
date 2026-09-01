@@ -317,6 +317,7 @@ export default function TransverseWaveLab({ onAddExp }) {
               <button
                 key={item.label}
                 onClick={() => handlePlayCycleFraction(item.val, item.label)}
+                >
                 <div className="bg-slate-900/90 border border-slate-700 p-4 rounded-xl text-xs space-y-2 text-slate-300">
         <div className="flex items-center gap-1.5 text-cyan-400 font-bold">
           <Info className="w-4 h-4" />
