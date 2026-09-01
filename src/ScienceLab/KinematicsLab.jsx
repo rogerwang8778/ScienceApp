@@ -7,8 +7,8 @@ export default function KinematicsLab() {
   // ==========================================
   // 1. 直線運動 State & Logic
   // ==========================================
-  const [v0, setV0] = useState(10);      // 初速 m/s
-  const [a, setA] = useState(-2);        // 加速度 m/s²
+  const [v0, setV0] = useState(0);       // 初速 m/s
+  const [a, setA] = useState(3);         // 加速度 m/s²
   const [totalTime, setTotalTime] = useState(5); // 總時間 (s)
   
   const [isLinearRunning, setIsLinearRunning] = useState(false);
@@ -278,7 +278,7 @@ export default function KinematicsLab() {
             </div>
           </div>
 
-          {/* 三圖連線同步繪製 */}
+          {/* 三圖連線同步繪製 (含每一秒連線與區域面積標註) */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* 1. x-t 圖 */}
             <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-2">
@@ -318,9 +318,29 @@ export default function KinematicsLab() {
                         <text x="195" y={zeroY + 12} fill="#94a3b8">t(s)</text>
                         <text x="10" y="20" fill="#a855f7">x(m)</text>
 
+                        {/* 每秒垂直/水平連線與刻度 */}
+                        {secondData.map((item) => {
+                          if (item.t === 0) return null;
+                          const px = 30 + item.t * scaleT;
+                          const py = 140 - (item.x - minX) * scaleX;
+                          const isPast = currentTime >= item.t;
+                          return (
+                            <g key={`xt-grid-${item.t}`}>
+                              <line x1={px} y1={zeroY} x2={px} y2={py} stroke="#475569" strokeWidth="1" strokeDasharray="2 2" />
+                              <line x1="30" y1={py} x2={px} y2={py} stroke="#475569" strokeWidth="1" strokeDasharray="2 2" />
+                              <circle cx={px} cy={py} r="2.5" fill={isPast ? '#c084fc' : '#475569'} />
+                              <text x="28" y={py + 3} textAnchor="end" fill="#94a3b8" fontSize="8">
+                                {item.x.toFixed(0)}m
+                              </text>
+                            </g>
+                          );
+                        })}
+
+                        {/* 曲線本體 */}
                         <path d={pathD} fill="none" stroke="#c084fc" strokeWidth="2.5" />
                         
-                        <line x1={currPx} y1={zeroY} x2={currPx} y2={currPy} stroke="#f59e0b" strokeWidth="1" strokeDasharray="2 2" />
+                        {/* 當前高亮動態點 */}
+                        <line x1={currPx} y1={zeroY} x2={currPx} y2={currPy} stroke="#f59e0b" strokeWidth="1.5" strokeDasharray="2 2" />
                         <circle cx={currPx} cy={currPy} r="4" fill="#f59e0b" />
                       </g>
                     );
@@ -329,7 +349,7 @@ export default function KinematicsLab() {
               </div>
             </div>
 
-            {/* 2. v-t 圖 */}
+            {/* 2. v-t 圖 (每秒梯形面積與當秒位移 Δx) */}
             <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-2">
               <div className="flex justify-between items-center border-b border-slate-800 pb-1.5">
                 <span className="text-xs font-bold text-cyan-400">📈 速度-時間圖 (v-t 圖)</span>
@@ -368,16 +388,38 @@ export default function KinematicsLab() {
                         <text x="195" y={zeroY + 12} fill="#94a3b8">t(s)</text>
                         <text x="10" y="20" fill="#38bdf8">v(m/s)</text>
 
-                        <polygon points={polygonPoints} fill="rgba(56, 189, 248, 0.35)" stroke="none" />
+                        {/* 動態背景陰影 */}
+                        <polygon points={polygonPoints} fill="rgba(56, 189, 248, 0.25)" stroke="none" />
 
+                        {/* 每秒分割線與該秒位移 (面積 Δx) 標註 */}
+                        {secondData.map((item, idx) => {
+                          if (idx === 0) return null;
+                          const tPrev = secondData[idx - 1].t;
+                          const pxPrev = 30 + tPrev * scaleT;
+                          const pxCurr = 30 + item.t * scaleT;
+                          const pyCurr = 140 - (item.v - minV) * scaleV;
+                          const isPast = currentTime >= item.t;
+
+                          const midPx = (pxPrev + pxCurr) / 2;
+
+                          return (
+                            <g key={`vt-sec-${item.t}`}>
+                              {/* 垂直分割線 */}
+                              <line x1={pxCurr} y1={zeroY} x2={pxCurr} y2={pyCurr} stroke="#475569" strokeWidth="1" strokeDasharray="2 2" />
+                              {/* 在每個 1 秒區間填入當秒位移 Δx */}
+                              <text x={midPx} y={zeroY > 80 ? zeroY - 8 : zeroY + 14} textAnchor="middle" fill={isPast ? '#38bdf8' : '#64748b'} fontSize="8" fontWeight="bold">
+                                Δx={item.dx.toFixed(0)}m
+                              </text>
+                            </g>
+                          );
+                        })}
+
+                        {/* v-t 線條 */}
                         <line x1={p1x} y1={p1y} x2={p2x} y2={p2y} stroke="#38bdf8" strokeWidth="2.5" />
                         
-                        <line x1={currPx} y1={zeroY} x2={currPx} y2={currPy} stroke="#f59e0b" strokeWidth="1" strokeDasharray="2 2" />
+                        {/* 當前即時點 */}
+                        <line x1={currPx} y1={zeroY} x2={currPx} y2={currPy} stroke="#f59e0b" strokeWidth="1.5" strokeDasharray="2 2" />
                         <circle cx={currPx} cy={currPy} r="4" fill="#f59e0b" />
-
-                        <text x="110" y={zeroY > 80 ? zeroY - 25 : zeroY + 30} textAnchor="middle" fill="#38bdf8" fontSize="10" fontWeight="bold">
-                          塗色面積 = 位移 Δx ({currentX}m)
-                        </text>
                       </g>
                     );
                   })()}
@@ -408,6 +450,15 @@ export default function KinematicsLab() {
                         <text x="195" y={zeroY + 12} fill="#94a3b8">t(s)</text>
                         <text x="10" y="20" fill="#fbbf24">a(m/s²)</text>
 
+                        {/* 每秒垂直分割網格 */}
+                        {secondData.map((item) => {
+                          if (item.t === 0) return null;
+                          const px = 30 + item.t * scaleT;
+                          return (
+                            <line key={`at-sec-${item.t}`} x1={px} y1={zeroY} x2={px} y2={py} stroke="#475569" strokeWidth="1" strokeDasharray="2 2" />
+                          );
+                        })}
+
                         <polygon
                           points={`30,${zeroY} 30,${py} ${currPx},${py} ${currPx},${zeroY}`}
                           fill="rgba(251, 191, 36, 0.25)"
@@ -415,7 +466,7 @@ export default function KinematicsLab() {
 
                         <line x1="30" y1={py} x2="190" y2={py} stroke="#fbbf24" strokeWidth="2.5" />
                         
-                        <line x1={currPx} y1={zeroY} x2={currPx} y2={py} stroke="#f59e0b" strokeWidth="1" strokeDasharray="2 2" />
+                        <line x1={currPx} y1={zeroY} x2={currPx} y2={py} stroke="#f59e0b" strokeWidth="1.5" strokeDasharray="2 2" />
                         <circle cx={currPx} cy={py} r="4" fill="#f59e0b" />
                       </g>
                     );
@@ -458,7 +509,7 @@ export default function KinematicsLab() {
 
             <div className="text-xs font-sans text-slate-300 bg-slate-950 p-3 rounded-xl border border-slate-800 leading-relaxed space-y-1">
               <strong className="text-amber-300 block">💡 觀念總結與解題技巧：</strong>
-              <p>• v-t 圖形面積等於位移 (Δx)：在 t 軸上方的面積代表向正方向位移，下方的面積代表向負方向位移。</p>
+              <p>• v-t 圖形每一秒梯形/三角形面積等於該秒位移 (Δx)。</p>
               <p>• 等時距位移等差性質：當加速度 a = {a} m/s² 固定時，相鄰每 1 秒之位移差值恆為固定值 (Δxₙ - Δxₙ₋₁ = a = {a} m)。</p>
             </div>
           </div>
