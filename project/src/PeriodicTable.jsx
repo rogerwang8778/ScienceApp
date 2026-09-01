@@ -26,7 +26,7 @@ export default function PeriodicTable({ onAddExp }) {
 
   // 完整 118 個元素資料庫
   const allElements = [
-    { num: 1, symbol: "H", name: "氫", bopomofo: "ㄑㄧㄥ", mass: "1.008", period: 1, group: 1, category: "nonmetal", desc: "宇宙中最豐富的元素，密度最小的氣體，具可燃性，燃燒生成水。" },
+    { num: 1, symbol: "H", name: "氫", bopomofo: "ㄑㄧㄥ", mass: "1.008", period: 1, group: 1, category: "nonmetal", desc: "宇宙中含量最豐富的元素，密度最小的氣體，具可燃性，燃燒生成水。" },
     { num: 2, symbol: "He", name: "氦", bopomofo: "ㄏㄞˋ", mass: "4.003", period: 1, group: 18, category: "noble", desc: "惰性氣體，不可燃、比空氣輕，常用於填充氣球與飛船。" },
     { num: 3, symbol: "Li", name: "鋰", bopomofo: "ㄌㄧˇ", mass: "6.941", period: 2, group: 1, category: "alkali", desc: "鹼金屬，密度最小的金屬，活性極大，需儲存在石蠟油中。" },
     { num: 4, symbol: "Be", name: "鈹", bopomofo: "ㄆㄧˊ", mass: "9.012", period: 2, group: 2, category: "alkaline-earth", desc: "鹼土金屬，質輕且硬度高，常用於航太與合金材料。" },
