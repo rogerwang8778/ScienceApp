@@ -269,9 +269,9 @@ export default function MechanicsLab() {
 
               <div className="text-[11px] font-sans text-slate-400 bg-slate-900/60 p-3 rounded-xl border border-slate-800 leading-relaxed">
                 <strong className="text-amber-300 block mb-1">💡 理化核心觀念：</strong>
-                1. 未推動前，靜摩擦力等於外力 ($f_s = F$)，成 45° 正比斜線。<br/>
-                2. 恰好欲動瞬間達「最大靜摩擦力 ($f_{s,\text{max}} = \mu_s \times N$)」。<br/>
-                3. 推動後變為「動摩擦力 ($f_k = \mu_k \times N$)」，數值固定且略小於最大靜摩擦力。
+                1. 未推動前，靜摩擦力等於外力 (fₛ = F)，成 45° 正比斜線。<br/>
+                2. 恰好欲動瞬間達「最大靜摩擦力 (fₛ,max = μₛ × N)」。<br/>
+                3. 推動後變為「動摩擦力 (f▞ = μ▞ × N)」，數值固定且略小於最大靜摩擦力。
               </div>
             </div>
           </div>
@@ -372,7 +372,7 @@ export default function MechanicsLab() {
               </div>
 
               <div className="text-center font-mono text-xs text-slate-400">
-                物體密度 $\rho_B$ = <strong className="text-amber-300">{objectDensity} g/cm³</strong> ｜ 液體密度 $\rho_L$ = <strong className="text-cyan-300">{liquidDensity} g/cm³</strong>
+                物體密度 ρ₈ = <strong className="text-amber-300">{objectDensity} g/cm³</strong> ｜ 液體密度 ρₗ = <strong className="text-cyan-300">{liquidDensity} g/cm³</strong>
               </div>
             </div>
 
@@ -408,23 +408,23 @@ export default function MechanicsLab() {
               {showCalculation ? (
                 <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 text-xs font-mono space-y-2 text-slate-300 leading-relaxed">
                   <p className="text-amber-300 font-bold border-b border-slate-800 pb-1">🧮 阿基米德浮力公式步驟拆解：</p>
-                  <p>1. 物體總密度：$\rho = \frac{m}{V} = \frac{{mass}}{{volume}} = {objectDensity}\text{ g/cm}^3$</p>
-                  <p>2. 排開液體體積 ($V_{\text{下}}$)：{vSub} cm³</p>
-                  <p>3. 阿基米德浮力 ($B = V_{\text{下}} \times \rho_L$)：</p>
+                  <p>1. 物體總密度：ρ = m / V = {mass} / {volume} = {objectDensity} g/cm³</p>
+                  <p>2. 排開液體體積 (V_下)：{vSub} cm³</p>
+                  <p>3. 阿基米德浮力 (B = V_下 × ρₗ)：</p>
                   <p className="pl-4 text-cyan-300 font-bold">
-                    $B = {vSub} \times {liquidDensity} = {buoyancy}\text{ gw}$
+                    B = {vSub} × {liquidDensity} = {buoyancy} gw
                   </p>
                   {state === 'sink' && (
                     <p className="text-emerald-300 pt-1">
-                      4. 沉底正向力支撐：$N = W - B = {weightG} - {buoyancy} = {normalForce}\text{ gw}$
+                      4. 沉底正向力支撐：N = W - B = {weightG} - {buoyancy} = {normalForce} gw
                     </p>
                   )}
                 </div>
               ) : (
                 <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-800 text-xs font-sans text-slate-400 leading-relaxed space-y-1">
                   <strong className="text-amber-300 block">💡 沉浮條件核心口訣：</strong>
-                  <p>• 浮體 ($\rho_B < \rho_L$)：浮力等於物重 ($B = W$)，浸入體積 $V_{\text{下}} = V \times \frac{\rho_B}{\rho_L}$。</p>
-                  <p>• 沉體 ($\rho_B > \rho_L$)：完全沒入 ($V_{\text{下}} = V$)，浮力 $B = V \times \rho_L < W$，容器底正向力 $N = W - B$。</p>
+                  <p>• 浮體 (ρ_B &lt; ρ_L)：浮力等於物重 (B = W)，浸入體積 V_下 = V × (ρ_B / ρ_L)。</p>
+                  <p>• 沉體 (ρ_B &gt; ρ_L)：完全沒入 (V_下 = V)，浮力 B = V × ρ_L &lt; W，容器底正向力 N = W - B。</p>
                 </div>
               )}
             </div>
