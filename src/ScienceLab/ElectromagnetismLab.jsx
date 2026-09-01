@@ -13,7 +13,7 @@ export default function ElectromagnetismLab() {
         setAnimOffset((prev) => (prev + 1) % 100);
       }, 50);
     }
-    return () => clearInterval(interval);
+    return () => strokeInterval(interval);
   }, [isRunning]);
 
   // ==========================================
@@ -66,55 +66,64 @@ export default function ElectromagnetismLab() {
   };
 
   // ==========================================
-  // 3. 冷次定律 State & 電磁感應運算
+  // 3. 冷次定律 State & 電磁感應嚴謹幾何運算
   // ==========================================
   const [sourceType, setSourceType] = useState('magnet'); // 'magnet' | 'wire'
   const [magnetPole, setMagnetPole] = useState('N'); // 'N' | 'S'
-  const [actionType, setActionType] = useState('approach'); // 'approach' | 'recede' (磁鐵) or 'strengthen' | 'weaken' (導線)
+  const [actionType, setActionType] = useState('approach'); // 'approach' | 'recede'
 
   const getLenzResult = () => {
     let indB = '';
     let indI = '';
-    let bDir = 'left'; // 內部感應磁場方向：'left' | 'right'
-    let leftIndPole = 'N'; // 感應線圈左端極性
-    let rightIndPole = 'S'; // 感應線圈右端極性
+    let bDir = 'right'; // 內部感應磁場方向 (S -> N)
+    let leftIndPole = 'S'; // 感應線圈左端極性
+    let rightIndPole = 'N'; // 感應線圈右端極性
+    let frontIUp = false; // 前方繞線電流方向：true(向上), false(向下)
     let needleAngle = 0; // 檢流計偏轉角度
 
     if (sourceType === 'magnet') {
       if (magnetPole === 'N') {
         if (actionType === 'approach') {
-          // N極向左靠近：抵抗靠近 ➔ 右端產生 N 極，左端產生 S 極 ➔ 內部磁場由S指向N (向左)
-          indB = '右端產生 N 極抵抗 N 極靠近 (內部感應磁場向左)';
+          // N極向左靠近 ➔ 右端產生 N 極抵觸靠近，左端為 S 極
+          // 內部感應磁場 (S -> N) ➔ 向右 ➔ 前方繞線電流向下
+          indB = '右端產生 N 極抵抗 N 極靠近 (內部感應磁場向右)';
           indI = '前方繞線向下感應電流 (檢流計向右偏轉)';
-          bDir = 'left';
+          bDir = 'right';
           leftIndPole = 'S';
           rightIndPole = 'N';
+          frontIUp = false;
           needleAngle = 30;
         } else {
-          // N極向右遠離：拉住遠離 ➔ 右端產生 S 極，左端產生 N 極 ➔ 內部磁場由S指向N (向左)
+          // N極向右遠離 ➔ 右端產生 S 極拉住遠離，左端為 N 極
+          // 內部感應磁場 (S -> N) ➔ 向左 ➔ 前方繞線電流向上
           indB = '右端產生 S 極吸引 N 極遠離 (內部感應磁場向左)';
           indI = '前方繞線向上感應電流 (檢流計向左偏轉)';
           bDir = 'left';
           leftIndPole = 'N';
           rightIndPole = 'S';
+          frontIUp = true;
           needleAngle = -30;
         }
       } else {
         if (actionType === 'approach') {
-          // S極向左靠近：抵抗靠近 ➔ 右端產生 S 極，左端產生 N 極 ➔ 內部磁場由S指向N (向左)
+          // S極向左靠近 ➔ 右端產生 S 極抵抗靠近，左端為 N 極
+          // 內部感應磁場 (S -> N) ➔ 向左 ➔ 前方繞線電流向上
           indB = '右端產生 S 極抵抗 S 極靠近 (內部感應磁場向左)';
           indI = '前方繞線向上感應電流 (檢流計向左偏轉)';
           bDir = 'left';
           leftIndPole = 'N';
           rightIndPole = 'S';
+          frontIUp = true;
           needleAngle = -30;
         } else {
-          // S極向右遠離：拉住遠離 ➔ 右端產生 N 極，左端產生 S 極 ➔ 內部磁場由S指向N (向右)
+          // S極向右遠離 ➔ 右端產生 N 極拉住遠離，左端為 S 極
+          // 內部感應磁場 (S -> N) ➔ 向右 ➔ 前方繞線電流向下
           indB = '右端產生 N 極吸引 S 極遠離 (內部感應磁場向右)';
           indI = '前方繞線向下感應電流 (檢流計向右偏轉)';
           bDir = 'right';
           leftIndPole = 'S';
           rightIndPole = 'N';
+          frontIUp = false;
           needleAngle = 30;
         }
       }
@@ -123,19 +132,21 @@ export default function ElectromagnetismLab() {
         indB = '產生反向感應磁場 (向左抵抗原磁場增加)';
         indI = '前方繞線向上感應電流 (檢流計向左偏轉)';
         bDir = 'left';
-        leftIndPole = 'S';
-        rightIndPole = 'N';
+        leftIndPole = 'N';
+        rightIndPole = 'S';
+        frontIUp = true;
         needleAngle = -30;
       } else {
         indB = '產生同向感應磁場 (向右補充電流減弱磁場)';
         indI = '前方繞線向下感應電流 (檢流計向右偏轉)';
         bDir = 'right';
-        leftIndPole = 'N';
-        rightIndPole = 'S';
+        leftIndPole = 'S';
+        rightIndPole = 'N';
+        frontIUp = false;
         needleAngle = 30;
       }
     }
-    return { indB, indI, bDir, leftIndPole, rightIndPole, needleAngle };
+    return { indB, indI, bDir, leftIndPole, rightIndPole, frontIUp, needleAngle };
   };
 
   const lenzRes = getLenzResult();
@@ -150,7 +161,7 @@ export default function ElectromagnetismLab() {
             理化實驗室：國三下 單元六《電與磁互動實驗室》
           </h2>
           <p className="text-xs text-slate-400 mt-1">
-            校正長直導線動畫旋轉方向、冷次定律螺線管內部磁場 ($S \rightarrow N$) 與感應磁極
+            正確校正長直導線前方粒子巡航方向、冷次定律螺線管內部磁場 ($S \rightarrow N$) 與感應電流
           </p>
         </div>
 
@@ -266,7 +277,7 @@ export default function ElectromagnetismLab() {
             <svg width="520" height="280" className="select-none font-mono text-[11px]">
               {wireType === 'straight' ? (
                 <g>
-                  {/* 1. 長直導線：電流向上 (+Y) 俯視逆時針 ➔ 視角前方 (下半弧) 為【向右 ➔】 */}
+                  {/* 1. 長直導線：電流向上 (+Y) 俯視逆時針 ➔ 前方 (下半弧) 為【向右 ➔】 */}
                   {/* 同心橢圓後半段 (導線後方：虛線) */}
                   {[45, 80, 115].map((rx) => (
                     <path
@@ -312,13 +323,13 @@ export default function ElectromagnetismLab() {
                     東方 ({currentDir === 'up' ? '穿入 ⊗' : '穿出 ⦿'})
                   </text>
 
-                  {/* 動態粒子動畫方向修復：電流向上(逆時針，前方向右) */}
+                  {/* 動態粒子導向校正：電流向上時，前方 (y > 140) 必須由左向右流 */}
                   {isRunning && [45, 80, 115].map((rx, idx) => {
-                    const angleDir = currentDir === 'up' ? 1 : -1;
-                    const angle = ((animOffset * 4 + idx * 40) * Math.PI) / 180 * angleDir;
-                    const cx = 240 + rx * Math.cos(angle);
-                    const cy = 140 + rx * 0.35 * Math.sin(angle);
-                    const isFront = Math.sin(angle) > 0;
+                    // 當電流向上：角度加算 offset 使得前方下半弧 (sin > 0) 呈現 x 遞增 (向右)
+                    const theta = (currentDir === 'up' ? -1 : 1) * ((animOffset * 3.6 + idx * 40) * Math.PI / 180);
+                    const cx = 240 + rx * Math.sin(theta);
+                    const cy = 140 + rx * 0.35 * Math.cos(theta);
+                    const isFront = Math.cos(theta) < 0; // 下半段為視角前方
 
                     return (
                       <g key={`p-${rx}`}>
@@ -551,7 +562,7 @@ export default function ElectromagnetismLab() {
       )}
 
       {/* ==========================================
-          3. 冷次定律與電磁感應 (內部感應磁場方向校正)
+          3. 冷次定律與電磁感應 (內部感應磁場 S->N 與電流完美修正)
       ========================================== */}
       {activeTab === 'lenz' && (
         <div className="space-y-6">
@@ -647,17 +658,20 @@ export default function ElectromagnetismLab() {
                   <text x="226" y="105" textAnchor="middle" fill="#ffffff" fontSize="12" fontWeight="bold">{lenzRes.rightIndPole}</text>
                 </g>
 
-                {/* 電流方向動態粒子 */}
-                {isRunning && [0, 1, 2].map((i) => {
-                  const angle = ((animOffset * 5 + i * 120) * Math.PI) / 180 * (lenzRes.needleAngle > 0 ? 1 : -1);
-                  const cx = 160 + 25 * Math.cos(angle);
-                  const cy = 100 + 45 * Math.sin(angle);
+                {/* 前方繞線電流粒子方向精準繪製 */}
+                {isRunning && [0, 1, 2, 3].map((i) => {
+                  // frontIUp 為 true 向上，前側 (y > 100) 粒子向上巡航
+                  const dirMultiplier = lenzRes.frontIUp ? 1 : -1;
+                  const theta = dirMultiplier * ((animOffset * 4 + i * 90) * Math.PI / 180);
+                  const cx = 145 + i * 18 + 15 * Math.sin(theta);
+                  const cy = 100 + 45 * Math.cos(theta);
+
                   return (
                     <circle key={`ind-p-${i}`} cx={cx} cy={cy} r="5" fill="#f59e0b" stroke="#ffffff" strokeWidth="1" />
                   );
                 })}
 
-                {/* 內部感應磁場 B_ind 向量箭頭 (由S極指向N極) */}
+                {/* 內部感應磁場 B_ind 向量箭頭 (內部永遠由 S 極指向 N 極) */}
                 <line
                   x1={lenzRes.bDir === 'right' ? '135' : '190'}
                   y1="100"
@@ -675,7 +689,7 @@ export default function ElectromagnetismLab() {
                   fill="#06b6d4"
                 />
                 <text x="162" y="90" textAnchor="middle" fill="#06b6d4" fontSize="10" fontWeight="bold">
-                  B感應 ({lenzRes.bDir === 'right' ? '向右' : '向左'})
+                  B感應 ({lenzRes.bDir === 'right' ? '向右 ➔' : '向左 '})
                 </text>
 
                 {/* 下方檢流計 (G) */}
@@ -755,9 +769,10 @@ export default function ElectromagnetismLab() {
             </svg>
 
             <div className="bg-slate-900 p-3.5 rounded-xl border border-slate-800 text-xs space-y-1 w-full mt-2 font-sans">
-              <p className="text-purple-300 font-bold">🎯 冷次定律電磁感應分析：</p>
-              <p className="text-slate-300">• 感應磁場極性：感應線圈左端為 <strong className="text-blue-400">{lenzRes.leftIndPole} 極</strong>，右端為 <strong className="text-rose-400">{lenzRes.rightIndPole} 極</strong>。</p>
-              <p className="text-slate-300">• 內部感應磁場：由內部 $S \rightarrow N$ 指向 <strong className="text-cyan-300">{lenzRes.bDir === 'left' ? '向左' : '向右'}</strong> （{lenzRes.indB}）。</p>
+              <p className="text-purple-300 font-bold">🎯 冷次定律電磁感應幾何與物理對照：</p>
+              <p className="text-slate-300">• 感應磁極：線圈左端為 <strong className="text-blue-400">{lenzRes.leftIndPole} 極</strong>，右端為 <strong className="text-rose-400">{lenzRes.rightIndPole} 極</strong>。</p>
+              <p className="text-slate-300">• 內部感應磁場（由 $S \rightarrow N$ 極）：<strong className="text-cyan-300">{lenzRes.bDir === 'right' ? '向右 ➔' : '向左 '}</strong> ({lenzRes.indB})。</p>
+              <p className="text-slate-300">• 前方繞線電流：<strong className="text-amber-300">{lenzRes.frontIUp ? '由下往上 ▲' : '由上往下 ▼'}</strong>。</p>
             </div>
           </div>
         </div>
