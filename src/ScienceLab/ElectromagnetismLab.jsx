@@ -520,7 +520,7 @@ export default function ElectromagnetismLab() {
       )}
 
       {/* ==========================================
-          3. 冷次定律 (主線圈雙重升級：3D幾何 + 主磁場極性與動態標示)
+          3. 冷次定律 (修正 LaTeX 標註為 HTML 元素)
       ========================================== */}
       {activeTab === 'lenz' && (
         <div className="space-y-6">
@@ -581,7 +581,7 @@ export default function ElectromagnetismLab() {
             </div>
 
             <div className="text-xs font-mono text-purple-400 font-bold">
-              冷次定律：感應電流之感應磁場 $B_{\text{感}}$ 永遠抵抗主磁場 $B_{\text{原}}$ 之變化
+              冷次定律：感應電流之感應磁場 B<sub>感</sub> 永遠抵抗主磁場 B<sub>原</sub> 之變化
             </div>
           </div>
 
@@ -752,7 +752,7 @@ export default function ElectromagnetismLab() {
                     />
                   ))}
 
-                  {/* 2. 主磁場 B_原 向量箭頭與動態增減標記 */}
+                  {/* 2. 主磁場 B_原 向量箭頭與動態增減標示 */}
                   <line
                     x1="340"
                     y1="110"
@@ -837,7 +837,7 @@ export default function ElectromagnetismLab() {
             <div className="bg-slate-900 p-3.5 rounded-xl border border-slate-800 text-xs space-y-1 w-full mt-2 font-sans">
               <p className="text-purple-300 font-bold">🎯 冷次定律電磁感應幾何與物理對照：</p>
               <p className="text-slate-300">
-                • 主線圈狀態：<strong className="text-amber-300">前方繞線電流由下往上 ▲</strong>，產生向右之主磁場 <strong className="text-amber-400">B原 (向右 →)</strong>（左端 S 極、右端 N 極）。
+                • 主線圈狀態：<strong className="text-amber-300">前方繞線電流由下往上 ▲</strong>，產生向右之主磁場 <strong className="text-amber-400">B<sub>原</sub> (向右 →)</strong>（左端 S 極、右端 N 極）。
               </p>
               <p className="text-slate-300">
                 • 磁場變化與冷次定律：當主線圈電流 <strong className="text-amber-300">{actionType === 'strengthen' ? '增強' : '減弱'}</strong> 時，感應螺線管產生 <strong className="text-cyan-300">{lenzRes.indB}</strong>。
@@ -914,11 +914,3 @@ export default function ElectromagnetismLab() {
     </div>
   );
 }
-```eof
-
-### ✨ 本次更新重點：
-1. **主線圈 3D 幾何升級**：將原本簡化的曲線改為與左側「感應螺線管」100% 幾何風格對齊的 3D 立體線圈（含實線前繞線、虛線後繞線、黃色電流粒子巡航動畫與 S/N 磁極標示）。
-2. **主磁場 $B_{\text{原}}$ 增強/減弱動態標註**：
-   * 在主線圈內部清晰繪製向右的黃色主磁場向量箭頭，標明 **「$B_{\text{原}}$ (向右 $\rightarrow$)」**。
-   * 當切換「$I$ 電流增強 ▲」時，主磁場線條加粗且顯示 **「▲ 增強」**，粒子巡航速度加快；切換「$I$ 電流減弱 ▼」時，主磁場變細並顯示 **「▼ 減弱」**。
-3. **物理原理完美對照**：讓學生能一目瞭然「主磁場向右增強 $\rightarrow$ 感應磁場向左抵抗」與「主磁場向右減弱 $\rightarrow$ 感應磁場向右補充」的電磁感應機制！
