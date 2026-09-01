@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Zap, Play, Pause, RotateCcw, Calculator, Sliders, Plus, Trash2, GitBranch } from 'lucide-react';
+import { Zap, Play, Pause, Calculator, Sliders, Plus, Trash2, GitBranch } from 'lucide-react';
 
 export default function CircuitLab() {
   const [vSource, setVSource] = useState(12); // 電源電壓 (V)
@@ -7,14 +7,15 @@ export default function CircuitLab() {
   const [showCalc, setShowCalc] = useState(false);
 
   // 電阻節點網絡資料結構 (最多10個電阻)
-  // connection: 'series' (串聯到上一節點) | 'parallel' (與上一節點並聯)
+  // connection: 'series' (串聯) | 'parallel' (與前一電阻並聯)
   const [resistorList, setResistorList] = useState([
     { id: 'r1', name: 'R1', value: 6, connection: 'series' },
-    { id: 'r2', name: 'R2', value: 4, connection: 'series' },
-    { id: 'r3', name: 'R3', value: 12, connection: 'parallel' }
+    { id: 'r2', name: 'R2', value: 6, connection: 'series' },
+    { id: 'r3', name: 'R3', value: 6, connection: 'parallel' },
+    { id: 'r4', name: 'R4', value: 6, connection: 'series' }
   ]);
 
-  // 新增電阻 (支援串聯/並聯選擇，上限10個)
+  // 新增電阻
   const addResistor = (type) => {
     if (resistorList.length < 10) {
       const idx = resistorList.length + 1;
@@ -40,42 +41,41 @@ export default function CircuitLab() {
   };
 
   // ==========================================
-  // 動態等效電阻與分壓分流演算法 (節點約簡)
+  // 電路物理量精確計算 (分組化求解)
   // ==========================================
-  let req = 0;
-  let resData = []; // [{ name, R, V, I, connection }]
-
-  // 簡化連立計算：按順序進行簡併
-  let currentReq = resistorList[0]?.value || 1;
-  for (let i = 1; i < resistorList.length; i++) {
-    const r = resistorList[i];
-    if (r.connection === 'series') {
-      currentReq += r.value;
+  // 將連續並聯標示的電阻歸類為同一並聯組 Group
+  let groups = [];
+  resistorList.forEach((r) => {
+    if (r.connection === 'series' || groups.length === 0) {
+      groups.push([r]);
     } else {
-      currentReq = (currentReq * r.value) / (currentReq + r.value);
+      groups[groups.length - 1].push(r);
     }
-  }
-  req = Number(currentReq.toFixed(2));
+  });
+
+  // 計算每組 Group 的等效電阻 R_group
+  const groupReqs = groups.map(group => {
+    if (group.length === 1) return group[0].value;
+    const invSum = group.reduce((sum, item) => sum + (1 / item.value), 0);
+    return Number((1 / invSum).toFixed(2));
+  });
+
+  // 計算總等效電阻 Req (各組串聯)
+  const req = Number(groupReqs.reduce((sum, rG) => sum + rG, 0).toFixed(2));
   const iTotal = Number((vSource / req).toFixed(2));
 
-  // 各電阻分壓與分流推導
-  let accumV = vSource;
-  resData = resistorList.map((r, idx) => {
-    if (idx === 0) {
-      const v = Number((iTotal * r.value).toFixed(2));
-      return { ...r, V: v, I: iTotal };
-    }
-    if (r.connection === 'series') {
-      const v = Number((iTotal * r.value).toFixed(2));
-      return { ...r, V: v, I: iTotal };
-    } else {
-      // 與前一電阻並聯分流
-      const prevR = resistorList[idx - 1].value;
-      const rp = (prevR * r.value) / (prevR + r.value);
-      const vp = Number((iTotal * rp).toFixed(2));
-      const iVal = Number((vp / r.value).toFixed(2));
-      return { ...r, V: vp, I: iVal };
-    }
+  // 計算每個電阻的即時 V 與 I
+  const resData = [];
+  groups.forEach((group, gIdx) => {
+    const vGroup = Number((iTotal * groupReqs[gIdx]).toFixed(2));
+    group.forEach(r => {
+      if (group.length === 1) {
+        resData.push({ ...r, V: vGroup, I: iTotal, groupIdx: gIdx, inParallelGroup: false });
+      } else {
+        const iBranch = Number((vGroup / r.value).toFixed(2));
+        resData.push({ ...r, V: vGroup, I: iBranch, groupIdx: gIdx, inParallelGroup: true });
+      }
+    });
   });
 
   return (
@@ -86,7 +86,7 @@ export default function CircuitLab() {
           <Zap className="w-5 h-5 text-amber-400" />
           理化實驗室：國三上 單元四《自由鏈接電路 (最多10個電阻自由串並聯)》
         </h2>
-        <p className="text-xs text-slate-400 mt-1">自由新增電阻並切換串聯/並聯接點，即時分析高低電位降壓與分支分流</p>
+        <p className="text-xs text-slate-400 mt-1">自由新增電阻與切換串聯/並聯接點，圖示同步呈現電位分佈與分支分流</p>
       </div>
 
       {/* 控制面板 */}
@@ -180,61 +180,115 @@ export default function CircuitLab() {
 
       {/* 雙圖呈現區域 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* 第一張圖：電壓與高低電位分佈圖 */}
+        {/* 第一張圖：動態串並聯電位圖 */}
         <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between space-y-4">
           <div className="border-b border-slate-800 pb-2 flex justify-between items-center">
             <span className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
-              <Zap className="w-4 h-4 text-amber-400" /> 第一張圖：動態電位關係圖
+              <Zap className="w-4 h-4 text-amber-400" /> 第一張圖：動態電位與串並聯結構圖
             </span>
-            <span className="text-[10px] text-slate-400">高電位(紅) ➔ 降壓(黃/紫) ➔ 零電位(藍)</span>
+            <span className="text-[10px] text-slate-400">高電位(紅) ➔ 降壓區 ➔ 零電位(藍)</span>
           </div>
 
-          <div className="w-full bg-slate-900 rounded-xl p-4 flex items-center justify-center min-h-[220px] overflow-x-auto">
-            <svg width="340" height="180" className="select-none font-mono text-[10px]">
-              {/* 電源 */}
-              <rect x="15" y="70" width="30" height="40" rx="4" fill="#1e293b" stroke="#f59e0b" strokeWidth="2" />
-              <text x="30" y="94" textAnchor="middle" fill="#f59e0b" fontSize="10" fontWeight="bold">{vSource}V</text>
+          <div className="w-full bg-slate-900 rounded-xl p-4 flex items-center justify-center min-h-[240px] overflow-x-auto">
+            <svg width="340" height="200" className="select-none font-mono text-[10px]">
+              {/* 外圍電源 */}
+              <rect x="15" y="80" width="30" height="40" rx="4" fill="#1e293b" stroke="#f59e0b" strokeWidth="2" />
+              <text x="30" y="104" textAnchor="middle" fill="#f59e0b" fontSize="10" fontWeight="bold">{vSource}V</text>
 
-              {/* 外圍迴路導線 */}
-              <path d="M 30 70 L 30 25 L 310 25 L 310 155 L 30 155 L 30 110" fill="none" stroke="#ef4444" strokeWidth="2.5" />
+              {/* 幹道導線 */}
+              <line x1="30" y1="80" x2="30" y2="30" stroke="#ef4444" strokeWidth="2.5" />
+              <line x1="30" y1="30" x2="60" y2="30" stroke="#ef4444" strokeWidth="2.5" />
+              <line x1="30" y1="120" x2="30" y2="170" stroke="#3b82f6" strokeWidth="2.5" />
+              <line x1="30" y1="170" x2="310" y2="170" stroke="#3b82f6" strokeWidth="2.5" />
+              <line x1="310" y1="170" x2="310" y2="30" stroke="#3b82f6" strokeWidth="2.5" />
 
-              {/* 繪製動態串並聯電阻矩陣 */}
-              {resData.map((r, idx) => {
-                const startX = 60 + idx * 25;
-                return (
-                  <g key={`v-map-${r.id}`}>
-                    <rect x={startX} y="15" width="20" height="20" rx="3" fill="#0f172a" stroke="#06b6d4" strokeWidth="1.5" />
-                    <text x={startX + 10} y="29" textAnchor="middle" fill="#06b6d4" fontSize="8" fontWeight="bold">{r.name}</text>
-                    <text x={startX + 10} y="48" textAnchor="middle" fill="#ef4444" fontSize="8" fontWeight="bold">{r.V}V</text>
-                  </g>
-                );
-              })}
+              {/* 動態繪製組別 (Group Layout) */}
+              {(() => {
+                let currentX = 60;
+                const groupWidth = 240 / groups.length;
+
+                return groups.map((group, gIdx) => {
+                  const xStart = currentX;
+                  const xEnd = currentX + groupWidth;
+                  currentX = xEnd;
+
+                  if (group.length === 1) {
+                    // 單一串聯元件
+                    const item = group[0];
+                    const rData = resData.find(d => d.id === item.id);
+                    const midX = (xStart + xEnd) / 2;
+
+                    return (
+                      <g key={`g-${gIdx}`}>
+                        <line x1={xStart} y1="30" x2={xEnd} y2="30" stroke="#ef4444" strokeWidth="2.5" />
+                        <rect x={midX - 18} y="18" width="36" height="24" rx="4" fill="#0f172a" stroke="#06b6d4" strokeWidth="2" />
+                        <text x={midX} y="34" textAnchor="middle" fill="#06b6d4" fontSize="9" fontWeight="bold">{item.name}</text>
+                        <text x={midX} y="54" textAnchor="middle" fill="#ef4444" fontSize="8" fontWeight="bold">V={rData?.V}V</text>
+                      </g>
+                    );
+                  } else {
+                    // 並聯元件組 (Fork Branch)
+                    const midX = (xStart + xEnd) / 2;
+
+                    return (
+                      <g key={`g-${gIdx}`}>
+                        {/* 主幹線連接 */}
+                        <line x1={xStart} y1="30" x2={xEnd} y2="30" stroke="#64748b" strokeWidth="1.5" strokeDasharray="2 2" />
+                        {/* 垂直分流幹線 */}
+                        <line x1={midX} y1="30" x2={midX} y2={30 + group.length * 35} stroke="#a855f7" strokeWidth="2" />
+
+                        {group.map((item, subIdx) => {
+                          const rData = resData.find(d => d.id === item.id);
+                          const py = 30 + subIdx * 35;
+
+                          return (
+                            <g key={`sub-${item.id}`}>
+                              {/* 平行分支線路 */}
+                              <line x1={midX - 25} y1={py} x2={midX + 25} y2={py} stroke="#a855f7" strokeWidth="2" />
+                              <rect x={midX - 18} y={py - 12} width="36" height="24" rx="4" fill="#0f172a" stroke="#a855f7" strokeWidth="2" />
+                              <text x={midX} y={py + 3} textAnchor="middle" fill="#a855f7" fontSize="9" fontWeight="bold">{item.name}</text>
+                              <text x={midX + 28} y={py + 3} textAnchor="start" fill="#eab308" fontSize="8" fontWeight="bold">V={rData?.V}V</text>
+                            </g>
+                          );
+                        })}
+                      </g>
+                    );
+                  }
+                });
+              })()}
             </svg>
           </div>
 
           <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800 text-[11px] text-slate-300 leading-relaxed font-sans space-y-1">
-            <strong className="text-amber-300 block">💡 電位與降壓規律：</strong>
-            <p>• 每經過一個電阻即會產生電壓降 ΔV = I × R。</p>
-            <p>• 並聯分支兩端跨接電壓相等，串聯分壓與阻值成正比。</p>
+            <strong className="text-amber-300 block">💡 串並聯結構圖示解析：</strong>
+            <p>• **串聯元件**：導線直線穿過（如藍色框），共享幹道電流。</p>
+            <p>• **並聯分支**：主幹線垂直分叉為平行線路（紫色框），各分支跨接電壓相等。</p>
           </div>
         </div>
 
-        {/* 第二張圖：電流與分流關係圖 */}
+        {/* 第二張圖：分流與動態電流關係圖 */}
         <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between space-y-4">
           <div className="border-b border-slate-800 pb-2 flex justify-between items-center">
             <span className="text-xs font-bold text-cyan-400 flex items-center gap-1.5">
-              <Sliders className="w-4 h-4 text-cyan-400" /> 第二張圖：各電阻電流與分流列表
+              <Sliders className="w-4 h-4 text-cyan-400" /> 第二張圖：電流關係圖 (各分支分流)
             </span>
-            <span className="text-[10px] text-cyan-300 font-mono font-bold">I_total = {iTotal} A</span>
+            <span className="text-[10px] text-cyan-300 font-mono font-bold">幹道 I_total = {iTotal} A</span>
           </div>
 
-          <div className="w-full bg-slate-900 rounded-xl p-4 flex items-center justify-center min-h-[220px] overflow-y-auto">
-            <div className="w-full space-y-1.5 font-mono text-xs">
+          <div className="w-full bg-slate-900 rounded-xl p-4 flex items-center justify-center min-h-[240px] overflow-y-auto">
+            <div className="w-full space-y-2 font-mono text-xs">
               {resData.map((r) => (
-                <div key={`i-item-${r.id}`} className="flex justify-between items-center bg-slate-950 p-2 rounded-lg border border-slate-800">
-                  <span className="text-slate-300 font-bold">{r.name} ({r.value}Ω) [{r.connection === 'parallel' ? '並聯' : '串聯'}]</span>
-                  <span className="text-cyan-300 font-bold">I = {r.I} A</span>
-                  <span className="text-amber-300 font-bold">V = {r.V} V</span>
+                <div key={`i-item-${r.id}`} className="flex justify-between items-center bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${r.inParallelGroup ? 'bg-purple-950 text-purple-300 border border-purple-700' : 'bg-cyan-950 text-cyan-300 border border-cyan-700'}`}>
+                      {r.inParallelGroup ? '並聯分支' : '串聯幹線'}
+                    </span>
+                    <span className="text-slate-200 font-bold">{r.name} ({r.value}Ω)</span>
+                  </div>
+                  <div className="flex gap-3">
+                    <span className="text-cyan-300 font-bold">電流 I = {r.I} A</span>
+                    <span className="text-amber-300 font-bold">跨壓 V = {r.V} V</span>
+                  </div>
                 </div>
               ))}
             </div>
@@ -242,8 +296,8 @@ export default function CircuitLab() {
 
           <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800 text-[11px] text-slate-300 leading-relaxed font-sans space-y-1">
             <strong className="text-cyan-300 block">💡 電流守恆與分流法則：</strong>
-            <p>• 節點分流：流入節點總電流等於流出總電流。</p>
-            <p>• 並聯支路中，阻值越小者分得電流越大 (I ∝ 1/R)。</p>
+            <p>• 節點分流：流入節點總電流等於各分支流出總和 ($I_{\text{total}} = I_1 + I_2 + \dots$)。</p>
+            <p>• 串聯同電流：串聯路徑上電流處處相等。</p>
           </div>
         </div>
       </div>
@@ -264,17 +318,20 @@ export default function CircuitLab() {
 
         {showCalc ? (
           <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs font-mono space-y-2 text-slate-300 leading-relaxed">
-            <p className="text-amber-300 font-bold border-b border-slate-800 pb-1">🧮 多電阻節點約簡算式 (V = {vSource}V)：</p>
-            <p>1. 電阻鏈配置：{resistorList.map(r => `${r.name}(${r.value}Ω)[${r.connection}]`).join(' ➔ ')}</p>
-            <p>2. 全電路總等效電阻 Req = <strong className="text-cyan-300">{req} Ω</strong></p>
+            <p className="text-amber-300 font-bold border-b border-slate-800 pb-1">🧮 分組歐姆定律約簡步驟 (V = {vSource}V)：</p>
+            <p>1. 全電路組態分組：{groups.length} 個分段區塊</p>
+            {groups.map((g, idx) => (
+              <p key={`grp-calc-${idx}`}>• 第 {idx + 1} 組 ({g.map(i => i.name).join(' || ')}) 等效電阻：R_group = {groupReqs[idx]} Ω</p>
+            ))}
+            <p>2. 全電路總等效電阻 Req = {groupReqs.join(' + ')} = <strong className="text-cyan-300">{req} Ω</strong></p>
             <p>3. 幹道總電流 I_total = V / Req = {vSource} / {req} = <strong className="text-amber-300">{iTotal} A</strong></p>
             {resData.map(r => (
-              <p key={`calc-res-${r.id}`}>• {r.name} 電流 I_{r.name} = {r.I} A ｜ 跨接分壓 V_{r.name} = {r.V} V</p>
+              <p key={`calc-res-${r.id}`}>• {r.name} ({r.value}Ω)：電流 I_{r.name} = {r.I} A ｜ 跨接分壓 V_{r.name} = {r.V} V</p>
             ))}
           </div>
         ) : (
           <div className="text-xs text-slate-400 font-sans leading-relaxed">
-            點擊上方按鈕展開歐姆定律 V = IR 與全電路節點約簡推導細節。
+            點擊上方按鈕展開歐姆定律 $V = IR$ 與全電路分組約簡推導細節。
           </div>
         )}
       </div>
