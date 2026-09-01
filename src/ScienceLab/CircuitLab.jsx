@@ -1,35 +1,35 @@
 import React, { useState } from 'react';
-import { Zap, Play, Pause, Calculator, Plus, Trash2, Sliders, RefreshCw, GitCommit } from 'lucide-react';
+import { Zap, Play, Pause, Calculator, Plus, Trash2, Sliders, RefreshCw, GitCommit, GitBranch, Layers } from 'lucide-react';
 
 export default function CircuitLab() {
+  // 分頁切換狀態: 'breadboard' (頁面1: 網格麵包板) | 'bridge' (頁面2: 惠斯同電橋)
+  const [activeTab, setActiveTab] = useState('breadboard');
+
   const [vSource, setVSource] = useState(12); // 電源電壓 (V)
   const [isRunning, setIsRunning] = useState(true);
   const [showCalc, setShowCalc] = useState(false);
 
-  // 當前欲擺放的元件模式: 'resistor' (電阻) | 'wire' (導線)
-  const [toolMode, setToolMode] = useState('resistor');
-
-  // 互動選擇狀態
-  const [selectedNode, setSelectedNode] = useState(null); // 目前點選的第一個網格點 {x, y}
+  // ==========================================
+  // 頁面 1：加大型網格麵包板 State & Logic (11x7 Grid)
+  // ==========================================
+  const [toolMode, setToolMode] = useState('resistor'); // 'resistor' | 'wire'
+  const [selectedNode, setSelectedNode] = useState(null); // {x, y}
   const [selectedItemId, setSelectedItemId] = useState('r1');
 
-  // 電阻/導線清單 (11x7 擴大版麵包板)
-  // 電源正極預設在 (0,0)，電源負極預設在 (10,0)
+  // 電阻與導線清單 (電源正極 (0,0), 電源負極 (10,0))
   const [components, setComponents] = useState([
     { id: 'r1', type: 'resistor', name: 'R1', value: 6, nA: { x: 0, y: 0 }, nB: { x: 3, y: 0 } },
     { id: 'r2', type: 'resistor', name: 'R2', value: 6, nA: { x: 3, y: 0 }, nB: { x: 7, y: 0 } },
-    { id: 'w1', type: 'wire', name: '導線1', value: 0.0001, nA: { x: 3, y: 0 }, nB: { x: 3, y: 3 } }, // 延伸支路導線
-    { id: 'r3', type: 'resistor', name: 'R3', value: 12, nA: { x: 3, y: 3 }, nB: { x: 7, y: 3 } }, // 並聯支路電阻
+    { id: 'w1', type: 'wire', name: '導線1', value: 0.0001, nA: { x: 3, y: 0 }, nB: { x: 3, y: 3 } },
+    { id: 'r3', type: 'resistor', name: 'R3', value: 12, nA: { x: 3, y: 3 }, nB: { x: 7, y: 3 } },
     { id: 'w2', type: 'wire', name: '導線2', value: 0.0001, nA: { x: 7, y: 3 }, nB: { x: 7, y: 0 } },
     { id: 'r4', type: 'resistor', name: 'R4', value: 6, nA: { x: 7, y: 0 }, nB: { x: 10, y: 0 } },
   ]);
 
-  // 網格點點擊事件（建立電阻或導線）
   const handleNodeClick = (x, y) => {
     if (!selectedNode) {
       setSelectedNode({ x, y });
     } else {
-      // 點擊第二個點，若非同一點則建立元件
       if (selectedNode.x !== x || selectedNode.y !== y) {
         const isRes = toolMode === 'resistor';
         const resCount = components.filter(c => c.type === 'resistor').length + 1;
@@ -39,7 +39,7 @@ export default function CircuitLab() {
           id: `item_${Date.now().toString().slice(-5)}`,
           type: toolMode,
           name: isRes ? `R${resCount}` : `導線${wireCount}`,
-          value: isRes ? 6 : 0.0001, // 導線接近 0 歐姆
+          value: isRes ? 6 : 0.0001,
           nA: { x: selectedNode.x, y: selectedNode.y },
           nB: { x, y }
         };
@@ -64,7 +64,6 @@ export default function CircuitLab() {
     setComponents(components.map(c => c.id === id ? { ...c, value: Math.max(1, val) } : c));
   };
 
-  // 重設麵包板
   const resetBoard = () => {
     setComponents([
       { id: 'r1', type: 'resistor', name: 'R1', value: 6, nA: { x: 0, y: 0 }, nB: { x: 10, y: 0 } }
@@ -72,10 +71,8 @@ export default function CircuitLab() {
     setSelectedNode(null);
   };
 
-  // ==========================================
-  // KCL 網路圖學求解 (Node Voltage Analysis)
-  // ==========================================
-  const nodeKeysSet = new Set(['0,0', '10,0']); // 0,0 正極(V_source), 10,0 負極(0V)
+  // 麵包板 KCL 求解
+  const nodeKeysSet = new Set(['0,0', '10,0']);
   components.forEach(c => {
     nodeKeysSet.add(`${c.nA.x},${c.nA.y}`);
     nodeKeysSet.add(`${c.nB.x},${c.nB.y}`);
@@ -167,7 +164,6 @@ export default function CircuitLab() {
     return idx !== -1 ? Number(vSol[idx].toFixed(2)) : 0;
   };
 
-  // 計算每個元件的即時 V, I
   const compCalculated = components.map(c => {
     const kA = `${c.nA.x},${c.nA.y}`;
     const kB = `${c.nB.x},${c.nB.y}`;
@@ -178,7 +174,6 @@ export default function CircuitLab() {
     return { ...c, vA, vB, V: vDiff, I: iVal };
   });
 
-  // 計算幹道總電流
   const iTotal = Number(
     compCalculated
       .filter(c => `${c.nA.x},${c.nA.y}` === '0,0' || `${c.nB.x},${c.nB.y}` === '0,0')
@@ -187,279 +182,562 @@ export default function CircuitLab() {
   );
   const reqTotal = iTotal > 0 ? Number((vSource / iTotal).toFixed(2)) : 0;
 
+  // ==========================================
+  // 頁面 2：惠斯同電橋 State & Logic (5個電阻鑽石網路)
+  // ==========================================
+  const [br1, setBr1] = useState(6);
+  const [br2, setBr2] = useState(12);
+  const [br3, setBr3] = useState(4);
+  const [br4, setBr4] = useState(8);
+  const [br5, setBr5] = useState(10);
+
+  const bg1 = 1 / br1, bg2 = 1 / br2, bg3 = 1 / br3, bg4 = 1 / br4, bg5 = 1 / br5;
+  const A_coeff = bg1 + bg2 + bg5, B_coeff = -bg5, C_const = vSource * bg1;
+  const D_coeff = -bg5, E_coeff = bg3 + bg4 + bg5, F_const = vSource * bg3;
+
+  const det = A_coeff * E_coeff - B_coeff * D_coeff;
+  const vB = Number(((C_const * E_coeff - B_coeff * F_const) / det).toFixed(2));
+  const vC = Number(((A_coeff * F_const - C_const * D_coeff) / det).toFixed(2));
+
+  const iBr1 = Number(((vSource - vB) / br1).toFixed(2));
+  const iBr2 = Number((vB / br2).toFixed(2));
+  const iBr3 = Number(((vSource - vC) / br3).toFixed(2));
+  const iBr4 = Number((vC / br4).toFixed(2));
+  const iBr5 = Number(((vB - vC) / br5).toFixed(2));
+
+  const bridgeITotal = Number((iBr1 + iBr3).toFixed(2));
+  const bridgeReq = Number((vSource / bridgeITotal).toFixed(2));
+  const isBalanced = Math.abs(vB - vC) < 0.05;
+
   return (
     <div className="bg-slate-800 border border-slate-700 rounded-2xl p-4 md:p-6 shadow-xl space-y-6">
       {/* 標頭 */}
       <div className="border-b border-slate-700 pb-4">
         <h2 className="text-xl font-bold text-white flex items-center gap-2">
           <Zap className="w-5 h-5 text-amber-400" />
-          理化實驗室：加大型網格麵包板與自由佈線模擬器 (Breadboard Circuit)
+          理化實驗室：國三上 單元四《基本電路與惠斯同電橋》
         </h2>
         <p className="text-xs text-slate-400 mt-1">
-          支援自由選擇放置「電阻」或「導線 Wire」，可在 11×7 加大型麵包板上拉出精美的自由混聯線路
+          可以在頁面 1 自由拉線擺放電阻與導線，或在頁面 2 精確分析惠斯同電橋平衡實驗
         </p>
       </div>
 
-      {/* 工具與電源控制面板 */}
-      <div className="bg-slate-900 border border-slate-700 p-4 rounded-2xl flex flex-wrap justify-between items-center gap-4">
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-slate-300 font-bold">電源 V：</span>
-          <input
-            type="range" min="3" max="36" step="3" value={vSource}
-            onChange={(e) => setVSource(Number(e.target.value))}
-            className="w-28 accent-amber-500 h-1.5 bg-slate-700 rounded-lg cursor-pointer"
-          />
-          <span className="text-amber-400 font-mono text-xs font-bold">{vSource} V</span>
-        </div>
-
-        {/* 工具選擇器 */}
-        <div className="flex items-center gap-2 bg-slate-950 p-1.5 rounded-xl border border-slate-800">
-          <button
-            onClick={() => setToolMode('resistor')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
-              toolMode === 'resistor' ? 'bg-cyan-600 text-white' : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <Plus className="w-3.5 h-3.5" /> 擺放電阻 (Resistor)
-          </button>
-          <button
-            onClick={() => setToolMode('wire')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
-              toolMode === 'wire' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <GitCommit className="w-3.5 h-3.5" /> 新增導線 (Wire)
-          </button>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={resetBoard}
-            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold flex items-center gap-1 border border-slate-700"
-          >
-            <RefreshCw className="w-3.5 h-3.5" /> 清空麵包板
-          </button>
-          <button
-            onClick={() => setIsRunning(!isRunning)}
-            className={`py-1.5 px-4 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow transition-all ${
-              isRunning ? 'bg-amber-600 text-white' : 'bg-emerald-600 text-white'
-            }`}
-          >
-            {isRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-            {isRunning ? '暫停斷路' : '接通電源'}
-          </button>
-        </div>
+      {/* 頁面切換按鈕 */}
+      <div className="flex flex-wrap gap-2">
+        <button
+          onClick={() => setActiveTab('breadboard')}
+          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+            activeTab === 'breadboard' ? 'bg-amber-600 text-white shadow-lg' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+          }`}
+        >
+          <Layers className="w-3.5 h-3.5 text-amber-300" /> 頁面 1：加大型網格麵包板 (自由擺放電阻與導線)
+        </button>
+        <button
+          onClick={() => setActiveTab('bridge')}
+          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+            activeTab === 'bridge' ? 'bg-cyan-600 text-white shadow-lg' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+          }`}
+        >
+          <GitBranch className="w-3.5 h-3.5 text-cyan-300" /> 頁面 2：惠斯同電橋實驗室 (鑽石網路與 KCL)
+        </button>
       </div>
 
-      {/* 畫布與數據區 */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* 左側：加大型麵包板畫布 (11x7 Grid) */}
-        <div className="lg:col-span-8 bg-slate-950 border border-slate-800 rounded-2xl p-5 space-y-3 flex flex-col justify-between">
-          <div className="flex justify-between items-center border-b border-slate-800 pb-2">
-            <span className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
-              <Plus className="w-4 h-4 text-amber-400" /> 加大型麵包板 (11×7 網格空間)
-            </span>
-            <span className="text-[10px] text-slate-400">
-              {selectedNode
-                ? `起點 (${selectedNode.x}, ${selectedNode.y})，模式: ${toolMode === 'resistor' ? '電阻' : '導線'}`
-                : `模式：${toolMode === 'resistor' ? '擺放電阻' : '拉導線Wire'}`}
-            </span>
+      {/* ==========================================
+          頁面 1：加大型網格麵包板
+      ========================================== */}
+      {activeTab === 'breadboard' && (
+        <div className="space-y-6">
+          <div className="bg-slate-900 border border-slate-700 p-4 rounded-2xl flex flex-wrap justify-between items-center gap-4">
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-slate-300 font-bold">電源 V：</span>
+              <input
+                type="range" min="3" max="36" step="3" value={vSource}
+                onChange={(e) => setVSource(Number(e.target.value))}
+                className="w-28 accent-amber-500 h-1.5 bg-slate-700 rounded-lg cursor-pointer"
+              />
+              <span className="text-amber-400 font-mono text-xs font-bold">{vSource} V</span>
+            </div>
+
+            <div className="flex items-center gap-2 bg-slate-950 p-1.5 rounded-xl border border-slate-800">
+              <button
+                onClick={() => setToolMode('resistor')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
+                  toolMode === 'resistor' ? 'bg-cyan-600 text-white' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Plus className="w-3.5 h-3.5" /> 擺放電阻 (Resistor)
+              </button>
+              <button
+                onClick={() => setToolMode('wire')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
+                  toolMode === 'wire' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <GitCommit className="w-3.5 h-3.5" /> 新增導線 (Wire)
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={resetBoard}
+                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold flex items-center gap-1 border border-slate-700"
+              >
+                <RefreshCw className="w-3.5 h-3.5" /> 清空麵包板
+              </button>
+              <button
+                onClick={() => setIsRunning(!isRunning)}
+                className={`py-1.5 px-4 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow transition-all ${
+                  isRunning ? 'bg-amber-600 text-white' : 'bg-emerald-600 text-white'
+                }`}
+              >
+                {isRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                {isRunning ? '暫停斷路' : '接通電源'}
+              </button>
+            </div>
           </div>
 
-          <div className="w-full bg-slate-900 rounded-xl p-4 flex items-center justify-center min-h-[340px] overflow-x-auto">
-            <svg width="480" height="300" className="select-none font-mono text-[10px]">
-              {/* 11x7 網格點 */}
-              {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(gx =>
-                [0, 1, 2, 3, 4, 5, 6].map(gy => {
-                  const cx = 30 + gx * 42;
-                  const cy = 30 + gy * 40;
-                  const isStartSelected = selectedNode && selectedNode.x === gx && selectedNode.y === gy;
-                  const isPowerPos = gx === 0 && gy === 0;
-                  const isPowerNeg = gx === 10 && gy === 0;
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className="lg:col-span-8 bg-slate-950 border border-slate-800 rounded-2xl p-5 space-y-3 flex flex-col justify-between">
+              <div className="border-b border-slate-800 pb-2 flex justify-between items-center">
+                <span className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+                  <Plus className="w-4 h-4 text-amber-400" /> 加大型麵包板 (11×7 網格空間)
+                </span>
+                <span className="text-[10px] text-slate-400">
+                  {selectedNode
+                    ? `起點 (${selectedNode.x}, ${selectedNode.y})，模式: ${toolMode === 'resistor' ? '電阻' : '導線'}`
+                    : `模式：${toolMode === 'resistor' ? '擺放電阻' : '拉導線Wire'}`}
+                </span>
+              </div>
 
-                  return (
-                    <g key={`grid-${gx}-${gy}`} onClick={() => handleNodeClick(gx, gy)} className="cursor-pointer">
-                      <circle
-                        cx={cx} cy={cy} r={isStartSelected ? "6" : "3.5"}
-                        fill={isStartSelected ? "#f59e0b" : isPowerPos ? "#ef4444" : isPowerNeg ? "#3b82f6" : "#475569"}
-                        stroke={isStartSelected ? "#ffffff" : "none"} strokeWidth="2"
-                      />
-                      <text x={cx} y={cy + 13} textAnchor="middle" fill="#64748b" fontSize="6.5">
-                        {getNodeV(`${gx},${gy}`)}V
-                      </text>
-                    </g>
-                  );
-                })
-              )}
+              <div className="w-full bg-slate-900 rounded-xl p-4 flex items-center justify-center min-h-[340px] overflow-x-auto">
+                <svg width="480" height="300" className="select-none font-mono text-[10px]">
+                  {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(gx =>
+                    [0, 1, 2, 3, 4, 5, 6].map(gy => {
+                      const cx = 30 + gx * 42;
+                      const cy = 30 + gy * 40;
+                      const isStartSelected = selectedNode && selectedNode.x === gx && selectedNode.y === gy;
+                      const isPowerPos = gx === 0 && gy === 0;
+                      const isPowerNeg = gx === 10 && gy === 0;
 
-              {/* 電源正負極標籤 */}
-              <rect x="5" y="15" width="20" height="30" rx="3" fill="#ef4444" opacity="0.2" />
-              <text x="15" y="32" textAnchor="middle" fill="#ef4444" fontSize="8" fontWeight="bold">+V</text>
+                      return (
+                        <g key={`grid-${gx}-${gy}`} onClick={() => handleNodeClick(gx, gy)} className="cursor-pointer">
+                          <circle
+                            cx={cx} cy={cy} r={isStartSelected ? "6" : "3.5"}
+                            fill={isStartSelected ? "#f59e0b" : isPowerPos ? "#ef4444" : isPowerNeg ? "#3b82f6" : "#475569"}
+                            stroke={isStartSelected ? "#ffffff" : "none"} strokeWidth="2"
+                          />
+                          <text x={cx} y={cy + 13} textAnchor="middle" fill="#64748b" fontSize="6.5">
+                            {getNodeV(`${gx},${gy}`)}V
+                          </text>
+                        </g>
+                      );
+                    })
+                  )}
 
-              <rect x="455" y="15" width="20" height="30" rx="3" fill="#3b82f6" opacity="0.2" />
-              <text x="465" y="32" textAnchor="middle" fill="#3b82f6" fontSize="8" fontWeight="bold">0V</text>
+                  <rect x="5" y="15" width="20" height="30" rx="3" fill="#ef4444" opacity="0.2" />
+                  <text x="15" y="32" textAnchor="middle" fill="#ef4444" fontSize="8" fontWeight="bold">+V</text>
 
-              {/* 繪製已擺放的元件 (電阻或導線) */}
-              {compCalculated.map((c) => {
-                const x1 = 30 + c.nA.x * 42;
-                const y1 = 30 + c.nA.y * 40;
-                const x2 = 30 + c.nB.x * 42;
-                const y2 = 30 + c.nB.y * 40;
-                const midX = (x1 + x2) / 2;
-                const midY = (y1 + y2) / 2;
-                const isSelected = selectedItemId === c.id;
-                const isWire = c.type === 'wire';
+                  <rect x="455" y="15" width="20" height="30" rx="3" fill="#3b82f6" opacity="0.2" />
+                  <text x="465" y="32" textAnchor="middle" fill="#3b82f6" fontSize="8" fontWeight="bold">0V</text>
+
+                  {compCalculated.map((c) => {
+                    const x1 = 30 + c.nA.x * 42;
+                    const y1 = 30 + c.nA.y * 40;
+                    const x2 = 30 + c.nB.x * 42;
+                    const y2 = 30 + c.nB.y * 40;
+                    const midX = (x1 + x2) / 2;
+                    const midY = (y1 + y2) / 2;
+                    const isSelected = selectedItemId === c.id;
+                    const isWire = c.type === 'wire';
+
+                    return (
+                      <g key={`item-line-${c.id}`} onClick={() => setSelectedItemId(c.id)} className="cursor-pointer">
+                        <line
+                          x1={x1} y1={y1} x2={x2} y2={y2}
+                          stroke={isSelected ? '#f59e0b' : isWire ? '#10b981' : '#06b6d4'}
+                          strokeWidth={isWire ? '3' : isSelected ? '3.5' : '2.5'}
+                          strokeDasharray={isWire ? '4 2' : 'none'}
+                        />
+
+                        {!isWire && (
+                          <>
+                            <rect
+                              x={midX - 16} y={midY - 10} width="32" height="20" rx="4"
+                              fill="#0f172a" stroke={isSelected ? '#f59e0b' : '#06b6d4'} strokeWidth="2"
+                            />
+                            <text x={midX} y={midY + 3} textAnchor="middle" fill={isSelected ? '#f59e0b' : '#06b6d4'} fontSize="8" fontWeight="bold">
+                              {c.name}
+                            </text>
+                          </>
+                        )}
+                      </g>
+                    );
+                  })}
+                </svg>
+              </div>
+
+              <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 text-[11px] text-slate-300 leading-relaxed space-y-1">
+                <strong className="text-amber-300 block">💡 自由拉線提示：</strong>
+                <p>1. 上方可切換 **【擺放電阻】** 或 **【新增導線 Wire】**。</p>
+                <p>2. 利用「導線`Wire`」連接不同區塊，可以讓複雜的電路、並聯支路拉得更乾淨美觀！</p>
+              </div>
+            </div>
+
+            <div className="lg:col-span-4 space-y-4">
+              {(() => {
+                const curItem = compCalculated.find(c => c.id === selectedItemId) || compCalculated[0];
+                if (!curItem) return null;
 
                 return (
-                  <g key={`item-line-${c.id}`} onClick={() => setSelectedItemId(c.id)} className="cursor-pointer">
-                    {/* 導線或電阻接線 */}
-                    <line
-                      x1={x1} y1={y1} x2={x2} y2={y2}
-                      stroke={isSelected ? '#f59e0b' : isWire ? '#10b981' : '#06b6d4'}
-                      strokeWidth={isWire ? '3' : isSelected ? '3.5' : '2.5'}
-                      strokeDasharray={isWire ? '4 2' : 'none'}
-                    />
+                  <div className="bg-slate-900 border border-slate-700 p-4 rounded-2xl space-y-3">
+                    <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+                      <span className="text-xs font-bold text-cyan-300 flex items-center gap-1.5">
+                        <Sliders className="w-4 h-4 text-cyan-300" /> 設定 {curItem.name} ({curItem.type === 'wire' ? '純導線' : '電阻'})
+                      </span>
+                      {components.length > 1 && (
+                        <button
+                          onClick={() => removeItem(curItem.id)}
+                          className="text-slate-400 hover:text-rose-400 p-1 rounded-lg border border-slate-700 text-xs flex items-center gap-1"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" /> 刪除
+                        </button>
+                      )}
+                    </div>
 
-                    {/* 電阻元件盒 */}
-                    {!isWire && (
-                      <>
-                        <rect
-                          x={midX - 16} y={midY - 10} width="32" height="20" rx="4"
-                          fill="#0f172a" stroke={isSelected ? '#f59e0b' : '#06b6d4'} strokeWidth="2"
+                    {curItem.type === 'resistor' ? (
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-xs font-bold">
+                          <span className="text-slate-300">阻值 R：</span>
+                          <span className="text-cyan-400 font-mono">{curItem.value} Ω</span>
+                        </div>
+                        <input
+                          type="range" min="1" max="50" step="1" value={curItem.value}
+                          onChange={(e) => updateResistorVal(curItem.id, Number(e.target.value))}
+                          className="w-full accent-cyan-500 h-1.5 bg-slate-700 rounded cursor-pointer"
                         />
-                        <text x={midX} y={midY + 3} textAnchor="middle" fill={isSelected ? '#f59e0b' : '#06b6d4'} fontSize="8" fontWeight="bold">
-                          {c.name}
-                        </text>
-                      </>
+                      </div>
+                    ) : (
+                      <div className="text-xs text-emerald-400 font-mono">
+                        🟢 此元件為無阻值導線 (Wire)，純作接線通電用途。
+                      </div>
                     )}
-                  </g>
+
+                    <div className="grid grid-cols-2 gap-2 text-xs font-mono bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                      <div>
+                        <span className="text-slate-400 block text-[10px]">通過電流 I：</span>
+                        <span className="text-cyan-300 font-bold">{curItem.I} A</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block text-[10px]">兩端跨壓 V：</span>
+                        <span className="text-amber-300 font-bold">{curItem.V} V</span>
+                      </div>
+                    </div>
+                  </div>
                 );
-              })}
-            </svg>
-          </div>
+              })()}
 
-          <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 text-[11px] text-slate-300 leading-relaxed space-y-1">
-            <strong className="text-amber-300 block">💡 自由拉線提示：</strong>
-            <p>1. 上方可切換 **【擺放電阻】** 或 **【新增導線 Wire】**。</p>
-            <p>2. 利用「導線`Wire`」連接不同區塊，可以讓複雜的電路、並聯支路拉得更乾淨美觀！</p>
-          </div>
-        </div>
-
-        {/* 右側：選取元件控制與列表 */}
-        <div className="lg:col-span-4 space-y-4">
-          {/* 選取元件卡片 */}
-          {(() => {
-            const curItem = compCalculated.find(c => c.id === selectedItemId) || compCalculated[0];
-            if (!curItem) return null;
-
-            return (
               <div className="bg-slate-900 border border-slate-700 p-4 rounded-2xl space-y-3">
-                <div className="flex justify-between items-center border-b border-slate-800 pb-2">
-                  <span className="text-xs font-bold text-cyan-300 flex items-center gap-1.5">
-                    <Sliders className="w-4 h-4 text-cyan-300" /> 設定 {curItem.name} ({curItem.type === 'wire' ? '純導線' : '電阻'})
-                  </span>
-                  {components.length > 1 && (
-                    <button
-                      onClick={() => removeItem(curItem.id)}
-                      className="text-slate-400 hover:text-rose-400 p-1 rounded-lg border border-slate-700 text-xs flex items-center gap-1"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" /> 刪除
-                    </button>
-                  )}
+                <div className="flex justify-between items-center border-b border-slate-800 pb-2 text-xs font-bold text-slate-200">
+                  <span>全電路即時數據 summary</span>
+                  <span className="text-amber-300 font-mono">Req = {reqTotal} Ω</span>
                 </div>
 
-                {curItem.type === 'resistor' ? (
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-xs font-bold">
-                      <span className="text-slate-300">阻值 R：</span>
-                      <span className="text-cyan-400 font-mono">{curItem.value} Ω</span>
+                <div className="max-h-[220px] overflow-y-auto space-y-1.5 font-mono text-xs">
+                  {compCalculated.map(c => (
+                    <div
+                      key={`list-${c.id}`}
+                      onClick={() => setSelectedItemId(c.id)}
+                      className={`flex justify-between items-center p-2 rounded-xl border cursor-pointer transition-all ${
+                        selectedItemId === c.id ? 'bg-cyan-950/80 border-cyan-500' : 'bg-slate-950 border-slate-800'
+                      }`}
+                    >
+                      <span className="text-slate-200 font-bold">
+                        {c.type === 'wire' ? '🟢' : '🔷'} {c.name} {c.type === 'resistor' ? `(${c.value}Ω)` : ''}
+                      </span>
+                      <div className="flex gap-2 text-[11px]">
+                        <span className="text-cyan-300">I={c.I}A</span>
+                        <span className="text-amber-300">V={c.V}V</span>
+                      </div>
                     </div>
-                    <input
-                      type="range" min="1" max="50" step="1" value={curItem.value}
-                      onChange={(e) => updateResistorVal(curItem.id, Number(e.target.value))}
-                      className="w-full accent-cyan-500 h-1.5 bg-slate-700 rounded cursor-pointer"
-                    />
-                  </div>
-                ) : (
-                  <div className="text-xs text-emerald-400 font-mono">
-                    🟢 此元件為無阻值導線 (Wire)，純作接線通電用途。
-                  </div>
-                )}
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
 
-                <div className="grid grid-cols-2 gap-2 text-xs font-mono bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-                  <div>
-                    <span className="text-slate-400 block text-[10px]">通過電流 I：</span>
-                    <span className="text-cyan-300 font-bold">{curItem.I} A</span>
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl p-5 space-y-3">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+              <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                <Calculator className="w-4 h-4 text-emerald-400" /> KCL 網格節點電位矩陣求解過程
+              </span>
+              <button
+                onClick={() => setShowCalc(!showCalc)}
+                className="text-xs bg-slate-800 hover:bg-slate-700 text-cyan-300 px-3 py-1 rounded-lg border border-slate-700 flex items-center gap-1 transition-all"
+              >
+                <Calculator className="w-3.5 h-3.5" /> {showCalc ? '隱藏計算過程' : '詳細計算過程'}
+              </button>
+            </div>
+
+            {showCalc ? (
+              <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs font-mono space-y-2 text-slate-300 leading-relaxed">
+                <p className="text-amber-300 font-bold border-b border-slate-800 pb-1">🧮 麵包板網格 KCL 電位解算步驟：</p>
+                {allNodeKeys.map(key => (
+                  <p key={`calc-node-${key}`}>
+                    • 節點 Node ({key}) 電位：V = <strong className="text-cyan-300">{getNodeV(key)} V</strong>
+                  </p>
+                ))}
+                <p>• 全電路總等效電阻 Req = V_source / I_total = {vSource} / {iTotal} = <strong className="text-amber-300">{reqTotal} Ω</strong></p>
+              </div>
+            ) : (
+              <div className="text-xs text-slate-400 font-sans leading-relaxed">
+                點擊上方按鈕展開網格節點電位 KCL 矩陣求解細節。
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ==========================================
+          頁面 2：惠斯同電橋實驗室
+      ========================================== */}
+      {activeTab === 'bridge' && (
+        <div className="space-y-6">
+          <div className="bg-slate-900 border border-slate-700 p-4 md:p-5 rounded-2xl space-y-4">
+            <div className="flex flex-wrap justify-between items-center border-b border-slate-800 pb-3 gap-3">
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-slate-300 font-bold">電源電壓 V：</span>
+                <input
+                  type="range" min="3" max="24" step="3" value={vSource}
+                  onChange={(e) => setVSource(Number(e.target.value))}
+                  className="w-32 accent-amber-500 h-1.5 bg-slate-700 rounded-lg cursor-pointer"
+                />
+                <span className="text-amber-400 font-mono text-xs font-bold">{vSource} V</span>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => { setBr1(6); setBr2(12); setBr3(4); setBr4(8); }}
+                  className="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-bold flex items-center gap-1 transition-all"
+                >
+                  <GitBranch className="w-3.5 h-3.5" /> 載入平衡比 (6:12 = 4:8)
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+              <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1">
+                <div className="flex justify-between text-xs font-bold">
+                  <span className="text-slate-300">R1 (A-B)：</span>
+                  <span className="text-cyan-400 font-mono">{br1} Ω</span>
+                </div>
+                <input
+                  type="range" min="1" max="20" step="1" value={br1}
+                  onChange={(e) => setBr1(Number(e.target.value))}
+                  className="w-full accent-cyan-500 h-1 bg-slate-700 rounded cursor-pointer"
+                />
+              </div>
+
+              <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1">
+                <div className="flex justify-between text-xs font-bold">
+                  <span className="text-slate-300">R2 (B-D)：</span>
+                  <span className="text-cyan-400 font-mono">{br2} Ω</span>
+                </div>
+                <input
+                  type="range" min="1" max="20" step="1" value={br2}
+                  onChange={(e) => setBr2(Number(e.target.value))}
+                  className="w-full accent-cyan-500 h-1 bg-slate-700 rounded cursor-pointer"
+                />
+              </div>
+
+              <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1">
+                <div className="flex justify-between text-xs font-bold">
+                  <span className="text-slate-300">R3 (A-C)：</span>
+                  <span className="text-purple-400 font-mono">{br3} Ω</span>
+                </div>
+                <input
+                  type="range" min="1" max="20" step="1" value={br3}
+                  onChange={(e) => setBr3(Number(e.target.value))}
+                  className="w-full accent-purple-500 h-1 bg-slate-700 rounded cursor-pointer"
+                />
+              </div>
+
+              <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1">
+                <div className="flex justify-between text-xs font-bold">
+                  <span className="text-slate-300">R4 (C-D)：</span>
+                  <span className="text-purple-400 font-mono">{br4} Ω</span>
+                </div>
+                <input
+                  type="range" min="1" max="20" step="1" value={br4}
+                  onChange={(e) => setBr4(Number(e.target.value))}
+                  className="w-full accent-purple-500 h-1 bg-slate-700 rounded cursor-pointer"
+                />
+              </div>
+
+              <div className="bg-slate-950 p-3 rounded-xl border border-amber-800 space-y-1">
+                <div className="flex justify-between text-xs font-bold">
+                  <span className="text-amber-300">R5 橋臂：</span>
+                  <span className="text-amber-400 font-mono">{br5} Ω</span>
+                </div>
+                <input
+                  type="range" min="1" max="20" step="1" value={br5}
+                  onChange={(e) => setBr5(Number(e.target.value))}
+                  className="w-full accent-amber-500 h-1 bg-slate-700 rounded cursor-pointer"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-between items-center border-t border-slate-800 pt-3">
+              <div className="text-xs font-mono text-slate-300 flex items-center gap-2">
+                電橋狀態：<strong className={isBalanced ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>
+                  {isBalanced ? '✅ 電橋達完美平衡 (VB = VC，R5 無電流)' : '⚠️ 電橋未平衡 (VB ≠ VC，R5 有電流)'}
+                </strong>
+              </div>
+              <button
+                onClick={() => setIsRunning(!isRunning)}
+                className={`py-2 px-4 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow transition-all ${
+                  isRunning ? 'bg-amber-600 text-white' : 'bg-emerald-600 text-white'
+                }`}
+              >
+                {isRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                {isRunning ? '暫停開關' : '接通電源'}
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between space-y-4">
+              <div className="border-b border-slate-800 pb-2 flex justify-between items-center">
+                <span className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+                  <Zap className="w-4 h-4 text-amber-400" /> 第一張圖：惠斯同電橋電位圖 (節點點位)
+                </span>
+                <span className="text-[10px] text-slate-400">VB={vB}V ｜ VC={vC}V</span>
+              </div>
+
+              <div className="w-full bg-slate-900 rounded-xl p-4 flex items-center justify-center min-h-[240px]">
+                <svg width="320" height="200" className="select-none font-mono text-[10px]">
+                  <rect x="15" y="80" width="30" height="40" rx="4" fill="#1e293b" stroke="#f59e0b" strokeWidth="2" />
+                  <text x="30" y="104" textAnchor="middle" fill="#f59e0b" fontSize="10" fontWeight="bold">{vSource}V</text>
+
+                  <line x1="30" y1="80" x2="30" y2="30" stroke="#ef4444" strokeWidth="2.5" />
+                  <line x1="30" y1="30" x2="160" y2="30" stroke="#ef4444" strokeWidth="2.5" />
+
+                  <line x1="30" y1="120" x2="30" y2="170" stroke="#3b82f6" strokeWidth="2.5" />
+                  <line x1="30" y1="170" x2="160" y2="170" stroke="#3b82f6" strokeWidth="2.5" />
+
+                  <line x1="160" y1="30" x2="80" y2="100" stroke="#06b6d4" strokeWidth="2" />
+                  <line x1="80" y1="100" x2="160" y2="170" stroke="#06b6d4" strokeWidth="2" />
+
+                  <line x1="160" y1="30" x2="240" y2="100" stroke="#a855f7" strokeWidth="2" />
+                  <line x1="240" y1="100" x2="160" y2="170" stroke="#a855f7" strokeWidth="2" />
+
+                  <line x1="80" y1="100" x2="240" y2="100" stroke={isBalanced ? '#10b981' : '#f59e0b'} strokeWidth="3" strokeDasharray={isBalanced ? 'none' : '4 4'} />
+
+                  <rect x="105" y="52" width="30" height="20" rx="3" fill="#0f172a" stroke="#06b6d4" strokeWidth="1.5" />
+                  <text x="120" y="65" textAnchor="middle" fill="#06b6d4" fontSize="8" fontWeight="bold">R1={br1}Ω</text>
+
+                  <rect x="105" y="128" width="30" height="20" rx="3" fill="#0f172a" stroke="#06b6d4" strokeWidth="1.5" />
+                  <text x="120" y="141" textAnchor="middle" fill="#06b6d4" fontSize="8" fontWeight="bold">R2={br2}Ω</text>
+
+                  <rect x="185" y="52" width="30" height="20" rx="3" fill="#0f172a" stroke="#a855f7" strokeWidth="1.5" />
+                  <text x="200" y="65" textAnchor="middle" fill="#a855f7" fontSize="8" fontWeight="bold">R3={br3}Ω</text>
+
+                  <rect x="185" y="128" width="30" height="20" rx="3" fill="#0f172a" stroke="#a855f7" strokeWidth="1.5" />
+                  <text x="200" y="141" textAnchor="middle" fill="#a855f7" fontSize="8" fontWeight="bold">R4={br4}Ω</text>
+
+                  <rect x="145" y="90" width="30" height="20" rx="3" fill="#0f172a" stroke="#f59e0b" strokeWidth="1.5" />
+                  <text x="160" y="103" textAnchor="middle" fill="#f59e0b" fontSize="8" fontWeight="bold">R5={br5}Ω</text>
+
+                  <circle cx="160" cy="30" r="4" fill="#ef4444" />
+                  <text x="160" y="20" textAnchor="middle" fill="#ef4444" fontSize="9" fontWeight="bold">Node A ({vSource}V)</text>
+
+                  <circle cx="80" cy="100" r="4" fill="#06b6d4" />
+                  <text x="55" y="103" textAnchor="end" fill="#06b6d4" fontSize="9" fontWeight="bold">VB={vB}V</text>
+
+                  <circle cx="240" cy="100" r="4" fill="#a855f7" />
+                  <text x="265" y="103" textAnchor="start" fill="#a855f7" fontSize="9" fontWeight="bold">VC={vC}V</text>
+
+                  <circle cx="160" cy="170" r="4" fill="#3b82f6" />
+                  <text x="160" y="185" textAnchor="middle" fill="#3b82f6" fontSize="9" fontWeight="bold">Node D (0V)</text>
+                </svg>
+              </div>
+
+              <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800 text-[11px] text-slate-300 leading-relaxed font-sans space-y-1">
+                <strong className="text-amber-300 block">💡 惠斯同電橋平衡條件：</strong>
+                <p>• 當 R1 / R2 = R3 / R4 （即 {br1}/{br2} = {br3}/{br4}）時，節點 B 與 C 的電位相等 (VB = VC = {vB}V)。</p>
+                <p>• 此時橋臂電阻 R5 兩端無電壓差，因此完全沒有電流流過 R5 (I_R5 = 0A)。</p>
+              </div>
+            </div>
+
+            <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between space-y-4">
+              <div className="border-b border-slate-800 pb-2 flex justify-between items-center">
+                <span className="text-xs font-bold text-cyan-400 flex items-center gap-1.5">
+                  <Sliders className="w-4 h-4 text-cyan-400" /> 第二張圖：各支路分流列表
+                </span>
+                <span className="text-[10px] text-cyan-300 font-mono font-bold">幹道 I_total = {bridgeITotal} A</span>
+              </div>
+
+              <div className="w-full bg-slate-900 rounded-xl p-4 flex items-center justify-center min-h-[240px] overflow-y-auto">
+                <div className="w-full space-y-2 font-mono text-xs">
+                  <div className="flex justify-between items-center bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                    <span className="text-slate-200 font-bold">左側上支路 R1 ({br1}Ω)</span>
+                    <span className="text-cyan-300 font-bold">I_R1 = {iBr1} A</span>
                   </div>
-                  <div>
-                    <span className="text-slate-400 block text-[10px]">兩端跨壓 V：</span>
-                    <span className="text-amber-300 font-bold">{curItem.V} V</span>
+                  <div className="flex justify-between items-center bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                    <span className="text-slate-200 font-bold">左側下支路 R2 ({br2}Ω)</span>
+                    <span className="text-cyan-300 font-bold">I_R2 = {iBr2} A</span>
+                  </div>
+                  <div className="flex justify-between items-center bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                    <span className="text-slate-200 font-bold">右側上支路 R3 ({br3}Ω)</span>
+                    <span className="text-purple-300 font-bold">I_R3 = {iBr3} A</span>
+                  </div>
+                  <div className="flex justify-between items-center bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                    <span className="text-slate-200 font-bold">右側下支路 R4 ({br4}Ω)</span>
+                    <span className="text-purple-300 font-bold">I_R4 = {iBr4} A</span>
+                  </div>
+                  <div className={`flex justify-between items-center p-2.5 rounded-xl border ${isBalanced ? 'bg-emerald-950/60 border-emerald-700' : 'bg-amber-950/60 border-amber-700'}`}>
+                    <span className="text-amber-300 font-bold">中央橋臂 R5 ({br5}Ω) [B➔C]</span>
+                    <span className={`font-bold ${isBalanced ? 'text-emerald-400' : 'text-amber-300'}`}>I_R5 = {iBr5} A</span>
                   </div>
                 </div>
               </div>
-            );
-          })()}
 
-          {/* 全電路總結列表 */}
-          <div className="bg-slate-900 border border-slate-700 p-4 rounded-2xl space-y-3">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-2 text-xs font-bold text-slate-200">
-              <span>全電路即時數據 summary</span>
-              <span className="text-amber-300 font-mono">Req = {reqTotal} Ω</span>
-            </div>
-
-            <div className="max-h-[220px] overflow-y-auto space-y-1.5 font-mono text-xs">
-              {compCalculated.map(c => (
-                <div
-                  key={`list-${c.id}`}
-                  onClick={() => setSelectedItemId(c.id)}
-                  className={`flex justify-between items-center p-2 rounded-xl border cursor-pointer transition-all ${
-                    selectedItemId === c.id ? 'bg-cyan-950/80 border-cyan-500' : 'bg-slate-950 border-slate-800'
-                  }`}
-                >
-                  <span className="text-slate-200 font-bold">
-                    {c.type === 'wire' ? '🟢' : '🔷'} {c.name} {c.type === 'resistor' ? `(${c.value}Ω)` : ''}
-                  </span>
-                  <div className="flex gap-2 text-[11px]">
-                    <span className="text-cyan-300">I={c.I}A</span>
-                    <span className="text-amber-300">V={c.V}V</span>
-                  </div>
-                </div>
-              ))}
+              <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800 text-[11px] text-slate-300 leading-relaxed font-sans space-y-1">
+                <strong className="text-cyan-300 block">💡 節點 KCL 與分流：</strong>
+                <p>• 節點 B 滿足：I_R1 = I_R2 + I_R5。</p>
+                <p>• 當電橋平衡時 I_R5 = 0，此時 I_R1 = I_R2 且 I_R3 = I_R4。</p>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* 詳細計算過程 */}
-      <div className="bg-slate-900 border border-slate-700 rounded-2xl p-5 space-y-3">
-        <div className="flex justify-between items-center border-b border-slate-800 pb-2">
-          <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-            <Calculator className="w-4 h-4 text-emerald-400" /> KCL 網格節點電位矩陣求解過程
-          </span>
-          <button
-            onClick={() => setShowCalc(!showCalc)}
-            className="text-xs bg-slate-800 hover:bg-slate-700 text-cyan-300 px-3 py-1 rounded-lg border border-slate-700 flex items-center gap-1 transition-all"
-          >
-            <Calculator className="w-3.5 h-3.5" /> {showCalc ? '隱藏計算過程' : '詳細計算過程'}
-          </button>
-        </div>
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl p-5 space-y-3">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+              <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                <Calculator className="w-4 h-4 text-emerald-400" /> 節點電位法 (Node Voltage) 解算過程
+              </span>
+              <button
+                onClick={() => setShowCalc(!showCalc)}
+                className="text-xs bg-slate-800 hover:bg-slate-700 text-cyan-300 px-3 py-1 rounded-lg border border-slate-700 flex items-center gap-1 transition-all"
+              >
+                <Calculator className="w-3.5 h-3.5" /> {showCalc ? '隱藏計算過程' : '詳細計算過程'}
+              </button>
+            </div>
 
-        {showCalc ? (
-          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs font-mono space-y-2 text-slate-300 leading-relaxed">
-            <p className="text-amber-300 font-bold border-b border-slate-800 pb-1">🧮 麵包板網格 KCL 電位解算步驟：</p>
-            {allNodeKeys.map(key => (
-              <p key={`calc-node-${key}`}>
-                • 節點 Node ({key}) 電位：V = <strong className="text-cyan-300">{getNodeV(key)} V</strong>
-              </p>
-            ))}
-            <p>• 全電路總等效電阻 Req = V_source / I_total = {vSource} / {iTotal} = <strong className="text-amber-300">{reqTotal} Ω</strong></p>
+            {showCalc ? (
+              <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs font-mono space-y-2 text-slate-300 leading-relaxed">
+                <p className="text-amber-300 font-bold border-b border-slate-800 pb-1">🧮 節點電位 KCL 矩陣解算步驟：</p>
+                <p>1. 對 Node B 建立 KCL：(VB - {vSource})/{br1} + VB/{br2} + (VB - VC)/{br5} = 0 ➔ <strong className="text-cyan-300">VB = {vB} V</strong></p>
+                <p>2. 對 Node C 建立 KCL：(VC - {vSource})/{br3} + VC/{br4} + (VC - VB)/{br5} = 0 ➔ <strong className="text-purple-300">VC = {vC} V</strong></p>
+                <p>3. 橋臂電壓差：ΔV_BC = VB - VC = {vB} - {vC} = <strong className={isBalanced ? 'text-emerald-400 font-bold' : 'text-amber-300 font-bold'}>{(vB - vC).toFixed(2)} V</strong></p>
+                <p>4. 全電路總等效電阻：Req = V_source / I_total = {vSource} / {bridgeITotal} = <strong className="text-cyan-300">{bridgeReq} Ω</strong></p>
+              </div>
+            ) : (
+              <div className="text-xs text-slate-400 font-sans leading-relaxed">
+                點擊上方按鈕展開節點電位法 VB, VC 與克拉瑪公式求解細節。
+              </div>
+            )}
           </div>
-        ) : (
-          <div className="text-xs text-slate-400 font-sans leading-relaxed">
-            點擊上方按鈕展開網格節點電位 KCL 矩陣求解細節。
-          </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
