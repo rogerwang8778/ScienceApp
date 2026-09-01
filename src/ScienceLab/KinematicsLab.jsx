@@ -8,7 +8,7 @@ export default function KinematicsLab() {
   // 1. 直線運動 State & Logic
   // ==========================================
   const [v0, setV0] = useState(10);      // 初速 m/s
-  const [a, setA] = useState(-2);        // 加速度 m/s² (預設設為負值方便測試)
+  const [a, setA] = useState(-2);        // 加速度 m/s²
   const [totalTime, setTotalTime] = useState(5); // 總時間 (s)
   
   const [isLinearRunning, setIsLinearRunning] = useState(false);
@@ -159,7 +159,7 @@ export default function KinematicsLab() {
           <div className="bg-slate-900 border border-slate-700 p-4 md:p-5 rounded-2xl grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 items-center">
             <div className="space-y-1.5">
               <div className="flex justify-between text-xs font-bold">
-                <span className="text-slate-300">初速度 v₀ (m/s)：</span>
+                <span className="text-slate-300">初速度 v0 (m/s)：</span>
                 <span className="text-cyan-400 font-mono">{v0} m/s</span>
               </div>
               <input
@@ -225,7 +225,6 @@ export default function KinematicsLab() {
 
             <div className="w-full bg-slate-900 rounded-xl p-4 overflow-x-auto flex justify-center">
               <svg width="680" height="120" className="select-none font-mono">
-                {/* 支援正負座標的數值基準範圍 */}
                 {(() => {
                   let minX = 0;
                   let maxX = 0;
@@ -237,17 +236,14 @@ export default function KinematicsLab() {
                   maxX = Math.max(20, maxX + 5);
 
                   const scaleX = 580 / (maxX - minX);
-                  const zeroX = 50 + (0 - minX) * scaleX; // 原點 x=0 的像素位置
+                  const zeroX = 50 + (0 - minX) * scaleX;
 
                   return (
                     <g>
-                      {/* 地面軸線 */}
                       <line x1="30" y1="80" x2="650" y2="80" stroke="#64748b" strokeWidth="2" />
-                      {/* x=0 標誌垂直線 */}
                       <line x1={zeroX} y1="30" x2={zeroX} y2="85" stroke="#ef4444" strokeWidth="1.5" strokeDasharray="3 3" />
                       <text x={zeroX} y="22" textAnchor="middle" fill="#ef4444" fontSize="10" fontWeight="bold">原點 (x=0)</text>
 
-                      {/* 每秒打點位置 */}
                       {secondData.map((item) => {
                         const px = 50 + (item.x - minX) * scaleX;
                         const isReached = currentTime >= item.t;
@@ -262,7 +258,6 @@ export default function KinematicsLab() {
                         );
                       })}
 
-                      {/* 當前移動小車 */}
                       {(() => {
                         const carX = 50 + (currentX - minX) * scaleX;
                         return (
@@ -283,7 +278,7 @@ export default function KinematicsLab() {
             </div>
           </div>
 
-          {/* 三圖連線同步繪製 (支援正負座標與 v-t 圖面積標記) */}
+          {/* 三圖連線同步繪製 */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* 1. x-t 圖 */}
             <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-2">
@@ -294,7 +289,6 @@ export default function KinematicsLab() {
               <div className="bg-slate-900 rounded-xl p-3 flex items-center justify-center">
                 <svg width="220" height="160" className="select-none font-mono text-[10px]">
                   {(() => {
-                    // 計算 x 的最大值與最小值以動態放縮 Y 軸
                     let allX = [];
                     for (let t = 0; t <= totalTime; t += 0.1) {
                       allX.push(v0 * t + 0.5 * a * t * t);
@@ -304,7 +298,7 @@ export default function KinematicsLab() {
 
                     const scaleT = 160 / totalTime;
                     const scaleX = 120 / (maxX - minX);
-                    const zeroY = 140 - (0 - minX) * scaleX; // X 軸 (x=0) 的 Y 座標位置
+                    const zeroY = 140 - (0 - minX) * scaleX;
 
                     let pathD = '';
                     for (let t = 0; t <= totalTime; t += 0.1) {
@@ -319,16 +313,13 @@ export default function KinematicsLab() {
 
                     return (
                       <g>
-                        {/* 軸線 */}
                         <line x1="30" y1={zeroY} x2="200" y2={zeroY} stroke="#64748b" strokeWidth="1.5" />
                         <line x1="30" y1="145" x2="30" y2="15" stroke="#64748b" strokeWidth="1.5" />
                         <text x="195" y={zeroY + 12} fill="#94a3b8">t(s)</text>
                         <text x="10" y="20" fill="#a855f7">x(m)</text>
 
-                        {/* x-t 曲線 */}
                         <path d={pathD} fill="none" stroke="#c084fc" strokeWidth="2.5" />
                         
-                        {/* 當前數據點連線 */}
                         <line x1={currPx} y1={zeroY} x2={currPx} y2={currPy} stroke="#f59e0b" strokeWidth="1" strokeDasharray="2 2" />
                         <circle cx={currPx} cy={currPy} r="4" fill="#f59e0b" />
                       </g>
@@ -338,7 +329,7 @@ export default function KinematicsLab() {
               </div>
             </div>
 
-            {/* 2. v-t 圖 (強調面積 = 位移) */}
+            {/* 2. v-t 圖 */}
             <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-2">
               <div className="flex justify-between items-center border-b border-slate-800 pb-1.5">
                 <span className="text-xs font-bold text-cyan-400">📈 速度-時間圖 (v-t 圖)</span>
@@ -352,7 +343,7 @@ export default function KinematicsLab() {
 
                     const scaleT = 160 / totalTime;
                     const scaleV = 120 / (maxV - minV);
-                    const zeroY = 140 - (0 - minV) * scaleV; // v=0 軸線
+                    const zeroY = 140 - (0 - minV) * scaleV;
 
                     const p1x = 30;
                     const p1y = 140 - (v0 - minV) * scaleV;
@@ -362,9 +353,7 @@ export default function KinematicsLab() {
                     const currPx = 30 + currentTime * scaleT;
                     const currPy = 140 - (currentV - minV) * scaleV;
 
-                    // 動態計算當前區間的多邊形面積 Points
                     let polygonPoints = `30,${zeroY} 30,${p1y} `;
-                    // 當 v 跨越 0 時，精確計算交點
                     if ((v0 > 0 && currentV < 0) || (v0 < 0 && currentV > 0)) {
                       const tCross = -v0 / a;
                       const crossPx = 30 + tCross * scaleT;
@@ -374,23 +363,18 @@ export default function KinematicsLab() {
 
                     return (
                       <g>
-                        {/* 軸線 */}
                         <line x1="30" y1={zeroY} x2="200" y2={zeroY} stroke="#64748b" strokeWidth="1.5" />
                         <line x1="30" y1="145" x2="30" y2="15" stroke="#64748b" strokeWidth="1.5" />
                         <text x="195" y={zeroY + 12} fill="#94a3b8">t(s)</text>
                         <text x="10" y="20" fill="#38bdf8">v(m/s)</text>
 
-                        {/* v-t 塗色陰影面積 (代表位移 Δx) */}
                         <polygon points={polygonPoints} fill="rgba(56, 189, 248, 0.35)" stroke="none" />
 
-                        {/* v-t 直線 */}
                         <line x1={p1x} y1={p1y} x2={p2x} y2={p2y} stroke="#38bdf8" strokeWidth="2.5" />
                         
-                        {/* 當前即時點 */}
                         <line x1={currPx} y1={zeroY} x2={currPx} y2={currPy} stroke="#f59e0b" strokeWidth="1" strokeDasharray="2 2" />
                         <circle cx={currPx} cy={currPy} r="4" fill="#f59e0b" />
 
-                        {/* 面積等於位移的文字動態標籤 */}
                         <text x="110" y={zeroY > 80 ? zeroY - 25 : zeroY + 30} textAnchor="middle" fill="#38bdf8" fontSize="10" fontWeight="bold">
                           塗色面積 = 位移 Δx ({currentX}m)
                         </text>
@@ -401,7 +385,7 @@ export default function KinematicsLab() {
               </div>
             </div>
 
-            {/* 3. a-t 圖 (支援正負加速度) */}
+            {/* 3. a-t 圖 */}
             <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-2">
               <div className="flex justify-between items-center border-b border-slate-800 pb-1.5">
                 <span className="text-xs font-bold text-amber-400">📈 加速度-時間圖 (a-t 圖)</span>
@@ -411,30 +395,26 @@ export default function KinematicsLab() {
                 <svg width="220" height="160" className="select-none font-mono text-[10px]">
                   {(() => {
                     const scaleT = 160 / totalTime;
-                    const zeroY = 80; // 正中央為 a=0
-                    const scaleA = 50 / 10; // 50px 對應 10 m/s²
+                    const zeroY = 80;
+                    const scaleA = 50 / 10;
                     const py = zeroY - a * scaleA;
 
                     const currPx = 30 + currentTime * scaleT;
 
                     return (
                       <g>
-                        {/* 軸線 */}
                         <line x1="30" y1={zeroY} x2="200" y2={zeroY} stroke="#64748b" strokeWidth="1.5" />
                         <line x1="30" y1="145" x2="30" y2="15" stroke="#64748b" strokeWidth="1.5" />
                         <text x="195" y={zeroY + 12} fill="#94a3b8">t(s)</text>
                         <text x="10" y="20" fill="#fbbf24">a(m/s²)</text>
 
-                        {/* a-t 塗色陰影面積 (代表速度變化量 Δv) */}
                         <polygon
                           points={`30,${zeroY} 30,${py} ${currPx},${py} ${currPx},${zeroY}`}
                           fill="rgba(251, 191, 36, 0.25)"
                         />
 
-                        {/* a-t 水平線 */}
                         <line x1="30" y1={py} x2="190" y2={py} stroke="#fbbf24" strokeWidth="2.5" />
                         
-                        {/* 當前點 */}
                         <line x1={currPx} y1={zeroY} x2={currPx} y2={py} stroke="#f59e0b" strokeWidth="1" strokeDasharray="2 2" />
                         <circle cx={currPx} cy={py} r="4" fill="#f59e0b" />
                       </g>
@@ -478,8 +458,8 @@ export default function KinematicsLab() {
 
             <div className="text-xs font-sans text-slate-300 bg-slate-950 p-3 rounded-xl border border-slate-800 leading-relaxed space-y-1">
               <strong className="text-amber-300 block">💡 觀念總結與解題技巧：</strong>
-              <p>• <strong>v-t 圖圖形面積＝位移 ($\Delta x$)</strong>：在 $t$ 軸上方的面積代表向正方向位移，下方的面積代表向負方向位移。</p>
-              <p>• <strong>等時距位移等差性質</strong>：當加速度 $a = {a}\text{ m/s}^2$ 固定時，相鄰每 $1$ 秒之位移差值恆為固定值 ($\Delta x_{n} - \Delta x_{n-1} = a = {a}\text{ m}$)。</p>
+              <p>• v-t 圖形面積等於位移 (Δx)：在 t 軸上方的面積代表向正方向位移，下方的面積代表向負方向位移。</p>
+              <p>• 等時距位移等差性質：當加速度 a = {a} m/s² 固定時，相鄰每 1 秒之位移差值恆為固定值 (Δxₙ - Δxₙ₋₁ = a = {a} m)。</p>
             </div>
           </div>
         </div>
@@ -511,7 +491,7 @@ export default function KinematicsLab() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
               <div className="space-y-1.5">
                 <div className="flex justify-between text-xs font-bold">
-                  <span className="text-slate-300">初速度 v₀ (m/s)：</span>
+                  <span className="text-slate-300">初速度 v0 (m/s)：</span>
                   <span className="text-cyan-400 font-mono">{projV0} m/s</span>
                 </div>
                 <input
@@ -537,7 +517,7 @@ export default function KinematicsLab() {
 
               <div className="space-y-1.5">
                 <div className="flex justify-between text-xs font-bold">
-                  <span className="text-slate-300">初始高度 h₀ (m)：</span>
+                  <span className="text-slate-300">初始高度 h0 (m)：</span>
                   <span className="text-purple-400 font-mono">{projHeight} m</span>
                 </div>
                 <input
@@ -636,7 +616,7 @@ export default function KinematicsLab() {
                   📈 水平方向位移 (等速運動 x-t 圖)
                 </span>
                 <div className="text-xs font-mono text-slate-300">
-                  水平速度 v_x = v₀ cos(θ) = {vx.toFixed(1)} m/s （恆定）
+                  水平速度 vx = v0 cos(θ) = {vx.toFixed(1)} m/s （恆定）
                 </div>
               </div>
 
@@ -645,14 +625,14 @@ export default function KinematicsLab() {
                   📈 垂直方向高度 (等加速度運動 y-t 圖)
                 </span>
                 <div className="text-xs font-mono text-slate-300">
-                  垂直初速 v_y0 = v₀ sin(θ) = {vy0.toFixed(1)} m/s，受重力 g = 9.8 m/s² 向下。
+                  垂直初速 vy0 = v0 sin(θ) = {vy0.toFixed(1)} m/s，受重力 g = 9.8 m/s² 向下。
                 </div>
               </div>
 
               <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800 text-xs text-slate-300 leading-relaxed font-sans space-y-1">
                 <strong className="text-indigo-300 block">💡 拋體獨立性核心口訣：</strong>
-                <p>• 水平方向：不受外力，作等速度直線運動 (x = v_x × t)。</p>
-                <p>• 垂直方向：僅受重力，作等加速度運動 (y = h₀ + v_y0 × t - ½gt²)。</p>
+                <p>• 水平方向：不受外力，作等速度直線運動 (x = vx × t)。</p>
+                <p>• 垂直方向：僅受重力，作等加速度運動 (y = h0 + vy0 × t - 0.5 × g × t²)。</p>
               </div>
             </div>
           </div>
