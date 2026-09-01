@@ -181,7 +181,7 @@ export default function ScienceLab({ onAddExp }) {
       color: 'from-amber-500/20 to-yellow-500/20 border-amber-500/50 text-amber-400',
       badge: '全新上線',
       isAvailable: true,
-    }
+    },
   ];
 
   if (currentLab === 'density') return (<div className="space-y-4"><button onClick={() => setCurrentLab(null)} className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700 transition-all shadow-md"><ArrowLeft className="w-4 h-4 text-cyan-400" /> 返回理化實驗室大廳</button><DensityLab onAddExp={onAddExp} /></div>);
