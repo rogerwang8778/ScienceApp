@@ -162,7 +162,7 @@ export default function ScienceLab({ onAddExp }) {
     {
       id: 'circuit',
       title: '歐姆定律與串並聯電路',
-      unit: '國三理化 上學期 - 單元二',
+      unit: '國三理化 上學期 - 單元',
       desc: '自由組裝開關、燈泡與電阻，即時觀測伏特計與安培計偏轉。',
       icon: Zap,
       color: 'from-amber-500/20 to-yellow-500/20 border-amber-500/30 text-amber-400',
