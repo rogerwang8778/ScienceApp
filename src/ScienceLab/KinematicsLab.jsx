@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Activity, Play, Pause, RotateCcw, Compass, ArrowRight, Table, Sparkles } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Activity, Play, Pause, RotateCcw, Compass, Table } from 'lucide-react';
 
 export default function KinematicsLab() {
   const [activeTab, setActiveTab] = useState('linear'); // 'linear' | 'projectile'
@@ -42,7 +42,7 @@ export default function KinematicsLab() {
     const x = v0 * t + 0.5 * a * t * t;
     const v = v0 + a * t;
     const prevX = t > 0 ? v0 * (t - 1) + 0.5 * a * (t - 1) * (t - 1) : 0;
-    const dx = t > 0 ? x - prevX : 0; // 當秒位移 Δx
+    const dx = t > 0 ? x - prevX : 0;
     secondData.push({ t, x, v, dx });
   }
 
@@ -53,17 +53,16 @@ export default function KinematicsLab() {
   // ==========================================
   // 2. 拋體運動 State & Logic
   // ==========================================
-  const [projType, setProjType] = useState('oblique'); // 'freefall' | 'upward' | 'horizontal' | 'oblique'
-  const [projV0, setProjV0] = useState(20);  // 初速 m/s
-  const [projAngle, setProjAngle] = useState(45); // 角度 deg
-  const [projHeight, setProjHeight] = useState(10); // 初始高度 m
+  const [projType, setProjType] = useState('oblique');
+  const [projV0, setProjV0] = useState(20);
+  const [projAngle, setProjAngle] = useState(45);
+  const [projHeight, setProjHeight] = useState(10);
   
   const [isProjRunning, setIsProjRunning] = useState(false);
   const [projTime, setProjTime] = useState(0);
 
-  const g = 9.8; // 重力加速度
+  const g = 9.8;
 
-  // 依拋體模式更新變因設定
   const handleTypeChange = (type) => {
     setProjType(type);
     setIsProjRunning(false);
@@ -87,22 +86,17 @@ export default function KinematicsLab() {
     }
   };
 
-  // 拋體分速度
   const rad = (projAngle * Math.PI) / 180;
   const vx = projV0 * Math.cos(rad);
   const vy0 = projV0 * Math.sin(rad);
 
-  // 落地時間 T_flight (0 = h0 + vy0*t - 0.5*g*t^2)
   const totalProjTime = Number(
     ((vy0 + Math.sqrt(vy0 * vy0 + 2 * g * projHeight)) / g).toFixed(2)
   );
 
-  // 最高點時間 t_max
-  const tMax = projAngle > 0 ? Number((vy0 / g).toFixed(2)) : 0;
   const maxY = Number((projHeight + (vy0 * vy0) / (2 * g)).toFixed(2));
   const rangeX = Number((vx * totalProjTime).toFixed(2));
 
-  // 拋體 Timer
   useEffect(() => {
     let interval = null;
     if (isProjRunning) {
@@ -124,7 +118,6 @@ export default function KinematicsLab() {
     setProjTime(0);
   };
 
-  // 當前拋體位置
   const currProjX = Number((vx * projTime).toFixed(2));
   const currProjY = Number(Math.max(0, projHeight + vy0 * projTime - 0.5 * g * projTime * projTime).toFixed(2));
 
@@ -136,7 +129,7 @@ export default function KinematicsLab() {
           <Activity className="w-5 h-5 text-purple-400" />
           理化實驗室：國三上 單元一《運動學（直線與拋體運動）》
         </h2>
-        <p className="text-xs text-slate-400 mt-1">探索直線運動 x-t/v-t/a-t 圖形轉換與拋體運動軌跡之 2D 向量分解</p>
+        <p className="text-xs text-slate-400 mt-1">探索直線運動 x-t / v-t / a-t 圖形轉換與拋體運動軌跡之 2D 向量分解</p>
       </div>
 
       {/* 主分頁切換 */}
@@ -200,7 +193,6 @@ export default function KinematicsLab() {
               />
             </div>
 
-            {/* 播放與重置按鈕 */}
             <div className="flex gap-2 pt-2 md:pt-0">
               <button
                 onClick={() => setIsLinearRunning(!isLinearRunning)}
@@ -214,14 +206,13 @@ export default function KinematicsLab() {
               <button
                 onClick={handleResetLinear}
                 className="p-2.5 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-xl border border-slate-600 transition-all"
-                title="重置"
               >
                 <RotateCcw className="w-4 h-4" />
               </button>
             </div>
           </div>
 
-          {/* 直線軌道與每秒打點動態動畫 */}
+          {/* 直線軌道實驗動態 */}
           <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 space-y-4">
             <div className="flex justify-between items-center border-b border-slate-800 pb-2">
               <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
@@ -232,20 +223,16 @@ export default function KinematicsLab() {
               </span>
             </div>
 
-            {/* 跑道 SVG */}
             <div className="w-full bg-slate-900 rounded-xl p-4 overflow-x-auto flex justify-center">
               <svg width="680" height="110" className="select-none font-mono">
-                {/* 地面軸標尺 */}
                 <line x1="30" y1="80" x2="650" y2="80" stroke="#64748b" strokeWidth="2" />
                 
-                {/* 描繪每秒的位置點 */}
                 {(() => {
                   const maxDistance = Math.max(1, v0 * totalTime + 0.5 * a * totalTime * totalTime);
                   const scaleX = 580 / Math.max(20, maxDistance);
 
                   return (
                     <g>
-                      {/* 每秒刻度打點 */}
                       {secondData.map((item) => {
                         const px = 40 + Math.max(0, item.x) * scaleX;
                         const isReached = currentTime >= item.t;
@@ -260,7 +247,6 @@ export default function KinematicsLab() {
                         );
                       })}
 
-                      {/* 當前移動物體 (小車) */}
                       {(() => {
                         const carX = 40 + Math.max(0, currentX) * scaleX;
                         return (
@@ -281,7 +267,7 @@ export default function KinematicsLab() {
             </div>
           </div>
 
-          {/* 三圖連線同步繪製 (x-t / v-t / a-t) */}
+          {/* 三圖連線同步繪製 */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* x-t 圖 */}
             <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-2">
@@ -295,14 +281,13 @@ export default function KinematicsLab() {
                   <text x="195" y="145" fill="#94a3b8">t(s)</text>
                   <text x="10" y="20" fill="#a855f7">x(m)</text>
 
-                  {/* 繪製 x-t 曲線 */}
                   {(() => {
                     const maxX = Math.max(10, v0 * totalTime + 0.5 * a * totalTime * totalTime);
                     const scaleT = 160 / totalTime;
                     const scaleX = 100 / maxX;
 
                     let pathD = '';
-                    for (let t = 0; t <= totalTime; t += 0.1) {
+                    for (let t = 0; t <= totalTime; t += 0.2) {
                       const xVal = Math.max(0, v0 * t + 0.5 * a * t * t);
                       const px = 30 + t * scaleT;
                       const py = 130 - xVal * scaleX;
@@ -335,7 +320,6 @@ export default function KinematicsLab() {
                   <text x="195" y="145" fill="#94a3b8">t(s)</text>
                   <text x="10" y="20" fill="#38bdf8">v(m/s)</text>
 
-                  {/* 繪製 v-t 線條 */}
                   {(() => {
                     const maxV = Math.max(10, v0 + Math.max(0, a) * totalTime);
                     const scaleT = 160 / totalTime;
@@ -351,7 +335,6 @@ export default function KinematicsLab() {
 
                     return (
                       <g>
-                        {/* v-t 下方面積代表位移 */}
                         <polygon
                           points={`30,130 30,${p1y} ${currPx},${currPy} ${currPx},130`}
                           fill="rgba(56, 189, 248, 0.2)"
@@ -379,7 +362,7 @@ export default function KinematicsLab() {
 
                   {(() => {
                     const scaleT = 160 / totalTime;
-                    const scaleA = 50 / 10; // 50px 對應 10m/s²
+                    const scaleA = 50 / 10;
                     const py = 80 - a * scaleA;
 
                     const currPx = 30 + currentTime * scaleT;
@@ -396,10 +379,10 @@ export default function KinematicsLab() {
             </div>
           </div>
 
-          {/* 等時距位移等差數列專屬驗證數據卡 */}
+          {/* 等時距位移數據 */}
           <div className="bg-slate-900 border border-slate-700 rounded-2xl p-5 space-y-3">
             <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
-              <Table className="w-4 h-4 text-emerald-400" /> 等加速度運動在「等時距 (Δt=1s)」下之位移規律觀察
+              <Table className="w-4 h-4 text-emerald-400" /> 等加速度運動在「等時距 (Δt = 1s)」下之位移規律觀察
             </span>
 
             <div className="overflow-x-auto">
@@ -429,8 +412,8 @@ export default function KinematicsLab() {
 
             <div className="text-xs font-sans text-slate-300 bg-slate-950 p-3 rounded-xl border border-slate-800 leading-relaxed space-y-1">
               <strong className="text-amber-300 block">💡 觀念總結與解題技巧：</strong>
-              <p>• 當加速度 $a = {a}\text{ m/s}^2$ 固定時，連續相鄰等時間區間（每 $1$ 秒）之位移差值 $\Delta x_{n} - \Delta x_{n-1} = a \times (\Delta t)^2 = {a}\text{ m}$。</p>
-              <p>• 若初速 $v_0 = 0$ 且 $a > 0$，連續等時距位移比恆為 **$1 : 3 : 5 : 7 : 9 \dots$**（奇數比）。</p>
+              <p>• 當加速度 a = {a} m/s² 固定時，連續相鄰等時間區間（每 1 秒）之位移差值為固定常數 (Δxₙ - Δxₙ₋₁ = a × Δt² = {a} m)。</p>
+              <p>• 若初速 v₀ = 0 且 a &gt; 0，連續等時距位移比恆為 1 : 3 : 5 : 7 : 9 ... （奇數比）。</p>
             </div>
           </div>
         </div>
@@ -439,9 +422,7 @@ export default function KinematicsLab() {
       {/* 2. 拋體運動模擬模組 */}
       {activeTab === 'projectile' && (
         <div className="space-y-6">
-          {/* 拋體模式選擇與參數調控 */}
           <div className="bg-slate-900 border border-slate-700 p-4 md:p-5 rounded-2xl space-y-4">
-            {/* 模式切換按鈕 */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
               {[
                 { id: 'freefall', name: '自由落體' },
@@ -461,7 +442,6 @@ export default function KinematicsLab() {
               ))}
             </div>
 
-            {/* 變因控制滑桿 */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
               <div className="space-y-1.5">
                 <div className="flex justify-between text-xs font-bold">
@@ -502,7 +482,6 @@ export default function KinematicsLab() {
               </div>
             </div>
 
-            {/* 播放控制 */}
             <div className="flex justify-end gap-2 border-t border-slate-800 pt-3">
               <button
                 onClick={() => setIsProjRunning(!isProjRunning)}
@@ -522,9 +501,8 @@ export default function KinematicsLab() {
             </div>
           </div>
 
-          {/* 拋體軌跡動畫與關鍵數據 */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* 左側：2D 運動軌跡畫布 */}
+            {/* 左側：2D 運動軌跡 */}
             <div className="lg:col-span-7 bg-slate-950 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between space-y-4">
               <div className="flex justify-between items-center border-b border-slate-800 pb-2">
                 <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
@@ -535,13 +513,10 @@ export default function KinematicsLab() {
                 </span>
               </div>
 
-              {/* 軌跡 SVG */}
               <div className="w-full bg-slate-900 rounded-xl p-4 flex items-center justify-center min-h-[220px]">
                 <svg width="340" height="200" className="select-none font-mono text-[10px]">
-                  {/* 地面 */}
                   <line x1="30" y1="170" x2="320" y2="170" stroke="#64748b" strokeWidth="2" />
                   
-                  {/* 軌跡動態點計算 */}
                   {(() => {
                     const maxScaleX = Math.max(30, rangeX * 1.2);
                     const maxScaleY = Math.max(20, maxY * 1.2);
@@ -549,7 +524,6 @@ export default function KinematicsLab() {
                     const scaleX = 260 / maxScaleX;
                     const scaleY = 130 / maxScaleY;
 
-                    // 生成軌跡線路
                     let trajectoryPath = '';
                     for (let t = 0; t <= totalProjTime; t += 0.05) {
                       const px = 30 + vx * t * scaleX;
@@ -562,13 +536,8 @@ export default function KinematicsLab() {
 
                     return (
                       <g>
-                        {/* 拋物線虛線軌跡 */}
                         <path d={trajectoryPath} fill="none" stroke="#6366f1" strokeWidth="2" strokeDasharray="4 4" />
-
-                        {/* 運動物體 */}
                         <circle cx={ballPx} cy={ballPy} r="6" fill="#f59e0b" stroke="#ffffff" strokeWidth="1.5" />
-
-                        {/* 水平與垂直分速度箭頭 */}
                         {vx > 0 && (
                           <line x1={ballPx} y1={ballPy} x2={ballPx + 20} y2={ballPy} stroke="#38bdf8" strokeWidth="2" />
                         )}
@@ -594,33 +563,30 @@ export default function KinematicsLab() {
               </div>
             </div>
 
-            {/* 右側：x-t 與 y-t 分運動時間圖形 */}
+            {/* 右側：x-t 與 y-t 觀念 */}
             <div className="lg:col-span-5 space-y-4">
-              {/* x-t 水平等速圖 */}
               <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-2">
                 <span className="text-xs font-bold text-cyan-400 block border-b border-slate-800 pb-1">
                   📈 水平方向位移 (等速運動 x-t 圖)
                 </span>
                 <div className="text-xs font-mono text-slate-300">
-                  水平速度 $v_x = v_0 \cos\theta = {vx.toFixed(1)}\text{ m/s}$（恆定）
+                  水平速度 v_x = v₀ cos(θ) = {vx.toFixed(1)} m/s （恆定）
                 </div>
               </div>
 
-              {/* y-t 垂直等加速度圖 */}
               <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-2">
                 <span className="text-xs font-bold text-amber-400 block border-b border-slate-800 pb-1">
                   📈 垂直方向高度 (等加速度運動 y-t 圖)
                 </span>
                 <div className="text-xs font-mono text-slate-300">
-                  垂直初速 $v_{y0} = v_0 \sin\theta = {vy0.toFixed(1)}\text{ m/s}$，受重力 $g = 9.8\text{ m/s}^2$ 向下。
+                  垂直初速 v_y0 = v₀ sin(θ) = {vy0.toFixed(1)} m/s，受重力 g = 9.8 m/s² 向下。
                 </div>
               </div>
 
-              {/* 觀念解說 */}
               <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800 text-xs text-slate-300 leading-relaxed font-sans space-y-1">
                 <strong className="text-indigo-300 block">💡 拋體獨立性核心口訣：</strong>
-                <p>• 水平方向：不受外力，作**等速度直線運動**（$x = v_x \times t$）。</p>
-                <p>• 垂直方向：僅受重力，作**等加速度運動**（$y = h_0 + v_{y0}t - \frac{1}{2}gt^2$）。</p>
+                <p>• 水平方向：不受外力，作等速度直線運動 (x = v_x × t)。</p>
+                <p>• 垂直方向：僅受重力，作等加速度運動 (y = h₀ + v_y0 × t - ½gt²)。</p>
               </div>
             </div>
           </div>
