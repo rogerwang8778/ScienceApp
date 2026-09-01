@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Zap, Play, Pause, Activity, Layers } from 'lucide-react';
+import { Zap, Play, Pause, Activity, Layers, RefreshCw } from 'lucide-react';
 
 export default function ElectroChemistryLab() {
   // 頁面切換: 'voltaic' (伏打電池) | 'electrolysis' (電解與電鍍)
@@ -22,6 +22,7 @@ export default function ElectroChemistryLab() {
   // 主題 1：伏打電池 State & Data
   // ==========================================
   const [voltaicType, setVoltaicType] = useState('zn-cu'); // 'zn-cu' | 'cu-ag' | 'lead-acid'
+  const [batteryMode, setBatteryMode] = useState('discharge'); // 'discharge' (放電) | 'charge' (充電 - 限鉛蓄電池)
 
   const voltaicData = {
     'zn-cu': {
@@ -30,10 +31,12 @@ export default function ElectroChemistryLab() {
       posName: '銅片 (Cu)',
       negSol: '硫酸鋅溶液 (ZnSO₄)',
       posSol: '硫酸銅溶液 (CuSO₄)',
-      negColor: '#cbd5e1', // 鋅灰色
-      posColor: '#b45309', // 銅棕色
-      negSolColor: 'rgba(226, 232, 240, 0.2)', // 無色
-      posSolColor: 'rgba(6, 182, 212, 0.4)', // 藍色
+      negColor: '#cbd5e1',
+      posColor: '#b45309',
+      negSolColor: 'rgba(226, 232, 240, 0.25)',
+      posSolColor: 'rgba(6, 182, 212, 0.45)',
+      negIon: 'Zn²⁺',
+      posIon: 'Cu²⁺',
       electronDir: '鋅片 ➔ 銅片 (外電路)',
       table: {
         negElectrode: '負極 (提供電子，活性大)',
@@ -43,13 +46,13 @@ export default function ElectroChemistryLab() {
         negHalf: 'Zn → Zn²⁺ + 2e⁻',
         posHalf: 'Cu²⁺ + 2e⁻ → Cu',
         totalEq: 'Zn + Cu²⁺ → Zn²⁺ + Cu',
-        negMass: '減輕 (鋅原子溶解成 Zn²⁺)',
-        posMass: '增加 (Cu²⁺ 析出為 Cu 沉積在銅片)',
-        negSolChange: '無色透明 (Zn²⁺ 濃度漸增)',
-        posSolChange: '藍色變淡 (Cu²⁺ 濃度漸減)',
-        saltBridge: 'K⁺ 移向銅片杯，NO₃⁻ 移向鋅片杯以維持電中性',
+        negMass: '減輕 (鋅原子溶解成 Zn²⁺ 游入溶液)',
+        posMass: '增加 (Cu²⁺ 游向銅片獲得電子析出 Cu)',
+        negSolChange: '無色透明 (Zn²⁺ 離子濃度漸增)',
+        posSolChange: '藍色變淡 (Cu²⁺ 離子濃度漸減)',
+        saltBridge: 'K⁺ 游向正極 (銅片杯)，NO₃⁻ 游向負極 (鋅片杯) 以維持電中性',
         outerCircuit: '電子由 鋅片(負極) 經檢流計流向 銅片(正極)；電流方向相反',
-        innerCircuit: '溶液與鹽橋中的離子移動形成導通迴路',
+        innerCircuit: '溶液中離子與鹽橋離子游動維持閉合迴路',
       },
     },
     'cu-ag': {
@@ -58,10 +61,12 @@ export default function ElectroChemistryLab() {
       posName: '銀片 (Ag)',
       negSol: '硫酸銅溶液 (CuSO₄)',
       posSol: '硝酸銀溶液 (AgNO₃)',
-      negColor: '#b45309', // 銅棕色
-      posColor: '#e2e8f0', // 銀白色
-      negSolColor: 'rgba(6, 182, 212, 0.4)', // 藍色
-      posSolColor: 'rgba(241, 245, 249, 0.2)', // 無色
+      negColor: '#b45309',
+      posColor: '#e2e8f0',
+      negSolColor: 'rgba(6, 182, 212, 0.45)',
+      posSolColor: 'rgba(241, 245, 249, 0.25)',
+      negIon: 'Cu²⁺',
+      posIon: 'Ag⁺',
       electronDir: '銅片 ➔ 銀片 (外電路)',
       table: {
         negElectrode: '負極 (活性 Cu > Ag)',
@@ -71,52 +76,93 @@ export default function ElectroChemistryLab() {
         negHalf: 'Cu → Cu²⁺ + 2e⁻',
         posHalf: '2Ag⁺ + 2e⁻ → 2Ag',
         totalEq: 'Cu + 2Ag⁺ → Cu²⁺ + 2Ag',
-        negMass: '減輕 (銅原子溶解成 Cu²⁺)',
-        posMass: '增加 (Ag⁺ 析出銀白色銀金屬)',
-        negSolChange: '藍色變深 (Cu²⁺ 濃度漸增)',
-        posSolChange: '保持無色 (Ag⁺ 濃度漸減)',
-        saltBridge: '陽離子游向銀片杯，陰離子游向銅片杯',
-        outerCircuit: '電子由 銅片(負極) 流向 銀片(正極)',
-        innerCircuit: '離子在鹽橋與溶液中游動',
+        negMass: '減輕 (銅原子溶解成 Cu²⁺ 游入溶液)',
+        posMass: '增加 (Ag⁺ 游向銀片析出銀白色金屬 Ag)',
+        negSolChange: '藍色變深 (Cu²⁺ 離子濃度漸增)',
+        posSolChange: '保持無色 (Ag⁺ 離子濃度漸減)',
+        saltBridge: '陽離子 (K⁺) 游向銀片杯，陰離子 (NO₃⁻) 游向銅片杯',
+        outerCircuit: '電子由 銅片(負極) 經外電路流向 銀片(正極)',
+        innerCircuit: '離子在鹽橋與兩杯水溶液中自由游動',
       },
     },
     'lead-acid': {
-      title: '鉛蓄電池放電 (Lead-Acid Battery Discharge)',
-      negName: '鉛板 (Pb)',
-      posName: '二氧化鉛板 (PbO₂)',
-      negSol: '稀硫酸 (H₂SO₄)',
-      posSol: '稀硫酸 (H₂SO₄)',
-      negColor: '#64748b', // 鉛灰色
-      posColor: '#78350f', // 棕褐色
-      negSolColor: 'rgba(56, 189, 248, 0.25)',
-      posSolColor: 'rgba(56, 189, 248, 0.25)',
-      electronDir: '鉛板 (Pb) ➔ 二氧化鉛 (PbO₂)',
-      table: {
-        negElectrode: '負極 (鉛板 Pb)',
-        posElectrode: '正極 (二氧化鉛板 PbO₂)',
-        oxRed: '鉛釋出電子：氧化反應',
-        posOxRed: '二氧化鉛接受電子：還原反應',
-        negHalf: 'Pb + SO₄²⁻ → PbSO₄ + 2e⁻',
-        posHalf: 'PbO₂ + 4H⁺ + SO₄²⁻ + 2e⁻ → PbSO₄ + 2H₂O',
-        totalEq: 'Pb + PbO₂ + 2H₂SO₄ → 2PbSO₄ + 2H₂O',
-        negMass: '增加 (生成白色 PbSO₄ 沉澱於極板)',
-        posMass: '增加 (生成白色 PbSO₄ 沉澱於極板)',
-        negSolChange: '硫酸消耗，生成水，H₂SO₄ 濃度下降，比重變小',
-        posSolChange: '硫酸消耗，生成水，H₂SO₄ 濃度下降，比重變小',
-        saltBridge: '無鹽橋，兩極同在 H₂SO₄ 電解液中',
-        outerCircuit: '電子由 負極 (Pb) 流向 正極 (PbO₂)',
-        innerCircuit: 'H⁺ 與 SO₄²⁻ 離子參與電極反應',
+      discharge: {
+        title: '鉛蓄電池 (放電模式 Discharge)',
+        negName: '鉛板 (Pb)',
+        posName: '二氧化鉛板 (PbO₂)',
+        negSol: '稀硫酸 (H₂SO₄)',
+        posSol: '稀硫酸 (H₂SO₄)',
+        negColor: '#64748b',
+        posColor: '#78350f',
+        negSolColor: 'rgba(56, 189, 248, 0.25)',
+        posSolColor: 'rgba(56, 189, 248, 0.25)',
+        negIon: 'SO₄²⁻',
+        posIon: 'H⁺',
+        electronDir: '鉛板 (Pb 負極) ➔ 二氧化鉛 (PbO₂ 正極)',
+        table: {
+          negElectrode: '負極 (鉛板 Pb)',
+          posElectrode: '正極 (二氧化鉛板 PbO₂)',
+          oxRed: '鉛失電子：氧化反應',
+          posOxRed: '二氧化鉛得電子：還原反應',
+          negHalf: 'Pb + SO₄²⁻ → PbSO₄ + 2e⁻',
+          posHalf: 'PbO₂ + 4H⁺ + SO₄²⁻ + 2e⁻ → PbSO₄ + 2H₂O',
+          totalEq: 'Pb + PbO₂ + 2H₂SO₄ → 2PbSO₄ + 2H₂O',
+          negMass: '增加 (生成白色 PbSO₄ 附著於極板)',
+          posMass: '增加 (生成白色 PbSO₄ 附著於極板)',
+          negSolChange: '硫酸被消耗且生成水，H₂SO₄ 濃度下降，比重變小',
+          posSolChange: '硫酸被消耗且生成水，H₂SO₄ 濃度下降，比重變小',
+          saltBridge: '無鹽橋，兩極同置於稀硫酸電解液中',
+          outerCircuit: '電子由 負極 (Pb) 流向 正極 (PbO₂)',
+          innerCircuit: 'H⁺ 游向正極、SO₄²⁻ 游向兩極參與化學反應',
+        },
+      },
+      charge: {
+        title: '鉛蓄電池 (充電模式 Charging - 電解反應)',
+        negName: '陰極 (接電源負極 Pb)',
+        posName: '陽極 (接電源正極 PbO₂)',
+        negSol: '稀硫酸 (H₂SO₄)',
+        posSol: '稀硫酸 (H₂SO₄)',
+        negColor: '#475569',
+        posColor: '#9a3412',
+        negSolColor: 'rgba(56, 189, 248, 0.35)',
+        posSolColor: 'rgba(56, 189, 248, 0.35)',
+        negIon: 'H⁺',
+        posIon: 'SO₄²⁻',
+        electronDir: '外接 DC 電源：電源負極 ➔ 陰極 (Pb)',
+        table: {
+          negElectrode: '陰極 (連接 DC 電源負極)',
+          posElectrode: '陽極 (連接 DC 電源正極)',
+          oxRed: 'PbSO₄ 得電子還原為 Pb',
+          posOxRed: 'PbSO₄ 失電子氧化為 PbO₂',
+          negHalf: 'PbSO₄ + 2e⁻ → Pb + SO₄²⁻',
+          posHalf: 'PbSO₄ + 2H₂O → PbO₂ + 4H⁺ + SO₄²⁻ + 2e⁻',
+          totalEq: '2PbSO₄ + 2H₂O → Pb + PbO₂ + 2H₂SO₄',
+          negMass: '減少 (白色 PbSO₄ 溶解還原為 Pb)',
+          posMass: '減少 (白色 PbSO₄ 溶解氧化為 PbO₂)',
+          negSolChange: '生成 H₂SO₄ 並消耗水，濃度上升，比重變大',
+          posSolChange: '生成 H₂SO₄ 並消耗水，濃度上升，比重變大',
+          saltBridge: '無鹽橋，由電解液進行離子傳輸',
+          outerCircuit: '外接直流電源（正接正、負接負）強制電子逆向流動',
+          innerCircuit: 'SO₄²⁻ 離子游離回溶液中，電解液密度恢復',
+        },
       },
     },
   };
 
-  const curVoltaic = voltaicData[voltaicType];
+  const getCurVoltaicData = () => {
+    if (voltaicType === 'lead-acid') {
+      return voltaicData['lead-acid'][batteryMode];
+    }
+    return voltaicData[voltaicType];
+  };
+
+  const curVoltaic = getCurVoltaicData();
 
   // ==========================================
   // 主題 2：電解與電鍍 State & Data
   // ==========================================
-  const [electrolyte, setElectrolyte] = useState('water'); // 'water' (水) | 'cuso4' (硫酸銅)
-  const [electrodeType, setElectrodeType] = useState('carbon'); // 'carbon' (碳棒-碳棒) | 'copper' (銅棒-銅棒/電鍍)
+  const [electrolyte, setElectrolyte] = useState('water');
+  const [electrodeType, setElectrodeType] = useState('carbon');
 
   const electroKey = `${electrolyte}_${electrodeType}`;
 
@@ -128,17 +174,19 @@ export default function ElectroChemistryLab() {
       anodeColor: '#334155',
       cathodeColor: '#334155',
       solutionName: '水 + 微量 NaOH (增強導電性)',
-      solColor: 'rgba(56, 189, 248, 0.2)',
+      solColor: 'rgba(56, 189, 248, 0.25)',
       anodeGas: '氧氣 (O₂)',
       cathodeGas: '氫氣 (H₂)',
+      anodeIon: 'OH⁻',
+      cathodeIon: 'H⁺',
       gasRatio: '陽極 O₂ : 陰極 H₂ 體積比 = 1 : 2',
       table: {
-        anodeHalf: '2H₂O → O₂ + 4H⁺ + 4e⁻ (氧化)',
-        cathodeHalf: '2H₂O + 2e⁻ → H₂ + 2OH⁻ (還原)',
+        anodeHalf: '2H₂O → O₂ + 4H⁺ + 4e⁻ (水分子氧化)',
+        cathodeHalf: '2H₂O + 2e⁻ → H₂ + 2OH⁻ (水分子還原)',
         totalEq: '2H₂O → 2H₂ + O₂',
-        anodeChange: '產生氧氣氣泡 (體積為陰極的 1/2)，極棒質量不變',
-        cathodeChange: '產生氫氣氣泡 (體積為陽極的 2 倍)，極棒質量不變',
-        solChange: '水減少，NaOH 濃度漸增，pH 值維持鹼性',
+        anodeChange: '產生氧氣氣泡 (體積為陰極的 1/2)，碳棒質量不變',
+        cathodeChange: '產生氫氣氣泡 (體積為陽極的 2 倍)，碳棒質量不變',
+        solChange: '水分子被消耗，NaOH 濃度漸增，pH 值維持鹼性',
       },
     },
     cuso4_carbon: {
@@ -148,17 +196,19 @@ export default function ElectroChemistryLab() {
       anodeColor: '#334155',
       cathodeColor: '#334155',
       solutionName: '硫酸銅溶液 (CuSO₄)',
-      solColor: 'rgba(6, 182, 212, 0.4)',
+      solColor: 'rgba(6, 182, 212, 0.45)',
       anodeGas: '氧氣 (O₂)',
       cathodeGas: '銅金屬 (Cu)',
-      gasRatio: '陽極產生 O₂，陰極析出紅棕色 Cu',
+      anodeIon: 'SO₄²⁻',
+      cathodeIon: 'Cu²⁺',
+      gasRatio: '陽極產生 O₂ 氣泡，陰極析出紅棕色 Cu',
       table: {
         anodeHalf: '2H₂O → O₂ + 4H⁺ + 4e⁻ (水分子氧化)',
         cathodeHalf: 'Cu²⁺ + 2e⁻ → Cu (銅離子還原)',
         totalEq: '2CuSO₄ + 2H₂O → 2Cu + O₂ + 2H₂SO₄',
         anodeChange: '產生氧氣氣泡，碳棒質量不變',
-        cathodeChange: '附著紅棕色銅金屬，碳棒質量增加',
-        solChange: 'Cu²⁺ 減少，H⁺ 增加，藍色漸淡，溶液漸呈酸性 (生成 H₂SO₄)',
+        cathodeChange: '附著紅棕色銅金屬，極棒質量增加',
+        solChange: 'Cu²⁺ 減少、H⁺ 增加，藍色漸淡，溶液漸呈酸性 (生成 H₂SO₄)',
       },
     },
     cuso4_copper: {
@@ -168,9 +218,11 @@ export default function ElectroChemistryLab() {
       anodeColor: '#b45309',
       cathodeColor: '#b45309',
       solutionName: '硫酸銅溶液 (CuSO₄)',
-      solColor: 'rgba(6, 182, 212, 0.4)',
-      anodeGas: '銅溶解 (Cu²⁺)',
-      cathodeGas: '銅析出 (Cu)',
+      solColor: 'rgba(6, 182, 212, 0.45)',
+      anodeGas: '銅溶解成 Cu²⁺',
+      cathodeGas: '銅析出成 Cu',
+      anodeIon: 'SO₄²⁻',
+      cathodeIon: 'Cu²⁺',
       gasRatio: '陽極溶解銅質量 = 陰極析出銅質量',
       table: {
         anodeHalf: 'Cu → Cu²⁺ + 2e⁻ (銅原子氧化)',
@@ -188,10 +240,12 @@ export default function ElectroChemistryLab() {
       anodeColor: '#b45309',
       cathodeColor: '#b45309',
       solutionName: '水 + 微量 NaOH',
-      solColor: 'rgba(56, 189, 248, 0.2)',
+      solColor: 'rgba(56, 189, 248, 0.25)',
       anodeGas: '銅溶解成 Cu²⁺',
       cathodeGas: '氫氣 (H₂)',
-      gasRatio: '陽極銅溶解，陰極產生 H₂',
+      anodeIon: 'OH⁻',
+      cathodeIon: 'H⁺',
+      gasRatio: '陽極銅溶解，陰極產生 H₂ 氣泡',
       table: {
         anodeHalf: 'Cu → Cu²⁺ + 2e⁻ (銅先於水氧化)',
         cathodeHalf: '2H₂O + 2e⁻ → H₂ + 2OH⁻',
@@ -215,7 +269,7 @@ export default function ElectroChemistryLab() {
             理化實驗室：國三下 單元五《電化學與電解實驗室》
           </h2>
           <p className="text-xs text-slate-400 mt-1">
-            完整呈現伏打電池電子與離子流向，以及電解/電鍍反應過程與極棒/溶液質量變化
+            清晰標示外電路電子流向（精準抵達極棒）、鹽橋與水溶液中放大版陽/陰離子動態游動軌跡
           </p>
         </div>
 
@@ -256,8 +310,8 @@ export default function ElectroChemistryLab() {
       {activeTab === 'voltaic' && (
         <div className="space-y-6">
           <div className="bg-slate-900 border border-slate-700 p-4 rounded-2xl flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-slate-300 font-bold">選擇電池組合：</span>
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-xs text-slate-300 font-bold">1. 選擇電池組合：</span>
               <div className="flex gap-2">
                 <button
                   onClick={() => setVoltaicType('zn-cu')}
@@ -281,9 +335,32 @@ export default function ElectroChemistryLab() {
                     voltaicType === 'lead-acid' ? 'bg-amber-600 border-amber-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-300'
                   }`}
                 >
-                  鉛蓄電池 (放電)
+                  鉛蓄電池
                 </button>
               </div>
+
+              {/* 鉛蓄電池專用：放電/充電切換 */}
+              {voltaicType === 'lead-acid' && (
+                <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-amber-700/60 ml-2">
+                  <span className="text-[11px] text-amber-300 font-bold px-1.5">模式：</span>
+                  <button
+                    onClick={() => setBatteryMode('discharge')}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                      batteryMode === 'discharge' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    ⚡ 放電 (電池)
+                  </button>
+                  <button
+                    onClick={() => setBatteryMode('charge')}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                      batteryMode === 'charge' ? 'bg-cyan-600 text-white' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    🔌 充電 (電解)
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="text-xs font-mono text-amber-400 font-bold">
@@ -294,78 +371,129 @@ export default function ElectroChemistryLab() {
           <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between items-center space-y-3">
             <div className="w-full flex justify-between items-center border-b border-slate-800 pb-2 text-xs">
               <span className="text-amber-400 font-bold flex items-center gap-1">
-                <Zap className="w-4 h-4" /> 伏打電池動態示意圖 (外電路電子流 + 鹽橋離子游動)
+                <Zap className="w-4 h-4" /> 動態圖示：電子精準移至極棒 + 鹽橋與溶液離子游動
               </span>
-              <span className="text-slate-400 font-mono">
+              <span className="text-slate-300 font-mono text-[11px]">
                 電子流向：{curVoltaic.electronDir}
               </span>
             </div>
 
-            <div className="w-full bg-slate-900 rounded-xl p-4 flex items-center justify-center min-h-[280px] overflow-x-auto">
-              <svg width="460" height="250" className="select-none font-mono text-[10px]">
-                {/* 燒杯 A */}
-                <rect x="50" y="110" width="120" height="110" rx="4" fill="#0f172a" stroke="#475569" strokeWidth="2" />
-                <rect x="52" y="130" width="116" height="88" fill={curVoltaic.negSolColor} />
-                <text x="110" y="235" textAnchor="middle" fill="#94a3b8" fontSize="9">{curVoltaic.negSol}</text>
+            <div className="w-full bg-slate-900 rounded-xl p-4 flex items-center justify-center min-h-[310px] overflow-x-auto">
+              <svg width="480" height="280" className="select-none font-mono text-[11px]">
+                {/* 左燒杯 A */}
+                <rect x="40" y="120" width="140" height="120" rx="6" fill="#0f172a" stroke="#475569" strokeWidth="2" />
+                <rect x="42" y="140" width="136" height="98" fill={curVoltaic.negSolColor} />
+                <text x="110" y="252" textAnchor="middle" fill="#94a3b8" fontSize="10" fontWeight="bold">{curVoltaic.negSol}</text>
 
-                {/* 燒杯 B */}
-                <rect x="290" y="110" width="120" height="110" rx="4" fill="#0f172a" stroke="#475569" strokeWidth="2" />
-                <rect x="292" y="130" width="116" height="88" fill={curVoltaic.posSolColor} />
-                <text x="350" y="235" textAnchor="middle" fill="#94a3b8" fontSize="9">{curVoltaic.posSol}</text>
+                {/* 右燒杯 B */}
+                <rect x="300" y="120" width="140" height="120" rx="6" fill="#0f172a" stroke="#475569" strokeWidth="2" />
+                <rect x="302" y="140" width="136" height="98" fill={curVoltaic.posSolColor} />
+                <text x="370" y="252" textAnchor="middle" fill="#94a3b8" fontSize="10" fontWeight="bold">{curVoltaic.posSol}</text>
 
-                {/* 左電極棒 (負極) */}
-                <rect x="80" y="80" width="18" height="90" transform="rotate(-10 80 80)" fill={curVoltaic.negColor} stroke="#cbd5e1" strokeWidth="1" />
-                <text x="75" y="70" textAnchor="middle" fill="#ef4444" fontSize="10" fontWeight="bold">負極 (-)</text>
-                <text x="75" y="82" textAnchor="middle" fill="#cbd5e1" fontSize="9">{curVoltaic.negName}</text>
+                {/* 左極棒 (負極 / 陰極) */}
+                <rect x="85" y="80" width="20" height="110" fill={curVoltaic.negColor} stroke="#ffffff" strokeWidth="1.5" />
+                <text x="95" y="65" textAnchor="middle" fill="#ef4444" fontSize="11" fontWeight="bold">
+                  {voltaicType === 'lead-acid' && batteryMode === 'charge' ? '陰極 (-)' : '負極 (-)'}
+                </text>
+                <text x="95" y="77" textAnchor="middle" fill="#cbd5e1" fontSize="10">{curVoltaic.negName}</text>
 
-                {/* 右電極棒 (正極) */}
-                <rect x="360" y="80" width="18" height="90" transform="rotate(10 360 80)" fill={curVoltaic.posColor} stroke="#cbd5e1" strokeWidth="1" />
-                <text x="380" y="70" textAnchor="middle" fill="#10b981" fontSize="10" fontWeight="bold">正極 (+)</text>
-                <text x="380" y="82" textAnchor="middle" fill="#cbd5e1" fontSize="9">{curVoltaic.posName}</text>
+                {/* 右極棒 (正極 / 陽極) */}
+                <rect x="375" y="80" width="20" height="110" fill={curVoltaic.posColor} stroke="#ffffff" strokeWidth="1.5" />
+                <text x="385" y="65" textAnchor="middle" fill="#10b981" fontSize="11" fontWeight="bold">
+                  {voltaicType === 'lead-acid' && batteryMode === 'charge' ? '陽極 (+)' : '正極 (+)'}
+                </text>
+                <text x="385" y="77" textAnchor="middle" fill="#cbd5e1" fontSize="10">{curVoltaic.posName}</text>
 
-                {/* 鹽橋 */}
+                {/* 鹽橋 (U型管) */}
                 {voltaicType !== 'lead-acid' ? (
                   <g>
-                    <path d="M 140 160 L 140 100 Q 140 80 160 80 L 300 80 Q 320 80 320 100 L 320 160" fill="none" stroke="#64748b" strokeWidth="16" />
-                    <path d="M 140 160 L 140 100 Q 140 80 160 80 L 300 80 Q 320 80 320 100 L 320 160" fill="none" stroke="#38bdf8" strokeWidth="10" opacity="0.6" />
-                    <text x="230" y="75" textAnchor="middle" fill="#38bdf8" fontSize="10" fontWeight="bold">鹽橋 (KNO₃)</text>
+                    <path d="M 145 180 L 145 110 Q 145 90 165 90 L 315 90 Q 335 90 335 110 L 335 180" fill="none" stroke="#475569" strokeWidth="20" />
+                    <path d="M 145 180 L 145 110 Q 145 90 165 90 L 315 90 Q 335 90 335 110 L 335 180" fill="none" stroke="#38bdf8" strokeWidth="12" opacity="0.6" />
+                    <text x="240" y="83" textAnchor="middle" fill="#38bdf8" fontSize="11" fontWeight="bold">鹽橋 (KNO₃ 膠體)</text>
 
-                    <circle cx={160 + (animOffset * 1.4) % 140} cy="80" r="4" fill="#10b981" />
-                    <text x={160 + (animOffset * 1.4) % 140} y={83} textAnchor="middle" fill="#ffffff" fontSize="6" fontWeight="bold">K⁺</text>
+                    {/* 鹽橋中離子 - 放大標示 */}
+                    {/* K+ 陽離子向右 (正極) */}
+                    <circle cx={165 + (animOffset * 1.4) % 150} cy="90" r="7" fill="#10b981" stroke="#ffffff" strokeWidth="1" />
+                    <text x={165 + (animOffset * 1.4) % 150} y="93.5" textAnchor="middle" fill="#ffffff" fontSize="8" fontWeight="bold">K⁺</text>
 
-                    <circle cx={300 - (animOffset * 1.4) % 140} cy="80" r="4" fill="#ef4444" />
-                    <text x={300 - (animOffset * 1.4) % 140} y={83} textAnchor="middle" fill="#ffffff" fontSize="5" fontWeight="bold">NO₃⁻</text>
+                    {/* NO3- 陰離子向左 (負極) */}
+                    <circle cx={315 - (animOffset * 1.4) % 150} cy="90" r="7" fill="#ef4444" stroke="#ffffff" strokeWidth="1" />
+                    <text x={315 - (animOffset * 1.4) % 150} y={93.5" textAnchor="middle" fill="#ffffff" fontSize="7" fontWeight="bold">NO₃⁻</text>
                   </g>
                 ) : (
                   <g>
-                    <line x1="170" y1="160" x2="290" y2="160" stroke="#38bdf8" strokeWidth="6" strokeDasharray="4 4" />
-                    <text x="230" y="150" textAnchor="middle" fill="#38bdf8" fontSize="9">H₂SO₄ 電解液導通</text>
+                    <line x1="180" y1="180" x2="300" y2="180" stroke="#38bdf8" strokeWidth="8" strokeDasharray="6 4" />
+                    <text x="240" y="172" textAnchor="middle" fill="#38bdf8" fontSize="10" fontWeight="bold">H₂SO₄ 電解質溶液傳導</text>
                   </g>
                 )}
 
-                {/* 外電路導線與檢流計 G */}
-                <polyline points="80,75 80,25 230,25" fill="none" stroke="#f59e0b" strokeWidth="2.5" />
-                <polyline points="230,25 380,25 380,75" fill="none" stroke="#f59e0b" strokeWidth="2.5" />
+                {/* 3. 溶液中的自由離子游動標示 (放大版) */}
+                {isRunning && (
+                  <g>
+                    {/* 左杯溶液陽離子解離/移動 */}
+                    <circle cx="70" cy={200 - (animOffset % 40)} r="8" fill="#38bdf8" opacity="0.85" stroke="#ffffff" strokeWidth="1" />
+                    <text x="70" y={203 - (animOffset % 40)} textAnchor="middle" fill="#ffffff" fontSize="8" fontWeight="bold">
+                      {curVoltaic.negIon || 'Zn²⁺'}
+                    </text>
 
-                <circle cx="230" cy="25" r="14" fill="#0f172a" stroke="#f59e0b" strokeWidth="2" />
-                <text x="230" y="28" textAnchor="middle" fill="#f59e0b" fontSize="10" fontWeight="bold">G</text>
-                <line x1="230" y1="25" x2="238" y2="16" stroke="#ef4444" strokeWidth="2" />
+                    <circle cx="125" cy={160 + (animOffset % 40)} r="8" fill="#38bdf8" opacity="0.85" stroke="#ffffff" strokeWidth="1" />
+                    <text x="125" y={163 + (animOffset % 40)} textAnchor="middle" fill="#ffffff" fontSize="8" fontWeight="bold">
+                      {curVoltaic.negIon || 'Zn²⁺'}
+                    </text>
 
-                {/* 電子流向 */}
+                    {/* 右杯溶液陽離子游向極棒析出 */}
+                    <circle cx={330 + (animOffset % 40)} cy="180" r="8" fill="#a855f7" opacity="0.85" stroke="#ffffff" strokeWidth="1" />
+                    <text x={330 + (animOffset % 40)} y="183" textAnchor="middle" fill="#ffffff" fontSize="8" fontWeight="bold">
+                      {curVoltaic.posIon || 'Cu²⁺'}
+                    </text>
+
+                    <circle cx={410 - (animOffset % 40)} cy="210" r="8" fill="#a855f7" opacity="0.85" stroke="#ffffff" strokeWidth="1" />
+                    <text x={410 - (animOffset % 40)} y={213} textAnchor="middle" fill="#ffffff" fontSize="8" fontWeight="bold">
+                      {curVoltaic.posIon || 'Cu²⁺'}
+                    </text>
+                  </g>
+                )}
+
+                {/* 外電路導線與儀表 (精準連至左極棒 (95,80) 與右極棒 (385,80)) */}
+                <polyline points="95,80 95,25 240,25" fill="none" stroke="#f59e0b" strokeWidth="3" />
+                <polyline points="240,25 385,25 385,80" fill="none" stroke="#f59e0b" strokeWidth="3" />
+
+                {/* 外接儀表/電源 */}
+                {voltaicType === 'lead-acid' && batteryMode === 'charge' ? (
+                  <g>
+                    <rect x="215" y="10" width="50" height="30" rx="4" fill="#0f172a" stroke="#06b6d4" strokeWidth="2" />
+                    <text x="240" y="24" textAnchor="middle" fill="#06b6d4" fontSize="9" fontWeight="bold">DC 電源</text>
+                    <text x="240" y="34" textAnchor="middle" fill="#f59e0b" fontSize="8">充電中</text>
+                  </g>
+                ) : (
+                  <g>
+                    <circle cx="240" cy="25" r="15" fill="#0f172a" stroke="#f59e0b" strokeWidth="2" />
+                    <text x="240" y="29" textAnchor="middle" fill="#f59e0b" fontSize="11" fontWeight="bold">G</text>
+                    <line x1="240" y1="25" x2="249" y2="15" stroke="#ef4444" strokeWidth="2.5" />
+                  </g>
+                )}
+
+                {/* 1. 外電路動態電子 (e-) 粒子：精準落在極棒頂端 (95,80) 與 (385,80) 上 */}
                 {isRunning && [0, 1, 2, 3].map((i) => {
-                  const pos = (animOffset * 3 + i * 70) % 300;
-                  let ex = 80, ey = 75;
-                  if (pos < 50) {
-                    ex = 80; ey = 75 - pos;
-                  } else if (pos < 250) {
-                    ex = 80 + (pos - 50); ey = 25;
+                  let isReversed = (voltaicType === 'lead-acid' && batteryMode === 'charge');
+                  // 放電：從 95,80 走到 385,80 (長度 55 + 290 + 55 = 400)
+                  const totalDist = 400;
+                  let pos = (animOffset * 4 + i * 100) % totalDist;
+                  if (isReversed) pos = totalDist - pos; // 充電方向相反
+
+                  let ex = 95, ey = 80;
+                  if (pos <= 55) {
+                    ex = 95; ey = 80 - pos; // 左極棒往上走至 (95,25)
+                  } else if (pos <= 345) {
+                    ex = 95 + (pos - 55); ey = 25; // 橫向過檢流計至 (385,25)
                   } else {
-                    ex = 280; ey = 25 + (pos - 250);
+                    ex = 385; ey = 25 + (pos - 345); // 右導線向下直達右極棒 (385,80)
                   }
+
                   return (
                     <g key={`electron-${i}`}>
-                      <circle cx={ex} cy={ey} r="4" fill="#f59e0b" />
-                      <text x={ex} y={ey + 2} textAnchor="middle" fill="#0f172a" fontSize="6" fontWeight="bold">e⁻</text>
+                      <circle cx={ex} cy={ey} r="5" fill="#f59e0b" stroke="#ffffff" strokeWidth="1" />
+                      <text x={ex} y={ey + 2.5} textAnchor="middle" fill="#0f172a" fontSize="7" fontWeight="bold">e⁻</text>
                     </g>
                   );
                 })}
@@ -373,6 +501,7 @@ export default function ElectroChemistryLab() {
             </div>
           </div>
 
+          {/* 理化考點詳細剖析對照表 */}
           <div className="bg-slate-900 border border-slate-700 rounded-2xl p-5 space-y-4">
             <h3 className="text-sm font-bold text-amber-400 border-b border-slate-800 pb-2 flex items-center gap-2">
               <Zap className="w-4 h-4" /> {curVoltaic.title} 理化考點對照表
@@ -384,16 +513,16 @@ export default function ElectroChemistryLab() {
                   <tr className="bg-slate-950 text-slate-300 border-b border-slate-800">
                     <th className="p-3 w-1/5 font-bold border-r border-slate-800">剖析項目</th>
                     <th className="p-3 w-2/5 font-bold text-rose-400 border-r border-slate-800">
-                      負極 ({curVoltaic.negName})
+                      {voltaicType === 'lead-acid' && batteryMode === 'charge' ? '陰極' : '負極'} ({curVoltaic.negName})
                     </th>
                     <th className="p-3 w-2/5 font-bold text-emerald-400">
-                      正極 ({curVoltaic.posName})
+                      {voltaicType === 'lead-acid' && batteryMode === 'charge' ? '陽極' : '正極'} ({curVoltaic.posName})
                     </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800 text-slate-300">
                   <tr className="hover:bg-slate-950/50">
-                    <td className="p-3 font-bold bg-slate-950/30 text-amber-300 border-r border-slate-800">電極特性</td>
+                    <td className="p-3 font-bold bg-slate-950/30 text-amber-300 border-r border-slate-800">電極屬性</td>
                     <td className="p-3 border-r border-slate-800">{curVoltaic.table.negElectrode}</td>
                     <td className="p-3">{curVoltaic.table.posElectrode}</td>
                   </tr>
@@ -424,7 +553,7 @@ export default function ElectroChemistryLab() {
                     <td className="p-3">{curVoltaic.table.posSolChange}</td>
                   </tr>
                   <tr className="hover:bg-slate-950/50">
-                    <td className="p-3 font-bold bg-slate-950/30 text-amber-300 border-r border-slate-800">鹽橋離子流向</td>
+                    <td className="p-3 font-bold bg-slate-950/30 text-amber-300 border-r border-slate-800">鹽橋/離子傳輸</td>
                     <td colSpan="2" className="p-3 text-slate-300 bg-slate-950/20">
                       {curVoltaic.table.saltBridge}
                     </td>
@@ -488,29 +617,29 @@ export default function ElectroChemistryLab() {
           <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between items-center space-y-3">
             <div className="w-full flex justify-between items-center border-b border-slate-800 pb-2 text-xs">
               <span className="text-cyan-400 font-bold flex items-center gap-1">
-                <Activity className="w-4 h-4" /> 電解實驗動態圖 (直流電源驅動 + 電子強制由陽極向陰極移動)
+                <Activity className="w-4 h-4" /> 動態圖示：電子由陽極直達陰極 + 溶液離子定向移動
               </span>
-              <span className="text-slate-400 font-mono">
+              <span className="text-slate-300 font-mono text-[11px]">
                 {curElectro.gasRatio}
               </span>
             </div>
 
-            <div className="w-full bg-slate-900 rounded-xl p-4 flex items-center justify-center min-h-[280px] overflow-x-auto">
-              <svg width="440" height="240" className="select-none font-mono text-[10px]">
+            <div className="w-full bg-slate-900 rounded-xl p-4 flex items-center justify-center min-h-[290px] overflow-x-auto">
+              <svg width="460" height="260" className="select-none font-mono text-[11px]">
                 {/* 燒杯 */}
-                <rect x="120" y="90" width="200" height="130" rx="6" fill="#0f172a" stroke="#475569" strokeWidth="2" />
-                <rect x="122" y="110" width="196" height="108" fill={curElectro.solColor} />
-                <text x="220" y="230" textAnchor="middle" fill="#94a3b8" fontSize="9">{curElectro.solutionName}</text>
+                <rect x="110" y="100" width="240" height="135" rx="6" fill="#0f172a" stroke="#475569" strokeWidth="2" />
+                <rect x="112" y="120" width="236" height="113" fill={curElectro.solColor} />
+                <text x="230" y="248" textAnchor="middle" fill="#94a3b8" fontSize="10" fontWeight="bold">{curElectro.solutionName}</text>
 
                 {/* 陽極棒 (+極, 左) */}
-                <rect x="160" y="70" width="16" height="100" fill={curElectro.anodeColor} stroke="#cbd5e1" strokeWidth="1" />
-                <text x="168" y="58" textAnchor="middle" fill="#ef4444" fontSize="10" fontWeight="bold">陽極 (+極)</text>
-                <text x="168" y="185" textAnchor="middle" fill="#ef4444" fontSize="8">{curElectro.anodeGas}</text>
+                <rect x="160" y="70" width="18" height="110" fill={curElectro.anodeColor} stroke="#ffffff" strokeWidth="1.5" />
+                <text x="169" y="55" textAnchor="middle" fill="#ef4444" fontSize="11" fontWeight="bold">陽極 (+極)</text>
+                <text x="169" y="198" textAnchor="middle" fill="#ef4444" fontSize="9">{curElectro.anodeGas}</text>
 
                 {/* 陰極棒 (-極, 右) */}
-                <rect x="260" y="70" width="16" height="100" fill={curElectro.cathodeColor} stroke="#cbd5e1" strokeWidth="1" />
-                <text x="268" y="58" textAnchor="middle" fill="#3b82f6" fontSize="10" fontWeight="bold">陰極 (-極)</text>
-                <text x="268" y="185" textAnchor="middle" fill="#3b82f6" fontSize="8">{curElectro.cathodeGas}</text>
+                <rect x="280" y="70" width="18" height="110" fill={curElectro.cathodeColor} stroke="#ffffff" strokeWidth="1.5" />
+                <text x="289" y="55" textAnchor="middle" fill="#3b82f6" fontSize="11" fontWeight="bold">陰極 (-極)</text>
+                <text x="289" y="198" textAnchor="middle" fill="#3b82f6" fontSize="9">{curElectro.cathodeGas}</text>
 
                 {/* 氣泡動態 */}
                 {isRunning && (
@@ -518,52 +647,69 @@ export default function ElectroChemistryLab() {
                     {(electrolyte === 'water' || (electrolyte === 'cuso4' && electrodeType === 'carbon')) && [0, 1, 2].map((i) => (
                       <circle
                         key={`anode-bubble-${i}`}
-                        cx="168"
-                        cy={150 - ((animOffset * 2 + i * 25) % 60)}
-                        r={3 + i}
+                        cx="169"
+                        cy={160 - ((animOffset * 2 + i * 22) % 60)}
+                        r={3.5 + i}
                         fill="#38bdf8"
-                        opacity="0.7"
+                        opacity="0.8"
                       />
                     ))}
 
                     {electrolyte === 'water' && [0, 1, 2, 3, 4].map((i) => (
                       <circle
                         key={`cathode-bubble-${i}`}
-                        cx="268"
-                        cy={150 - ((animOffset * 2.5 + i * 18) % 60)}
-                        r={2.5 + (i % 2)}
+                        cx="289"
+                        cy={160 - ((animOffset * 2.5 + i * 16) % 60)}
+                        r={3 + (i % 2)}
                         fill="#38bdf8"
-                        opacity="0.8"
+                        opacity="0.85"
                       />
                     ))}
                   </g>
                 )}
 
+                {/* 3. 溶液中的離子游動標示 (放大版) */}
+                {isRunning && (
+                  <g>
+                    {/* 陰離子游向陽極 (+極) */}
+                    <circle cx={200 - (animOffset % 30)} cy="150" r="8" fill="#ef4444" stroke="#ffffff" strokeWidth="1" />
+                    <text x={200 - (animOffset % 30)} y="153" textAnchor="middle" fill="#ffffff" fontSize="7" fontWeight="bold">
+                      {curElectro.anodeIon}
+                    </text>
+
+                    {/* 陽離子游向陰極 (-極) */}
+                    <circle cx={250 + (animOffset % 30)} cy="170" r="8" fill="#38bdf8" stroke="#ffffff" strokeWidth="1" />
+                    <text x={250 + (animOffset % 30)} y="173" textAnchor="middle" fill="#ffffff" fontSize="7" fontWeight="bold">
+                      {curElectro.cathodeIon}
+                    </text>
+                  </g>
+                )}
+
                 {/* 直流電源 (DC Power) */}
-                <rect x="200" y="15" width="40" height="25" rx="3" fill="#1e293b" stroke="#f59e0b" strokeWidth="1.5" />
-                <text x="220" y="31" textAnchor="middle" fill="#f59e0b" fontSize="9" fontWeight="bold">DC 電源</text>
-                <text x="208" y="24" textAnchor="middle" fill="#ef4444" fontSize="8" fontWeight="bold">+</text>
-                <text x="232" y="24" textAnchor="middle" fill="#3b82f6" fontSize="8" fontWeight="bold">-</text>
+                <rect x="205" y="12" width="50" height="28" rx="4" fill="#1e293b" stroke="#f59e0b" strokeWidth="2" />
+                <text x="230" y="29" textAnchor="middle" fill="#f59e0b" fontSize="10" fontWeight="bold">DC 電源</text>
 
-                {/* 外電路導線 */}
-                <polyline points="168,70 168,27 200,27" fill="none" stroke="#ef4444" strokeWidth="2" />
-                <polyline points="240,27 268,27 268,70" fill="none" stroke="#3b82f6" strokeWidth="2" />
+                {/* 外電路導線：精準接至 (169,70) 與 (289,70) */}
+                <polyline points="169,70 169,26 205,26" fill="none" stroke="#ef4444" strokeWidth="2.5" />
+                <polyline points="255,26 289,26 289,70" fill="none" stroke="#3b82f6" strokeWidth="2.5" />
 
-                {/* 外電路電子粒子 */}
+                {/* 1. 外電路電子粒子：精準由陽極 (169,70) 經電源抵達陰極 (289,70) */}
                 {isRunning && [0, 1, 2].map((i) => {
-                  const pos = (animOffset * 2.5 + i * 80) % 240;
-                  let ex = 168, ey = 70;
-                  if (pos < 43) {
-                    ex = 168; ey = 70 - pos;
-                  } else if (pos < 115) {
-                    ex = 168 + (pos - 43); ey = 27;
-                  } else if (pos < 187) {
-                    ex = 240 + (pos - 115) * (28 / 72); ey = 27;
+                  const totalDist = 250;
+                  const pos = (animOffset * 3 + i * 85) % totalDist;
+                  let ex = 169, ey = 70;
+                  if (pos <= 44) {
+                    ex = 169; ey = 70 - pos; // 陽極棒向上至 (169,26)
+                  } else if (pos <= 206) {
+                    ex = 169 + (pos - 44) * (120 / 162); ey = 26; // 橫穿電源至 (289,26)
                   } else {
-                    ex = 268; ey = 27 + (pos - 187);
+                    ex = 289; ey = 26 + (pos - 206); // 陰極棒向下直達 (289,70)
                   }
                   return (
-                    <circle key={`el-${i}`} cx={ex} cy={ey} r="3" fill="#f59e0b" />
+                    <g key={`el-${i}`}>
+                      <circle cx={ex} cy={ey} r="5" fill="#f59e0b" stroke="#ffffff" strokeWidth="1" />
+                      <text x={ex} y={ey + 2.5} textAnchor="middle" fill="#0f172a" fontSize="7" fontWeight="bold">e⁻</text>
+                    </g>
                   );
                 })}
               </svg>
