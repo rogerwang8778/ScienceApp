@@ -25,7 +25,7 @@ export default function App() {
       question: "一物體在光滑水平面上受 10 牛頓的合力作用，產生 2 m/s² 的加速度，則此物體的質量為多少 kg？",
       options: ["A. 2 kg", "B. 5 kg", "C. 10 kg", "D. 20 kg"],
       answer: 1,
-      explanation: "根據牛頓第二運動定律公式 $F = ma$：\n$10\\text{ N} = m \\times 2\\text{ m/s}^2 \\implies m = 5\\text{ kg}$。\n故正確答案為 B。",
+      explanation: "根據牛頓第二運動定律 $F = ma$：\n$10\\text{ N} = m \\times 2\\text{ m/s}^2 \\implies m = 5\\text{ kg}$。\n故正確答案為 B。",
       expReward: 50
     },
     {
