@@ -2,109 +2,163 @@ import React, { useState } from 'react';
 import { Zap, Play, Pause, Calculator, Sliders, Plus, Trash2, GitBranch, Layers } from 'lucide-react';
 
 export default function CircuitLab() {
-  const [activeTab, setActiveTab] = useState('custom');
+  const [activeTab, setActiveTab] = useState('nodeGraph');
   const [vSource, setVSource] = useState(12);
   const [isRunning, setIsRunning] = useState(true);
   const [showCalc, setShowCalc] = useState(false);
 
   // ==========================================
-  // 頁面 1：階層化自由鏈接電路 State & Logic
-  // parentId: 'trunk' 表示在幹道上，或為其他電阻 id (如 'r3') 表示與該電阻同支路串聯
-  // connection: 'series' | 'parallel'
+  // 頁面 1：節點跨接電路 (Node-based Circuit Builder)
+  // 每個電阻定義 [startNode, endNode]
+  // Node 0: 電源正極 (V_source)
+  // Node 99: 電源負極 (0V/接地)
   // ==========================================
-  const [resistorList, setResistorList] = useState([
-    { id: 'r1', name: 'R1', value: 6, connection: 'series', parentId: 'trunk' },
-    { id: 'r2', name: 'R2', value: 6, connection: 'series', parentId: 'trunk' },
-    { id: 'r3', name: 'R3', value: 6, connection: 'parallel', parentId: 'trunk' },
-    { id: 'r4', name: 'R4', value: 6, connection: 'series', parentId: 'r3' } // 指定與 R3 支路串聯
+  const [nodeResistors, setNodeResistors] = useState([
+    { id: 'r1', name: 'R1', value: 6, startNode: 0, endNode: 1 },
+    { id: 'r2', name: 'R2', value: 6, startNode: 1, endNode: 2 },
+    { id: 'r3', name: 'R3', value: 6, startNode: 2, endNode: 3 },
+    { id: 'r4', name: 'R4', value: 6, startNode: 3, endNode: 4 },
+    { id: 'r5', name: 'R5', value: 6, startNode: 4, endNode: 99 },
   ]);
 
-  const addResistor = () => {
-    if (resistorList.length < 10) {
-      const idx = resistorList.length + 1;
+  // 新增電阻
+  const addNodeResistor = () => {
+    if (nodeResistors.length < 10) {
+      const idx = nodeResistors.length + 1;
       const newId = `r${idx}`;
-      setResistorList([
-        ...resistorList,
-        { id: newId, name: `R${idx}`, value: 6, connection: 'series', parentId: 'trunk' }
+      setNodeResistors([
+        ...nodeResistors,
+        { id: newId, name: `R${idx}`, value: 6, startNode: 0, endNode: 99 } // 預設跨接電源兩端
       ]);
     }
   };
 
-  const removeResistor = (id) => {
-    if (resistorList.length > 1) {
-      setResistorList(
-        resistorList
-          .filter((r) => r.id !== id)
-          .map((r) => (r.parentId === id ? { ...r, parentId: 'trunk', connection: 'series' } : r))
-      );
+  const removeNodeResistor = (id) => {
+    if (nodeResistors.length > 1) {
+      setNodeResistors(nodeResistors.filter((r) => r.id !== id));
     }
   };
 
-  const updateResistorProp = (id, key, val) => {
-    setResistorList(resistorList.map((r) => (r.id === id ? { ...r, [key]: val } : r)));
+  const updateNodeResistorProp = (id, key, val) => {
+    setNodeResistors(nodeResistors.map((r) => (r.id === id ? { ...r, [key]: val } : r)));
   };
 
-  // 階層化等效電阻與分流演算法
-  // 1. 整理幹道與分支結構
-  const trunkItems = resistorList.filter((r) => r.parentId === 'trunk');
-  const childMap = {};
-  resistorList.forEach((r) => {
-    if (r.parentId !== 'trunk') {
-      if (!childMap[r.parentId]) childMap[r.parentId] = [];
-      childMap[r.parentId].push(r);
+  // 可選節點清單
+  const availableNodes = [
+    { id: 0, label: '節點 0 (電源正極 高電位)' },
+    { id: 1, label: '節點 1 (R1與R2之間)' },
+    { id: 2, label: '節點 2 (R2與R3之間)' },
+    { id: 3, label: '節點 3 (R3與R4之間)' },
+    { id: 4, label: '節點 4 (R4與R5之間)' },
+    { id: 99, label: '節點 99 (電源負極 接地0V)' },
+  ];
+
+  // KCL 求解 (Node Voltage Analysis)
+  // 計算內部動態節點 (Node 1, Node 2, Node 3, Node 4)
+  const internalNodes = [1, 2, 3, 4];
+  const N = internalNodes.length;
+
+  // 導納矩陣 G * V = I_ext
+  let G = Array(N).fill(0).map(() => Array(N).fill(0));
+  let B_vec = Array(N).fill(0);
+
+  nodeResistors.forEach((r) => {
+    const g = 1 / r.value;
+    const u = r.startNode;
+    const v = r.endNode;
+
+    const uIdx = internalNodes.indexOf(u);
+    const vIdx = internalNodes.indexOf(v);
+
+    if (uIdx !== -1) {
+      G[uIdx][uIdx] += g;
+      if (vIdx !== -1) G[uIdx][vIdx] -= g;
+      if (v === 0) B_vec[uIdx] += g * vSource;
+    }
+
+    if (vIdx !== -1) {
+      G[vIdx][vIdx] += g;
+      if (uIdx !== -1) G[vIdx][uIdx] -= g;
+      if (u === 0) B_vec[vIdx] += g * vSource;
     }
   });
 
-  // 計算每個主元件/分支的有效阻值
-  const calculateEffectiveR = (r) => {
-    let baseR = r.value;
-    const children = childMap[r.id] || [];
-    if (children.length > 0) {
-      const childrenSum = children.reduce((sum, c) => sum + c.value, 0);
-      baseR += childrenSum; // 支路內串聯相加
+  // 高斯消去法解 V_node
+  const solveLinear = (A_mat, b_arr) => {
+    let n = b_arr.length;
+    let A = A_mat.map((row) => [...row]);
+    let x = [...b_arr];
+
+    for (let i = 0; i < n; i++) {
+      let maxEl = Math.abs(A[i][i]);
+      let maxRow = i;
+      for (let k = i + 1; k < n; k++) {
+        if (Math.abs(A[k][i]) > maxEl) {
+          maxEl = Math.abs(A[k][i]);
+          maxRow = k;
+        }
+      }
+      for (let k = i; k < n; k++) {
+        let tmp = A[maxRow][k];
+        A[maxRow][k] = A[i][k];
+        A[i][k] = tmp;
+      }
+      let tmp = x[maxRow];
+      x[maxRow] = x[i];
+      x[i] = tmp;
+
+      if (Math.abs(A[i][i]) < 1e-7) continue;
+
+      for (let k = i + 1; k < n; k++) {
+        let c = -A[k][i] / A[i][i];
+        for (let j = i; j < n; j++) {
+          if (i === j) A[k][j] = 0;
+          else A[k][j] += c * A[i][j];
+        }
+        x[k] += c * x[i];
+      }
     }
-    return baseR;
+
+    for (let i = n - 1; i >= 0; i--) {
+      if (Math.abs(A[i][i]) < 1e-7) {
+        x[i] = 0;
+        continue;
+      }
+      x[i] = x[i] / A[i][i];
+      for (let k = i - 1; k >= 0; k--) {
+        x[k] -= A[k][i] * x[i];
+      }
+    }
+    return x;
   };
 
-  // 分組並聯與幹道串聯
-  let groups = [];
-  trunkItems.forEach((r) => {
-    if (r.connection === 'series' || groups.length === 0) {
-      groups.push([r]);
-    } else {
-      groups[groups.length - 1].push(r);
-    }
+  const vSol = solveLinear(G, B_vec);
+  const getNodeVoltage = (nodeId) => {
+    if (nodeId === 0) return vSource;
+    if (nodeId === 99) return 0;
+    const idx = internalNodes.indexOf(nodeId);
+    return idx !== -1 ? Number(vSol[idx].toFixed(2)) : 0;
+  };
+
+  // 各電阻物理量計算
+  const nodeResData = nodeResistors.map((r) => {
+    const vStart = getNodeVoltage(r.startNode);
+    const vEnd = getNodeVoltage(r.endNode);
+    const vDiff = Number(Math.abs(vStart - vEnd).toFixed(2));
+    const iVal = Number((vDiff / r.value).toFixed(2));
+    const isSpan = Math.abs(r.startNode - r.endNode) > 1 && !(r.startNode === 0 && r.endNode === 1);
+
+    return { ...r, vStart, vEnd, V: vDiff, I: iVal, isSpan };
   });
 
-  const groupReqs = groups.map((group) => {
-    if (group.length === 1) return calculateEffectiveR(group[0]);
-    const invSum = group.reduce((sum, item) => sum + 1 / calculateEffectiveR(item), 0);
-    return Number((1 / invSum).toFixed(2));
-  });
-
-  const customReq = Number(groupReqs.reduce((sum, rG) => sum + rG, 0).toFixed(2));
-  const customITotal = Number((vSource / customReq).toFixed(2));
-
-  // 計算每個電阻的即時 V 與 I
-  const customResData = [];
-  groups.forEach((group, gIdx) => {
-    const vGroup = Number((customITotal * groupReqs[gIdx]).toFixed(2));
-    group.forEach((r) => {
-      const effR = calculateEffectiveR(r);
-      const iBranch = group.length === 1 ? customITotal : Number((vGroup / effR).toFixed(2));
-
-      // 主電阻
-      const vMain = Number((iBranch * r.value).toFixed(2));
-      customResData.push({ ...r, V: vMain, I: iBranch, inParallelGroup: group.length > 1, parentName: '幹道' });
-
-      // 綁定在此電阻下的子串聯電阻
-      const children = childMap[r.id] || [];
-      children.forEach((c) => {
-        const vChild = Number((iBranch * c.value).toFixed(2));
-        customResData.push({ ...c, V: vChild, I: iBranch, inParallelGroup: true, parentName: `串聯至 ${r.name}` });
-      });
-    });
-  });
+  // 計算幹道總電流
+  const totalI = Number(
+    nodeResData
+      .filter((r) => r.startNode === 0)
+      .reduce((sum, r) => sum + r.I, 0)
+      .toFixed(2)
+  );
+  const totalReq = totalI > 0 ? Number((vSource / totalI).toFixed(2)) : 0;
 
   // ==========================================
   // 頁面 2：惠斯同電橋 State & Logic
@@ -115,9 +169,9 @@ export default function CircuitLab() {
   const [br4, setBr4] = useState(8);
   const [br5, setBr5] = useState(10);
 
-  const g1 = 1 / br1, g2 = 1 / br2, g3 = 1 / br3, g4 = 1 / br4, g5 = 1 / br5;
-  const A_coeff = g1 + g2 + g5, B_coeff = -g5, C_const = vSource * g1;
-  const D_coeff = -g5, E_coeff = g3 + g4 + g5, F_const = vSource * g3;
+  const bg1 = 1 / br1, bg2 = 1 / br2, bg3 = 1 / br3, bg4 = 1 / br4, bg5 = 1 / br5;
+  const A_coeff = bg1 + bg2 + bg5, B_coeff = -bg5, C_const = vSource * bg1;
+  const D_coeff = -bg5, E_coeff = bg3 + bg4 + bg5, F_const = vSource * bg3;
 
   const det = A_coeff * E_coeff - B_coeff * D_coeff;
   const vB = Number(((C_const * E_coeff - B_coeff * F_const) / det).toFixed(2));
@@ -139,20 +193,20 @@ export default function CircuitLab() {
       <div className="border-b border-slate-700 pb-4">
         <h2 className="text-xl font-bold text-white flex items-center gap-2">
           <Zap className="w-5 h-5 text-amber-400" />
-          理化實驗室：國三上 單元四《基本電路與階層化拓樸》
+          理化實驗室：國三上 單元四《自由節點跨接電路實驗室》
         </h2>
-        <p className="text-xs text-slate-400 mt-1">自由選擇電阻連接目標（可與指定電阻串聯/並聯），分析多重階層分壓與分流</p>
+        <p className="text-xs text-slate-400 mt-1">自由選擇起點與終點節點（可跨越 R1~R5 任意長度進行大範圍並聯），解算高階電路網路</p>
       </div>
 
-      {/* 頁面切換頁籤 */}
+      {/* 頁面切換 */}
       <div className="flex flex-wrap gap-2">
         <button
-          onClick={() => setActiveTab('custom')}
+          onClick={() => setActiveTab('nodeGraph')}
           className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-            activeTab === 'custom' ? 'bg-amber-600 text-white shadow-lg' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+            activeTab === 'nodeGraph' ? 'bg-amber-600 text-white shadow-lg' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
           }`}
         >
-          <Layers className="w-3.5 h-3.5 text-amber-300" /> 頁面 1：自由鏈接電路 (指定電阻串並聯)
+          <Layers className="w-3.5 h-3.5 text-amber-300" /> 頁面 1：雙節點跨接模式 (可跨越 R1~R5 任意並聯)
         </button>
         <button
           onClick={() => setActiveTab('bridge')}
@@ -164,8 +218,8 @@ export default function CircuitLab() {
         </button>
       </div>
 
-      {/* 頁面 1：自由鏈接電路 */}
-      {activeTab === 'custom' && (
+      {/* 頁面 1：雙節點跨接模式 */}
+      {activeTab === 'nodeGraph' && (
         <div className="space-y-6">
           <div className="bg-slate-900 border border-slate-700 p-4 md:p-5 rounded-2xl space-y-4">
             <div className="flex flex-wrap justify-between items-center border-b border-slate-800 pb-3 gap-3">
@@ -180,55 +234,57 @@ export default function CircuitLab() {
               </div>
 
               <button
-                onClick={addResistor}
-                disabled={resistorList.length >= 10}
+                onClick={addNodeResistor}
+                disabled={nodeResistors.length >= 10}
                 className="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 text-white rounded-xl text-xs font-bold flex items-center gap-1 transition-all"
               >
                 <Plus className="w-3.5 h-3.5" /> 新增電阻 (+R)
               </button>
             </div>
 
-            {/* 電阻卡片設定區 */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-              {resistorList.map((r, idx) => (
+            {/* 電阻卡片設定區：設定起點與終點節點 */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {nodeResistors.map((r) => (
                 <div key={r.id} className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2 relative">
                   <div className="flex justify-between items-center text-xs font-bold">
                     <span className="text-slate-200">{r.name}</span>
-                    {idx > 0 && (
-                      <div className="flex gap-1">
-                        {/* 選擇拓樸關係 */}
-                        <select
-                          value={r.connection}
-                          onChange={(e) => updateResistorProp(r.id, 'connection', e.target.value)}
-                          className="bg-slate-800 text-[10px] text-cyan-300 rounded px-1 py-0.5 border border-slate-700"
-                        >
-                          <option value="series">串聯 (+)</option>
-                          <option value="parallel">並聯 (||)</option>
-                        </select>
-                      </div>
-                    )}
+                    <span className="text-[10px] text-amber-400 font-mono">
+                      跨接: N{r.startNode} ➔ N{r.endNode}
+                    </span>
                   </div>
 
-                  {/* 選擇綁定目標位置 */}
-                  {idx > 0 && (
-                    <div className="space-y-1">
-                      <span className="text-[10px] text-slate-400 block">連接目標位置：</span>
+                  {/* 選擇起點與終點 */}
+                  <div className="grid grid-cols-2 gap-2 text-[10px]">
+                    <div>
+                      <span className="text-slate-400 block mb-0.5">跨接起點 (Start Node)：</span>
                       <select
-                        value={r.parentId}
-                        onChange={(e) => updateResistorProp(r.id, 'parentId', e.target.value)}
-                        className="w-full bg-slate-900 text-[11px] text-amber-300 rounded px-1.5 py-1 border border-slate-700"
+                        value={r.startNode}
+                        onChange={(e) => updateNodeResistorProp(r.id, 'startNode', Number(e.target.value))}
+                        className="w-full bg-slate-900 text-cyan-300 rounded px-1 py-1 border border-slate-700"
                       >
-                        <option value="trunk">主幹道 (Trunk)</option>
-                        {resistorList
-                          .filter((other) => other.id !== r.id && other.parentId === 'trunk')
-                          .map((other) => (
-                            <option key={`opt-${other.id}`} value={other.id}>
-                              與 {other.name} 同支路串聯
-                            </option>
-                          ))}
+                        {availableNodes.map((n) => (
+                          <option key={`start-${n.id}`} value={n.id}>
+                            N{n.id} ({n.id === 0 ? '電源正' : n.id === 99 ? '接地' : `節點${n.id}`})
+                          </option>
+                        ))}
                       </select>
                     </div>
-                  )}
+
+                    <div>
+                      <span className="text-slate-400 block mb-0.5">跨接終點 (End Node)：</span>
+                      <select
+                        value={r.endNode}
+                        onChange={(e) => updateNodeResistorProp(r.id, 'endNode', Number(e.target.value))}
+                        className="w-full bg-slate-900 text-purple-300 rounded px-1 py-1 border border-slate-700"
+                      >
+                        {availableNodes.map((n) => (
+                          <option key={`end-${n.id}`} value={n.id}>
+                            N{n.id} ({n.id === 0 ? '電源正' : n.id === 99 ? '接地' : `節點${n.id}`})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
 
                   <div className="flex justify-between items-center text-[11px] pt-1">
                     <span className="text-slate-400">阻值：</span>
@@ -236,13 +292,13 @@ export default function CircuitLab() {
                   </div>
                   <input
                     type="range" min="1" max="20" step="1" value={r.value}
-                    onChange={(e) => updateResistorProp(r.id, 'value', Number(e.target.value))}
+                    onChange={(e) => updateNodeResistorProp(r.id, 'value', Number(e.target.value))}
                     className="w-full accent-cyan-500 h-1 bg-slate-700 rounded cursor-pointer"
                   />
 
-                  {resistorList.length > 1 && (
+                  {nodeResistors.length > 1 && (
                     <button
-                      onClick={() => removeResistor(r.id)}
+                      onClick={() => removeNodeResistor(r.id)}
                       className="absolute -top-1.5 -right-1.5 bg-slate-800 text-slate-400 hover:text-rose-400 p-1 rounded-full border border-slate-700"
                     >
                       <Trash2 className="w-3 h-3" />
@@ -254,7 +310,7 @@ export default function CircuitLab() {
 
             <div className="flex justify-between items-center border-t border-slate-800 pt-3">
               <div className="text-xs font-mono text-slate-300">
-                電阻總數：<strong className="text-purple-300">{resistorList.length} / 10 個</strong> ｜ 等效總電阻 Req = <strong className="text-amber-300">{customReq} Ω</strong> ｜ 幹道總電流 I_total = <strong className="text-cyan-300">{customITotal} A</strong>
+                電阻總數：<strong className="text-purple-300">{nodeResistors.length} / 10 個</strong> ｜ 等效總電阻 Req = <strong className="text-amber-300">{totalReq} Ω</strong> ｜ 幹道總電流 I_total = <strong className="text-cyan-300">{totalI} A</strong>
               </div>
               <button
                 onClick={() => setIsRunning(!isRunning)}
@@ -269,87 +325,104 @@ export default function CircuitLab() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* 動態階層圖 */}
+            {/* SVG 跨接網格動態畫布 */}
             <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between space-y-4">
               <div className="border-b border-slate-800 pb-2 flex justify-between items-center">
                 <span className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
-                  <Zap className="w-4 h-4 text-amber-400" /> 第一張圖：動態階層拓樸與電位圖
+                  <Zap className="w-4 h-4 text-amber-400" /> 第一張圖：節點跨接拓樸圖 (支援大範圍跨接)
                 </span>
-                <span className="text-[10px] text-slate-400">高電位(紅) ➔ 降壓區 ➔ 零電位(藍)</span>
+                <span className="text-[10px] text-slate-400">高電位(紅) ➔ 低電位(藍)</span>
               </div>
 
-              <div className="w-full bg-slate-900 rounded-xl p-4 flex items-center justify-center min-h-[240px] overflow-x-auto">
-                <svg width="340" height="200" className="select-none font-mono text-[10px]">
-                  <rect x="15" y="80" width="30" height="40" rx="4" fill="#1e293b" stroke="#f59e0b" strokeWidth="2" />
-                  <text x="30" y="104" textAnchor="middle" fill="#f59e0b" fontSize="10" fontWeight="bold">{vSource}V</text>
+              <div className="w-full bg-slate-900 rounded-xl p-4 flex items-center justify-center min-h-[250px] overflow-x-auto">
+                <svg width="340" height="220" className="select-none font-mono text-[10px]">
+                  {/* 電源 */}
+                  <rect x="15" y="90" width="30" height="40" rx="4" fill="#1e293b" stroke="#f59e0b" strokeWidth="2" />
+                  <text x="30" y="114" textAnchor="middle" fill="#f59e0b" fontSize="10" fontWeight="bold">{vSource}V</text>
 
-                  <line x1="30" y1="80" x2="30" y2="30" stroke="#ef4444" strokeWidth="2.5" />
-                  <line x1="30" y1="30" x2="60" y2="30" stroke="#ef4444" strokeWidth="2.5" />
-                  <line x1="30" y1="120" x2="30" y2="170" stroke="#3b82f6" strokeWidth="2.5" />
-                  <line x1="30" y1="170" x2="310" y2="170" stroke="#3b82f6" strokeWidth="2.5" />
-                  <line x1="310" y1="170" x2="310" y2="30" stroke="#3b82f6" strokeWidth="2.5" />
+                  {/* 節點 0 高電位幹線 */}
+                  <line x1="30" y1="90" x2="30" y2="40" stroke="#ef4444" strokeWidth="2.5" />
+                  <line x1="30" y1="40" x2="60" y2="40" stroke="#ef4444" strokeWidth="2.5" />
 
-                  {(() => {
-                    let currentX = 60;
-                    const groupWidth = 240 / groups.length;
+                  {/* 節點 99 接地低電位幹線 */}
+                  <line x1="30" y1="130" x2="30" y2="180" stroke="#3b82f6" strokeWidth="2.5" />
+                  <line x1="30" y1="180" x2="310" y2="180" stroke="#3b82f6" strokeWidth="2.5" />
 
-                    return groups.map((group, gIdx) => {
-                      const xStart = currentX;
-                      const xEnd = currentX + groupWidth;
-                      currentX = xEnd;
+                  {/* 節點位置標註 (Node 0, 1, 2, 3, 4, 99) */}
+                  {[
+                    { id: 0, x: 60, y: 40 },
+                    { id: 1, x: 110, y: 40 },
+                    { id: 2, x: 160, y: 40 },
+                    { id: 3, x: 210, y: 40 },
+                    { id: 4, x: 260, y: 40 },
+                    { id: 99, x: 310, y: 180 },
+                  ].map((n) => (
+                    <g key={`node-dot-${n.id}`}>
+                      <circle cx={n.x} cy={n.y} r="3" fill="#38bdf8" />
+                      <text x={n.x} y={n.y - 6} textAnchor="middle" fill="#94a3b8" fontSize="7">
+                        N{n.id} ({getNodeVoltage(n.id)}V)
+                      </text>
+                    </g>
+                  ))}
 
-                      const midX = (xStart + xEnd) / 2;
+                  {/* 繪製所有電阻與跨接包覆線 */}
+                  {nodeResData.map((r, idx) => {
+                    // 主幹線上的電阻 (相鄰節點)
+                    if (!r.isSpan) {
+                      const startX = r.startNode === 0 ? 60 : 60 + r.startNode * 50;
+                      const endX = r.endNode === 99 ? 310 : 60 + r.endNode * 50;
+                      const midX = (startX + endX) / 2;
 
                       return (
-                        <g key={`g-${gIdx}`}>
-                          <line x1={xStart} y1="30" x2={xEnd} y2="30" stroke="#ef4444" strokeWidth="2.5" />
-                          {group.map((item, subIdx) => {
-                            const children = childMap[item.id] || [];
-                            const rData = customResData.find((d) => d.id === item.id);
-                            const py = 30 + subIdx * 40;
-
-                            return (
-                              <g key={`sub-${item.id}`}>
-                                {subIdx > 0 && <line x1={midX} y1="30" x2={midX} y2={py} stroke="#a855f7" strokeWidth="2" />}
-                                <rect x={midX - 22} y={py - 12} width="44" height="24" rx="4" fill="#0f172a" stroke="#06b6d4" strokeWidth="2" />
-                                <text x={midX} y={py + 3} textAnchor="middle" fill="#06b6d4" fontSize="9" fontWeight="bold">
-                                  {item.name}{children.length > 0 ? `+${children.map((c) => c.name).join('+')}` : ''}
-                                </text>
-                                <text x={midX} y={py + 22} textAnchor="middle" fill="#eab308" fontSize="8" fontWeight="bold">
-                                  V={rData?.V}V
-                                </text>
-                              </g>
-                            );
-                          })}
+                        <g key={`r-draw-${r.id}`}>
+                          <line x1={startX} y1="40" x2={endX} y2="40" stroke="#ef4444" strokeWidth="2" />
+                          <rect x={midX - 16} y="28" width="32" height="24" rx="4" fill="#0f172a" stroke="#06b6d4" strokeWidth="2" />
+                          <text x={midX} y="43" textAnchor="middle" fill="#06b6d4" fontSize="8" fontWeight="bold">{r.name}</text>
+                          <text x={midX} y="62" textAnchor="middle" fill="#eab308" fontSize="7">{r.V}V</text>
                         </g>
                       );
-                    });
-                  })()}
+                    } else {
+                      // 跨越多個節點的大範圍並聯拱門線 (Arc Bridge Line)
+                      const startX = r.startNode === 0 ? 60 : 60 + r.startNode * 50;
+                      const endX = r.endNode === 99 ? 310 : 60 + r.endNode * 50;
+                      const arcY = 80 + (idx % 3) * 30; // 下降包覆線
+
+                      return (
+                        <g key={`r-draw-span-${r.id}`}>
+                          {/* 拱門跨接外圍導線 */}
+                          <path d={`M ${startX} 40 L ${startX} ${arcY} L ${endX} ${arcY} L ${endX} ${r.endNode === 99 ? 180 : 40}`} fill="none" stroke="#a855f7" strokeWidth="2" strokeDasharray="3 3" />
+                          <rect x={(startX + endX) / 2 - 18} y={arcY - 12} width="36" height="24" rx="4" fill="#0f172a" stroke="#a855f7" strokeWidth="2" />
+                          <text x={(startX + endX) / 2} y={arcY + 3} textAnchor="middle" fill="#a855f7" fontSize="8" fontWeight="bold">{r.name} (跨)</text>
+                          <text x={(startX + endX) / 2} y={arcY + 20} textAnchor="middle" fill="#eab308" fontSize="7">{r.V}V</text>
+                        </g>
+                      );
+                    })}
+                  })}
                 </svg>
               </div>
 
               <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800 text-[11px] text-slate-300 leading-relaxed font-sans space-y-1">
-                <strong className="text-amber-300 block">💡 階層拓樸解析：</strong>
-                <p>• 可選擇將電阻綁定至**指定電阻**（例如與 R3 同支路串聯），系統會將其視為同一分支內部之串聯阻值。</p>
+                <strong className="text-amber-300 block">💡 雙節點跨接機制：</strong>
+                <p>• 若想讓 R6 跨接並聯 R1~R5，只需將 R6 設定為 **跨接起點: N0**、**跨接終點: N99 (或 N4)**，圖面上即會自動繪製紫色包覆外圍線路！</p>
               </div>
             </div>
 
-            {/* 電流關係圖 */}
+            {/* 各電阻電流與跨壓細節 */}
             <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between space-y-4">
               <div className="border-b border-slate-800 pb-2 flex justify-between items-center">
                 <span className="text-xs font-bold text-cyan-400 flex items-center gap-1.5">
-                  <Sliders className="w-4 h-4 text-cyan-400" /> 第二張圖：電流關係與分支列表
+                  <Sliders className="w-4 h-4 text-cyan-400" /> 第二張圖：各電阻跨接節點與分流列表
                 </span>
-                <span className="text-[10px] text-cyan-300 font-mono font-bold">幹道 I_total = {customITotal} A</span>
+                <span className="text-[10px] text-cyan-300 font-mono font-bold">幹道 I_total = {totalI} A</span>
               </div>
 
-              <div className="w-full bg-slate-900 rounded-xl p-4 flex items-center justify-center min-h-[240px] overflow-y-auto">
+              <div className="w-full bg-slate-900 rounded-xl p-4 flex items-center justify-center min-h-[250px] overflow-y-auto">
                 <div className="w-full space-y-2 font-mono text-xs">
-                  {customResData.map((r) => (
-                    <div key={`i-item-${r.id}`} className="flex justify-between items-center bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                  {nodeResData.map((r) => (
+                    <div key={`node-res-item-${r.id}`} className="flex justify-between items-center bg-slate-950 p-2.5 rounded-xl border border-slate-800">
                       <div className="flex items-center gap-2">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${r.parentId !== 'trunk' ? 'bg-amber-950 text-amber-300 border border-amber-700' : r.inParallelGroup ? 'bg-purple-950 text-purple-300 border border-purple-700' : 'bg-cyan-950 text-cyan-300 border border-cyan-700'}`}>
-                          {r.parentName}
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${r.isSpan ? 'bg-purple-950 text-purple-300 border border-purple-700' : 'bg-cyan-950 text-cyan-300 border border-cyan-700'}`}>
+                          {r.isSpan ? `跨接 N${r.startNode}➔N${r.endNode}` : `主幹 N${r.startNode}➔N${r.endNode}`}
                         </span>
                         <span className="text-slate-200 font-bold">{r.name} ({r.value}Ω)</span>
                       </div>
@@ -363,8 +436,8 @@ export default function CircuitLab() {
               </div>
 
               <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800 text-[11px] text-slate-300 leading-relaxed font-sans space-y-1">
-                <strong className="text-cyan-300 block">💡 階層分流定律：</strong>
-                <p>• 與指定電阻串聯的元件（如與 R3 串聯之 R4）共享相同之支路電流。</p>
+                <strong className="text-cyan-300 block">💡 歐姆定律跨壓分流：</strong>
+                <p>• 跨接在相同起終點節點兩端的電阻（如 N0 與 N99），兩端跨壓必定相同。</p>
               </div>
             </div>
           </div>
@@ -372,7 +445,7 @@ export default function CircuitLab() {
           <div className="bg-slate-900 border border-slate-700 rounded-2xl p-5 space-y-3">
             <div className="flex justify-between items-center border-b border-slate-800 pb-2">
               <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-                <Calculator className="w-4 h-4 text-emerald-400" /> 階層化拓樸詳細計算過程
+                <Calculator className="w-4 h-4 text-emerald-400" /> KCL 節點電位矩陣求解過程
               </span>
               <button
                 onClick={() => setShowCalc(!showCalc)}
@@ -384,24 +457,17 @@ export default function CircuitLab() {
 
             {showCalc ? (
               <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs font-mono space-y-2 text-slate-300 leading-relaxed">
-                <p className="text-amber-300 font-bold border-b border-slate-800 pb-1">🧮 階層化拓樸歐姆定律約簡步驟 (V = {vSource}V)：</p>
-                {resistorList.map((r) => {
-                  const children = childMap[r.id] || [];
-                  if (children.length > 0) {
-                    return (
-                      <p key={`calc-branch-${r.id}`}>
-                        • 支路 {r.name} 內部串聯：R_{r.name}_branch = {r.name}({r.value}Ω) + {children.map((c) => `${c.name}(${c.value}Ω)`).join(' + ')} = {calculateEffectiveR(r)} Ω
-                      </p>
-                    );
-                  }
-                  return null;
-                })}
-                <p>• 全電路總等效電阻 Req = <strong className="text-cyan-300">{customReq} Ω</strong></p>
-                <p>• 幹道總電流 I_total = V / Req = {vSource} / {customReq} = <strong className="text-amber-300">{customITotal} A</strong></p>
+                <p className="text-amber-300 font-bold border-b border-slate-800 pb-1">🧮 節點電位法 (Node Voltage Analysis) 矩陣解算：</p>
+                {internalNodes.map((nId) => (
+                  <p key={`calc-node-${nId}`}>
+                    • 節點 N{nId} 計算電位：V_N{nId} = <strong className="text-cyan-300">{getNodeVoltage(nId)} V</strong>
+                  </p>
+                ))}
+                <p>• 全電路總等效電阻 Req = V_source / I_total = {vSource} / {totalI} = <strong className="text-amber-300">{totalReq} Ω</strong></p>
               </div>
             ) : (
               <div className="text-xs text-slate-400 font-sans leading-relaxed">
-                點擊上方按鈕展開歐姆定律 V = IR 與階層化拓樸約簡推導細節。
+                點擊上方按鈕展開 KCL 導納矩陣求解細節。
               </div>
             )}
           </div>
