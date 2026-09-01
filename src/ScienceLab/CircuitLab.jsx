@@ -164,7 +164,6 @@ export default function CircuitLab() {
     return idx !== -1 ? Number(vSol[idx].toFixed(2)) : 0;
   };
 
-  // 計算各元件的 V, I 與 電功率 P = V * I (W)
   const compCalculated = components.map(c => {
     const kA = `${c.nA.x},${c.nA.y}`;
     const kB = `${c.nB.x},${c.nB.y}`;
@@ -172,11 +171,10 @@ export default function CircuitLab() {
     const vB = getNodeV(kB);
     const vDiff = Number(Math.abs(vA - vB).toFixed(2));
     const iVal = Number((vDiff / c.value).toFixed(2));
-    const pVal = Number((vDiff * iVal).toFixed(2)); // 電功率 (W)
+    const pVal = Number((vDiff * iVal).toFixed(2));
     return { ...c, vA, vB, V: vDiff, I: iVal, P: pVal };
   });
 
-  // 全電路總物理量
   const iTotal = Number(
     compCalculated
       .filter(c => `${c.nA.x},${c.nA.y}` === '0,0' || `${c.nB.x},${c.nB.y}` === '0,0')
@@ -184,10 +182,10 @@ export default function CircuitLab() {
       .toFixed(2)
   );
   const reqTotal = iTotal > 0 ? Number((vSource / iTotal).toFixed(2)) : 0;
-  const pTotal = Number((vSource * iTotal).toFixed(2)); // 全電路總電功率 (W)
+  const pTotal = Number((vSource * iTotal).toFixed(2));
 
   // ==========================================
-  // 惠斯同電橋 State & Logic (5個電阻鑽石網路)
+  // 惠斯同電橋 State & Logic
   // ==========================================
   const [br1, setBr1] = useState(6);
   const [br2, setBr2] = useState(12);
@@ -226,7 +224,7 @@ export default function CircuitLab() {
         </p>
       </div>
 
-      {/* 頁面切換按鈕 (已刪除 "頁面一"、"頁面二" 字樣) */}
+      {/* 頁面切換按鈕 */}
       <div className="flex flex-wrap gap-2">
         <button
           onClick={() => setActiveTab('breadboard')}
@@ -383,7 +381,7 @@ export default function CircuitLab() {
               <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 text-[11px] text-slate-300 leading-relaxed space-y-1">
                 <strong className="text-amber-300 block">💡 自由拉線與功率解析：</strong>
                 <p>1. 上方可切換 **【擺放電阻】** 或 **【新增導線 Wire】**。</p>
-                <p>2. 點選下方個別電阻或全電路總結，可展開詳細的 **電壓 $V$、電流 $I$ 與電功率 $P$** 公式推導！</p>
+                <p>2. 點選下方個別電阻或全電路總結，可展開詳細的 **電壓 V、電流 I 與電功率 P** 公式推導！</p>
               </div>
             </div>
 
@@ -427,7 +425,6 @@ export default function CircuitLab() {
                       </div>
                     )}
 
-                    {/* 電壓、電流與電功率數據展示 */}
                     <div className="grid grid-cols-3 gap-2 text-xs font-mono bg-slate-950 p-2.5 rounded-xl border border-slate-800">
                       <div>
                         <span className="text-slate-400 block text-[10px]">兩端跨壓 V：</span>
@@ -455,7 +452,6 @@ export default function CircuitLab() {
                   <span className="text-xs font-mono text-purple-300">Req = {reqTotal} Ω</span>
                 </div>
 
-                {/* 全電路總數據 3 欄 */}
                 <div className="grid grid-cols-3 gap-2 font-mono text-xs bg-slate-950 p-2.5 rounded-xl border border-slate-800">
                   <div>
                     <span className="text-slate-400 block text-[10px]">總電壓 V_tot：</span>
@@ -471,7 +467,6 @@ export default function CircuitLab() {
                   </div>
                 </div>
 
-                {/* 元件物理量明細清單 */}
                 <div className="max-h-[160px] overflow-y-auto space-y-1.5 font-mono text-xs pt-1">
                   {compCalculated.map(c => (
                     <div
@@ -496,11 +491,11 @@ export default function CircuitLab() {
             </div>
           </div>
 
-          {/* 詳細計算過程與公式推導區 */}
+          {/* 詳細計算過程與公式推導區 (純文字/標籤修復版) */}
           <div className="bg-slate-900 border border-slate-700 rounded-2xl p-5 space-y-3">
             <div className="flex justify-between items-center border-b border-slate-800 pb-2">
               <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-                <Calculator className="w-4 h-4 text-emerald-400" /> 電路物理量與電功率 ($P = IV$) 詳細推導過程
+                <Calculator className="w-4 h-4 text-emerald-400" /> 電路物理量與電功率 (P = IV) 詳細推導過程
               </span>
               <button
                 onClick={() => setShowCalc(!showCalc)}
@@ -512,7 +507,7 @@ export default function CircuitLab() {
 
             {showCalc ? (
               <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs font-mono space-y-3 text-slate-300 leading-relaxed">
-                {/* 1. 當前選取元件之詳細推導 */}
+                {/* 1. 當前選取元件推導 */}
                 {(() => {
                   const cur = compCalculated.find(c => c.id === selectedItemId) || compCalculated[0];
                   if (!cur) return null;
@@ -520,31 +515,31 @@ export default function CircuitLab() {
                   return (
                     <div className="border-b border-slate-800 pb-2 space-y-1">
                       <p className="text-amber-300 font-bold">🎯 【當前選取元件：{cur.name} ({cur.type === 'wire' ? '導線 Wire' : `電阻 ${cur.value}Ω`})】詳細步驟：</p>
-                      <p>• 兩端跨接電壓差 $V_{{cur.name}}$ = $|V_{{\text{{Start}}}} - V_{{\text{{End}}}}| = {cur.V}\text{{ V}}$</p>
+                      <p>• 兩端跨接電壓差 V_{cur.name} = |V_Start - V_End| = <strong className="text-amber-300">{cur.V} V</strong></p>
                       {cur.type === 'resistor' ? (
                         <>
-                          <p>• 流經歐姆電流 $I_{{cur.name}}$ = $\frac{{V}}{{R}} = \frac{{{cur.V}}}{{{cur.value}}} = \mathbf{{{cur.I}}\text{{ A}}}$</p>
-                          <p>• 消耗電功率 $P_{{cur.name}}$ = $I \times V = {cur.I}\text{{ A}} \times {cur.V}\text{{ V}} = \mathbf{{{cur.P}}\text{{ W}}}$ （亦可用 $I^2 R = {cur.I}^2 \times {cur.value} = {cur.P}\text{{ W}}$）</p>
+                          <p>• 流經歐姆電流 I_{cur.name} = V / R = {cur.V} / {cur.value} = <strong className="text-cyan-300">{cur.I} A</strong></p>
+                          <p>• 消耗電功率 P_{cur.name} = I × V = {cur.I} A × {cur.V} V = <strong className="text-rose-400">{cur.P} W</strong> （亦可用 I²R = {cur.I}² × {cur.value} = {cur.P} W）</p>
                         </>
                       ) : (
-                        <p>• 純導線無顯著歐姆電阻 ($R \approx 0\,\Omega$)，跨壓 $V \approx 0\,\text{{V}}$，故熱功率消耗 $P \approx 0\,\text{{W}}$。</p>
+                        <p>• 純導線無顯著歐姆電阻 (R ≈ 0 Ω)，跨壓 V ≈ 0 V，故熱功率消耗 P ≈ 0 W。</p>
                       )}
                     </div>
                   );
                 })()}
 
-                {/* 2. 全電路總理化公式推導 */}
+                {/* 2. 全電路總推導 */}
                 <div className="space-y-1 pt-1">
                   <p className="text-rose-400 font-bold">⚡ 【全電路總物理量 (Total Circuit Summary)】公式推導：</p>
-                  <p>• 總電源電壓 $V_{{\text{{total}}}}$ = $\mathbf{{{vSource}}\text{{ V}}}$</p>
-                  <p>• 全電路幹道總電流 $I_{{\text{{total}}}}$ = $\sum I_{{\text{{branch}}}} = \mathbf{{{iTotal}}\text{{ A}}}$</p>
-                  <p>• 全電路等效總電阻 $R_{{\text{{eq}}}}$ = $\frac{{V_{{\text{{total}}}}}}{{I_{{\text{{total}}}}}} = \frac{{{vSource}}}{{{iTotal}}} = \mathbf{{{reqTotal}}\,\Omega}$</p>
-                  <p>• 全電路總電功率 $P_{{\text{{total}}}}$ = $V_{{\text{{total}}}} \times I_{{\text{{total}}}} = {vSource}\text{{ V}} \times {iTotal}\text{{ A}} = \mathbf{{{pTotal}}\text{{ W}}}$</p>
+                  <p>• 總電源電壓 V_total = <strong className="text-amber-300">{vSource} V</strong></p>
+                  <p>• 全電路幹道總電流 I_total = ∑ I_branch = <strong className="text-cyan-300">{iTotal} A</strong></p>
+                  <p>• 全電路等效總電阻 Req = V_total / I_total = {vSource} / {iTotal} = <strong className="text-purple-300">{reqTotal} Ω</strong></p>
+                  <p>• 全電路總電功率 P_total = V_total × I_total = {vSource} V × {iTotal} A = <strong className="text-rose-400">{pTotal} W</strong></p>
                 </div>
               </div>
             ) : (
               <div className="text-xs text-slate-400 font-sans leading-relaxed">
-                點擊上方按鈕展開當前選取電阻與全電路總電功率 $P = IV$ 與歐姆定律之完整推導步驟。
+                點擊上方按鈕展開當前選取電阻與全電路總電功率 P = IV 與歐姆定律之完整推導步驟。
               </div>
             )}
           </div>
