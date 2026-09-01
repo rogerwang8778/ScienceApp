@@ -418,7 +418,7 @@ export default function ElectroChemistryLab() {
 
                     {/* NO3- 陰離子向左 (負極) */}
                     <circle cx={315 - (animOffset * 1.4) % 150} cy="90" r="7" fill="#ef4444" stroke="#ffffff" strokeWidth="1" />
-                    <text x={315 - (animOffset * 1.4) % 150} y={93.5" textAnchor="middle" fill="#ffffff" fontSize="7" fontWeight="bold">NO₃⁻</text>
+                    <text x={315 - (animOffset * 1.4) % 150} y="93.5" textAnchor="middle" fill="#ffffff" fontSize="7" fontWeight="bold">NO₃⁻</text>
                   </g>
                 ) : (
                   <g>
@@ -448,7 +448,7 @@ export default function ElectroChemistryLab() {
                     </text>
 
                     <circle cx={410 - (animOffset % 40)} cy="210" r="8" fill="#a855f7" opacity="0.85" stroke="#ffffff" strokeWidth="1" />
-                    <text x={410 - (animOffset % 40)} y={213} textAnchor="middle" fill="#ffffff" fontSize="8" fontWeight="bold">
+                    <text x={410 - (animOffset % 40)} y="213" textAnchor="middle" fill="#ffffff" fontSize="8" fontWeight="bold">
                       {curVoltaic.posIon || 'Cu²⁺'}
                     </text>
                   </g>
