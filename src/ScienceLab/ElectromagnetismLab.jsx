@@ -89,7 +89,7 @@ export default function ElectromagnetismLab() {
           bDir = 'right';
           leftIndPole = 'S';
           rightIndPole = 'N';
-          frontIUp = false; // 前方向下
+          frontIUp = false; 
           needleAngle = 30;
         } else {
           indB = '右端產生 S 極吸引 N 極遠離 (內部感應磁場向左)';
@@ -97,7 +97,7 @@ export default function ElectromagnetismLab() {
           bDir = 'left';
           leftIndPole = 'N';
           rightIndPole = 'S';
-          frontIUp = true; // 前方向上
+          frontIUp = true; 
           needleAngle = -30;
         }
       } else {
@@ -107,7 +107,7 @@ export default function ElectromagnetismLab() {
           bDir = 'left';
           leftIndPole = 'N';
           rightIndPole = 'S';
-          frontIUp = true; // 前方向上
+          frontIUp = true; 
           needleAngle = -30;
         } else {
           indB = '右端產生 N 極吸引 S 極遠離 (內部感應磁場向右)';
@@ -115,7 +115,7 @@ export default function ElectromagnetismLab() {
           bDir = 'right';
           leftIndPole = 'S';
           rightIndPole = 'N';
-          frontIUp = false; // 前方向下
+          frontIUp = false; 
           needleAngle = 30;
         }
       }
@@ -153,7 +153,7 @@ export default function ElectromagnetismLab() {
             理化實驗室：國三下 單元六《電與磁互動實驗室》
           </h2>
           <p className="text-xs text-slate-400 mt-1">
-            重構冷次定律前後立體線圈、粒子 3D 環繞動態與磁鐵移動箭頭標示
+            重構冷次定律為經典教科書線圈樣式，修復動作箭頭邊界切割與安培右手邏輯
           </p>
         </div>
 
@@ -519,7 +519,7 @@ export default function ElectromagnetismLab() {
       )}
 
       {/* ==========================================
-          3. 冷次定律與電磁感應 (完全重構前後立體線圈與動作箭頭)
+          3. 冷次定律 (經典教科書螺線管線圈風格)
       ========================================== */}
       {activeTab === 'lenz' && (
         <div className="space-y-6">
@@ -576,74 +576,93 @@ export default function ElectromagnetismLab() {
             </div>
           </div>
 
-          <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 flex flex-col items-center justify-center min-h-[300px]">
-            <svg width="520" height="250" className="select-none font-mono text-[11px]">
-              {/* 副線圈 (Secondary Coil) - 重構前後層次 */}
+          <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 flex flex-col items-center justify-center min-h-[320px]">
+            <svg width="580" height="260" className="select-none font-mono text-[11px]">
+              {/* 教科書風格螺線環線圈 */}
               <g>
-                <text x="160" y="25" textAnchor="middle" fill="#a855f7" fontSize="11" fontWeight="bold">感應副線圈 (立體線圈)</text>
+                <text x="170" y="22" textAnchor="middle" fill="#a855f7" fontSize="12" fontWeight="bold">感應螺線管線圈</text>
 
-                {/* 1. 後半圈 (視角後方：虛線，頂部弧線 y < 100) */}
-                {[0, 1, 2, 3].map((i) => (
+                {/* 1. 螺線管後側 (虛線) */}
+                {[0, 1, 2, 3, 4].map((i) => (
                   <path
-                    key={`ind-back-${i}`}
-                    d={`M ${130 + i * 22} 100 A 11 40 0 0 1 ${152 + i * 22} 100`}
+                    key={`coil-back-${i}`}
+                    d={`M ${90 + i * 35} 110 C ${90 + i * 35} 40, ${125 + i * 35} 40, ${125 + i * 35} 110`}
                     fill="none"
                     stroke="#c084fc"
                     strokeWidth="2.5"
-                    strokeDasharray="3 3"
-                    opacity="0.5"
+                    strokeDasharray="4 3"
+                    opacity="0.6"
                   />
                 ))}
 
-                {/* 2. 內部感應磁場箭頭 (置於線圈中心) */}
+                {/* 內部感應磁場 B_ind 向量箭頭 */}
                 <line
-                  x1={lenzRes.bDir === 'right' ? '130' : '195'}
-                  y1="100"
-                  x2={lenzRes.bDir === 'right' ? '195' : '130'}
-                  y2="100"
+                  x1={lenzRes.bDir === 'right' ? '80' : '250'}
+                  y1="110"
+                  x2={lenzRes.bDir === 'right' ? '250' : '80'}
+                  y2="110"
                   stroke="#06b6d4"
                   strokeWidth="3.5"
                 />
                 <polygon
                   points={
                     lenzRes.bDir === 'right'
-                      ? '195,95 205,100 195,105'
-                      : '130,95 120,100 130,105'
+                      ? '250,105 260,110 250,115'
+                      : '80,105 70,110 80,115'
                   }
                   fill="#06b6d4"
                 />
-                <text x="162" y="90" textAnchor="middle" fill="#06b6d4" fontSize="10" fontWeight="bold">
+                <text x="165" y="100" textAnchor="middle" fill="#06b6d4" fontSize="11" fontWeight="bold">
                   B感應 ({lenzRes.bDir === 'right' ? '向右 ➔' : '向左 '})
                 </text>
 
-                {/* 3. 前半圈 (視角前方：實線，底部弧線 y > 100) */}
-                {[0, 1, 2, 3].map((i) => (
+                {/* 2. 螺線管前側 (粗實線) */}
+                {[0, 1, 2, 3, 4].map((i) => (
                   <path
-                    key={`ind-front-${i}`}
-                    d={`M ${152 + i * 22} 100 A 11 40 0 0 1 ${130 + i * 22} 100`}
+                    key={`coil-front-${i}`}
+                    d={`M ${125 + i * 35} 110 C ${125 + i * 35} 180, ${90 + i * 35} 180, ${90 + i * 35} 110`}
                     fill="none"
                     stroke="#a855f7"
                     strokeWidth="4"
                   />
                 ))}
 
-                {/* 兩端極性標記 */}
-                <g>
-                  <rect x="95" y="80" width="22" height="40" rx="3" fill={lenzRes.leftIndPole === 'N' ? '#3b82f6' : '#ef4444'} />
-                  <text x="106" y="105" textAnchor="middle" fill="#ffffff" fontSize="12" fontWeight="bold">{lenzRes.leftIndPole}</text>
+                {/* 3. 底部完整迴路連接線與檢流計 */}
+                <path
+                  d="M 90 110 L 90 200 L 140 200 M 190 200 L 230 200 L 230 110"
+                  fill="none"
+                  stroke="#a855f7"
+                  strokeWidth="2.5"
+                />
 
-                  <rect x="220" y="80" width="22" height="40" rx="3" fill={lenzRes.rightIndPole === 'N' ? '#3b82f6' : '#ef4444'} />
-                  <text x="231" y="105" textAnchor="middle" fill="#ffffff" fontSize="12" fontWeight="bold">{lenzRes.rightIndPole}</text>
-                </g>
+                {/* 下方檢流計 (G) */}
+                <circle cx="165" cy="200" r="16" fill="#0f172a" stroke="#a855f7" strokeWidth="2" />
+                <text x="165" y="204" textAnchor="middle" fill="#a855f7" fontSize="10" fontWeight="bold">G</text>
+                
+                <line
+                  x1="165"
+                  y1="200"
+                  x2={165 + 12 * Math.sin((lenzRes.needleAngle * Math.PI) / 180)}
+                  y2={200 - 12 * Math.cos((lenzRes.needleAngle * Math.PI) / 180)}
+                  stroke="#ef4444"
+                  strokeWidth="2.5"
+                />
 
-                {/* 4. 黃色感應電流粒子：精準在 3D 環形軌道上旋轉 */}
-                {isRunning && [0, 1, 2, 3].map((i) => {
-                  // frontIUp 為 true 向上（前側由下往上）；false 向下（前側由上往下）
+                {/* 線圈兩端感應磁極標記 (N / S) */}
+                <text x="50" y="115" textAnchor="middle" fill={lenzRes.leftIndPole === 'N' ? '#3b82f6' : '#ef4444'} fontSize="18" fontWeight="bold">
+                  {lenzRes.leftIndPole}
+                </text>
+                <text x="250" y="115" textAnchor="middle" fill={lenzRes.rightIndPole === 'N' ? '#3b82f6' : '#ef4444'} fontSize="18" fontWeight="bold">
+                  {lenzRes.rightIndPole}
+                </text>
+
+                {/* 4. 動態感應電流黃色粒子 (沿螺線管與迴路巡航) */}
+                {isRunning && [0, 1, 2, 3, 4].map((i) => {
                   const dir = lenzRes.frontIUp ? -1 : 1;
-                  const t = (animOffset * 4 + i * 90) * Math.PI / 180;
-                  const cx = 141 + i * 22 - 11 * Math.cos(t);
-                  const cy = 100 + dir * 40 * Math.sin(t);
-                  const isFront = cy >= 100;
+                  const t = (animOffset * 4 + i * 72) * Math.PI / 180;
+                  const cx = 107.5 + i * 35 + 17.5 * Math.cos(t);
+                  const cy = 110 + dir * 35 * Math.sin(t);
+                  const isFront = cy >= 110;
 
                   return (
                     <circle
@@ -658,57 +677,62 @@ export default function ElectromagnetismLab() {
                     />
                   );
                 })}
-
-                {/* 下方檢流計 (G) */}
-                <line x1="162" y1="140" x2="162" y2="185" stroke="#a855f7" strokeWidth="2" />
-                <circle cx="162" cy="185" r="16" fill="#0f172a" stroke="#a855f7" strokeWidth="2" />
-                <text x="162" y="189" textAnchor="middle" fill="#a855f7" fontSize="10" fontWeight="bold">G</text>
-                
-                <line
-                  x1="162"
-                  y1="185"
-                  x2={162 + 12 * Math.sin((lenzRes.needleAngle * Math.PI) / 180)}
-                  y2={185 - 12 * Math.cos((lenzRes.needleAngle * Math.PI) / 180)}
-                  stroke="#ef4444"
-                  strokeWidth="2.5"
-                />
               </g>
 
-              {/* 右側感應源繪製 (完全修復動作文字與箭頭) */}
+              {/* 右側磁鐵與擴大視窗範圍後的動作箭頭 */}
               {sourceType === 'magnet' ? (
                 <g>
                   {(() => {
                     const baseShift = (animOffset % 40);
-                    const magnetX = actionType === 'approach' ? 340 - baseShift : 290 + baseShift;
+                    // 確保向右遠離時有足夠顯示空間
+                    const magnetX = actionType === 'approach' ? 380 - baseShift : 340 + baseShift;
 
                     const leftPole = magnetPole;
                     const rightPole = magnetPole === 'N' ? 'S' : 'N';
 
                     return (
                       <g>
-                        <rect x={magnetX} y="80" width="100" height="40" rx="4" fill="#334155" stroke="#ffffff" strokeWidth="1.5" />
-                        <rect x={magnetX} y="80" width="50" height="40" rx="2" fill={leftPole === 'N' ? '#3b82f6' : '#ef4444'} />
-                        <rect x={magnetX + 50} y="80" width="50" height="40" rx="2" fill={rightPole === 'N' ? '#3b82f6' : '#ef4444'} />
+                        <rect x={magnetX} y="90" width="100" height="40" rx="4" fill="#334155" stroke="#ffffff" strokeWidth="1.5" />
+                        <rect x={magnetX} y="90" width="50" height="40" rx="2" fill={leftPole === 'N' ? '#3b82f6' : '#ef4444'} />
+                        <rect x={magnetX + 50} y="90" width="50" height="40" rx="2" fill={rightPole === 'N' ? '#3b82f6' : '#ef4444'} />
                         
-                        <text x={magnetX + 25} y="105" textAnchor="middle" fill="#ffffff" fontSize="14" fontWeight="bold">{leftPole}</text>
-                        <text x={magnetX + 75} y="105" textAnchor="middle" fill="#ffffff" fontSize="14" fontWeight="bold">{rightPole}</text>
+                        <text x={magnetX + 25} y="115" textAnchor="middle" fill="#ffffff" fontSize="14" fontWeight="bold">{leftPole}</text>
+                        <text x={magnetX + 75} y="115" textAnchor="middle" fill="#ffffff" fontSize="14" fontWeight="bold">{rightPole}</text>
 
-                        {/* 動作指示文字與動態箭頭 */}
-                        <text x={magnetX + 50} y="62" textAnchor="middle" fill="#38bdf8" fontSize="12" fontWeight="bold">
-                          {actionType === 'approach' ? '向左靠近 ' : '向右遠離 ➔'}
-                        </text>
+                        {/* 動作說明與清晰箭頭標示 */}
+                        <g>
+                          <text x={magnetX + 50} y="72" textAnchor="middle" fill="#38bdf8" fontSize="12" fontWeight="bold">
+                            {actionType === 'approach' ? '向左靠近 ' : '向右遠離 ➔'}
+                          </text>
+                          <line
+                            x1={actionType === 'approach' ? magnetX + 75 : magnetX + 25}
+                            y1="142"
+                            x2={actionType === 'approach' ? magnetX + 25 : magnetX + 75}
+                            y2="142"
+                            stroke="#38bdf8"
+                            strokeWidth="2"
+                          />
+                          <polygon
+                            points={
+                              actionType === 'approach'
+                                ? `${magnetX + 25},138 ${magnetX + 17},142 ${magnetX + 25},146`
+                                : `${magnetX + 75},138 ${magnetX + 83},142 ${magnetX + 75},146`
+                            }
+                            fill="#38bdf8"
+                          />
+                        </g>
                       </g>
                     );
                   })()}
                 </g>
               ) : (
                 <g>
-                  <text x="350" y="25" textAnchor="middle" fill="#f59e0b" fontSize="11" fontWeight="bold">主線圈 (立體線圈)</text>
+                  <text x="400" y="22" textAnchor="middle" fill="#f59e0b" fontSize="12" fontWeight="bold">主線圈 (立體線圈)</text>
 
                   {[0, 1, 2].map((i) => (
                     <path
                       key={`p-b-${i}`}
-                      d={`M ${320 + i * 20} 100 A 15 50 0 0 1 ${340 + i * 20} 100`}
+                      d={`M ${360 + i * 25} 110 A 15 50 0 0 1 ${385 + i * 25} 110`}
                       fill="none"
                       stroke="#fbbf24"
                       strokeWidth="2"
@@ -720,15 +744,15 @@ export default function ElectromagnetismLab() {
                   {[0, 1, 2].map((i) => (
                     <path
                       key={`p-f-${i}`}
-                      d={`M ${340 + i * 20} 100 A 15 50 0 0 1 ${320 + i * 20} 100`}
+                      d={`M ${385 + i * 25} 110 A 15 50 0 0 1 ${360 + i * 25} 110`}
                       fill="none"
                       stroke="#f59e0b"
                       strokeWidth={actionType === 'strengthen' ? '5' : '3'}
                     />
                   ))}
 
-                  <rect x="320" y="170" width="60" height="24" rx="4" fill="#1e293b" stroke="#f59e0b" strokeWidth="1.5" />
-                  <text x="350" y="186" textAnchor="middle" fill="#f59e0b" fontSize="10" fontWeight="bold">
+                  <rect x="370" y="180" width="60" height="24" rx="4" fill="#1e293b" stroke="#f59e0b" strokeWidth="1.5" />
+                  <text x="400" y="196" textAnchor="middle" fill="#f59e0b" fontSize="10" fontWeight="bold">
                     {actionType === 'strengthen' ? 'I 加強 ▲' : 'I 減弱 ▼'}
                   </text>
                 </g>
