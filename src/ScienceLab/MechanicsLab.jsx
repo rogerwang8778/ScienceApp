@@ -17,7 +17,7 @@ export default function MechanicsLab() {
   const fk = Number((weight * muK).toFixed(1));    // 動摩擦力 f_k = mu_k * N
 
   let currentFriction = 0;
-  let motionState = '靜止'; // '靜止' | '恰好欲動' | '加速運動'
+  let motionState = '靜止';
   let stateColor = 'text-emerald-400';
 
   if (pushForce === 0) {
@@ -46,32 +46,29 @@ export default function MechanicsLab() {
   const [liquidDensity, setLiquidDensity] = useState(1.0); // 液體密度 (g/cm³)
   const [showCalculation, setShowCalculation] = useState(false);
 
-  // 物體密度 rho = m / V
   const objectDensity = Number((mass / volume).toFixed(2));
-  
-  // 物體重力 W (以 g 或 kgw 標示相當於重量 1g = 1gw)
-  const weightG = mass; // 重力 (gw)
+  const weightG = mass;
 
-  let state = 'sink'; // 'float' | 'suspend' | 'sink'
-  let vSub = 0;       // 沒入液體體積 cm³
-  let buoyancy = 0;   // 浮力 B (gw)
-  let normalForce = 0; // 正向力 N (gw)
+  let state = 'sink';
+  let vSub = 0;
+  let buoyancy = 0;
+  let normalForce = 0;
 
   if (objectDensity < liquidDensity) {
-    state = 'float'; // 浮體
-    buoyancy = weightG; // 浮力等於物重
-    vSub = Number((buoyancy / liquidDensity).toFixed(1)); // V_下 = B / rho_L
+    state = 'float';
+    buoyancy = weightG;
+    vSub = Number((buoyancy / liquidDensity).toFixed(1));
     normalForce = 0;
   } else if (Math.abs(objectDensity - liquidDensity) < 0.001) {
-    state = 'suspend'; // 懸浮
+    state = 'suspend';
     buoyancy = weightG;
     vSub = volume;
     normalForce = 0;
   } else {
-    state = 'sink'; // 沉體
-    vSub = volume; // 完全沒入
-    buoyancy = Number((vSub * liquidDensity).toFixed(1)); // B = V_下 * rho_L
-    normalForce = Number((weightG - buoyancy).toFixed(1)); // N = W - B
+    state = 'sink';
+    vSub = volume;
+    buoyancy = Number((vSub * liquidDensity).toFixed(1));
+    normalForce = Number((weightG - buoyancy).toFixed(1));
   }
 
   return (
@@ -177,7 +174,7 @@ export default function MechanicsLab() {
               </div>
 
               {/* 受力情境向量圖 SVG */}
-              <div className="w-full bg-slate-900 rounded-xl p-4 flex items-center justify-center min-h-[200px]">
+              <div className="w-full bg-slate-900 rounded-xl p-4 flex items-center justify-center min-h-[220px]">
                 <svg width="320" height="160" className="select-none font-mono">
                   {/* 水平面 */}
                   <line x1="20" y1="120" x2="300" y2="120" stroke="#64748b" strokeWidth="4" />
@@ -233,37 +230,65 @@ export default function MechanicsLab() {
               </div>
             </div>
 
-            {/* 右側：施力與摩擦力關係圖 (F-f 圖) */}
+            {/* 右側：施力與摩擦力關係圖 (F-f 圖) - 放大與比例調整 */}
             <div className="lg:col-span-6 bg-slate-950 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between space-y-4">
               <span className="text-xs font-bold text-slate-300 border-b border-slate-800 pb-2">
                 📈 施力 (F) 與 摩擦力 (f) 關係圖解
               </span>
 
-              <div className="w-full bg-slate-900 rounded-xl p-4 flex items-center justify-center min-h-[200px]">
-                <svg width="300" height="180" className="select-none font-mono">
-                  {/* 網格與座標軸 */}
-                  <line x1="40" y1="150" x2="280" y2="150" stroke="#64748b" strokeWidth="2" />
-                  <line x1="40" y1="150" x2="40" y2="20" stroke="#64748b" strokeWidth="2" />
-                  <text x="275" y="168" fill="#94a3b8" fontSize="10">F(推力)</text>
-                  <text x="15" y="25" fill="#94a3b8" fontSize="10">f(摩擦)</text>
+              <div className="w-full bg-slate-900 rounded-xl p-4 flex items-center justify-center min-h-[220px]">
+                <svg width="340" height="200" className="select-none font-mono">
+                  {/* 坐標軸 (放至整個圖表區域) */}
+                  <line x1="45" y1="165" x2="310" y2="165" stroke="#64748b" strokeWidth="2" />
+                  <line x1="45" y1="165" x2="45" y2="20" stroke="#64748b" strokeWidth="2" />
+                  <text x="270" y="185" fill="#94a3b8" fontSize="11" fontWeight="bold">F (推力)</text>
+                  <text x="10" y="22" fill="#94a3b8" fontSize="11" fontWeight="bold">f (摩擦)</text>
 
-                  {/* 靜摩擦斜線 (f = F) 到 (maxFs, maxFs) */}
-                  <line x1="40" y1="150" x2={40 + maxFs * 4} y2={150 - maxFs * 4} stroke="#10b981" strokeWidth="2.5" />
-                  {/* 陡降至動摩擦力 */}
-                  <line x1={40 + maxFs * 4} y1={150 - maxFs * 4} x2={40 + maxFs * 4} y2={150 - fk * 4} stroke="#f59e0b" strokeWidth="2" strokeDasharray="3 3" />
-                  {/* 動摩擦平直線 */}
-                  <line x1={40 + maxFs * 4} y1={150 - fk * 4} x2="270" y2={150 - fk * 4} stroke="#06b6d4" strokeWidth="2.5" />
+                  {/* 動態縮放計算：最大顯示推力與最大摩擦力 */}
+                  {(() => {
+                    const maxAxisF = Math.max(pushForce, maxFs * 1.3, 10);
+                    const maxAxisf = Math.max(maxFs * 1.2, 8);
 
-                  {/* 當前施力狀態標籤點 */}
-                  {pushForce <= maxFs ? (
-                    <circle cx={40 + pushForce * 4} cy={150 - pushForce * 4} r="5" fill="#f43f5e" />
-                  ) : (
-                    <circle cx={40 + pushForce * 4} cy={150 - fk * 4} r="5" fill="#f43f5e" />
-                  )}
+                    const scaleX = 240 / maxAxisF; // 240px 顯示最大推力
+                    const scaleY = 130 / maxAxisf; // 130px 顯示最大摩擦力
 
-                  {/* 頂點標示 (最大靜摩擦力) */}
-                  <circle cx={40 + maxFs * 4} cy={150 - maxFs * 4} r="3" fill="#f59e0b" />
-                  <text x={40 + maxFs * 4 + 5} y={150 - maxFs * 4 - 5} fill="#f59e0b" fontSize="10">fₛ,max</text>
+                    const originX = 45;
+                    const originY = 165;
+
+                    const peakX = originX + maxFs * scaleX;
+                    const peakY = originY - maxFs * scaleY;
+
+                    const fkY = originY - fk * scaleY;
+                    const maxX = originX + maxAxisF * scaleX;
+
+                    const currX = originX + pushForce * scaleX;
+                    const currY = pushForce <= maxFs ? originY - pushForce * scaleY : fkY;
+
+                    return (
+                      <g>
+                        {/* 靜摩擦斜線 (f = F) */}
+                        <line x1={originX} y1={originY} x2={peakX} y2={peakY} stroke="#10b981" strokeWidth="3" />
+                        {/* 陡降點 */}
+                        <line x1={peakX} y1={peakY} x2={peakX} y2={fkY} stroke="#f59e0b" strokeWidth="2" strokeDasharray="3 3" />
+                        {/* 動摩擦平直線 */}
+                        <line x1={peakX} y1={fkY} x2={maxX} y2={fkY} stroke="#06b6d4" strokeWidth="3" />
+
+                        {/* 最大靜摩擦力頂點 */}
+                        <circle cx={peakX} cy={peakY} r="4" fill="#f59e0b" />
+                        <text x={peakX + 6} y={peakY - 6} fill="#f59e0b" fontSize="11" fontWeight="bold">
+                          fₛ,max ({maxFs})
+                        </text>
+
+                        {/* 動摩擦力數值標籤 */}
+                        <text x={maxX - 55} y={fkY - 6} fill="#06b6d4" fontSize="11" fontWeight="bold">
+                          fₖ ({fk})
+                        </text>
+
+                        {/* 當前施力狀態動態點 */}
+                        <circle cx={currX} cy={currY} r="6" fill="#f43f5e" stroke="#ffffff" strokeWidth="1.5" />
+                      </g>
+                    );
+                  })()}
                 </svg>
               </div>
 
@@ -271,7 +296,7 @@ export default function MechanicsLab() {
                 <strong className="text-amber-300 block mb-1">💡 理化核心觀念：</strong>
                 1. 未推動前，靜摩擦力等於外力 (fₛ = F)，成 45° 正比斜線。<br/>
                 2. 恰好欲動瞬間達「最大靜摩擦力 (fₛ,max = μₛ × N)」。<br/>
-                3. 推動後變為「動摩擦力 (f▞ = μ▞ × N)」，數值固定且略小於最大靜摩擦力。
+                3. 推動後變為「動摩擦力 (fₖ = μₖ × N)」，數值固定且略小於最大靜摩擦力。
               </div>
             </div>
           </div>
@@ -349,14 +374,14 @@ export default function MechanicsLab() {
 
                   {/* 物體放置位置計算 */}
                   {(() => {
-                    let yPos = 60; // 預設浮在水面
+                    let yPos = 60;
                     if (state === 'float') {
                       const hRatio = vSub / volume;
-                      yPos = 60 - 40 * (1 - hRatio); // 部分露在水面上
+                      yPos = 60 - 40 * (1 - hRatio);
                     } else if (state === 'suspend') {
-                      yPos = 100; // 懸浮於水中
+                      yPos = 100;
                     } else {
-                      yPos = 135; // 觸底
+                      yPos = 135;
                     }
 
                     return (
