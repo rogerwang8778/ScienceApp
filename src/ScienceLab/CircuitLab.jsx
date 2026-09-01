@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Zap, Play, Pause, RotateCcw, Calculator, Sliders, Shield } from 'lucide-react';
+import { Zap, Play, Pause, RotateCcw, Calculator, Sliders } from 'lucide-react';
 
 export default function CircuitLab() {
   // 電路型態: 'single' (單電阻) | 'series' (串聯) | 'parallel' (並聯)
@@ -218,10 +218,10 @@ export default function CircuitLab() {
             </svg>
           </div>
 
-          <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800 text-[11px] text-slate-300 leading-relaxed font-sans">
+          <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800 text-[11px] text-slate-300 leading-relaxed font-sans space-y-1">
             <strong className="text-amber-300 block">💡 電位與降壓觀念：</strong>
-            <p>• 電荷流經電阻時將電能轉化為熱能/光能，產生**電壓降 (ΔV = IR)**。</p>
-            <p>• 串聯電路中，總電壓由各電阻按比例瓜分 ($V_{\text{total}} = V_1 + V_2$)；並聯電路中，各支路兩端電壓相等 ($V_1 = V_2 = V_{\text{source}}$)。</p>
+            <p>• 電荷流經電阻時將電能轉化為熱能/光能，產生電壓降 ΔV = IR。</p>
+            <p>• 串聯電路中，總電壓由各電阻按比例瓜分 (V_total = V1 + V2)；並聯電路中，各支路兩端電壓相等 (V1 = V2 = V_source)。</p>
           </div>
         </div>
 
@@ -236,7 +236,6 @@ export default function CircuitLab() {
 
           <div className="w-full bg-slate-900 rounded-xl p-4 flex items-center justify-center min-h-[220px]">
             <svg width="320" height="180" className="select-none font-mono text-[10px]">
-              {/* 電流模擬 */}
               <rect x="20" y="70" width="30" height="40" rx="4" fill="#1e293b" stroke="#38bdf8" strokeWidth="2" />
               <text x="35" y="94" textAnchor="middle" fill="#38bdf8" fontSize="10" fontWeight="bold">{iTotal}A</text>
 
@@ -280,10 +279,10 @@ export default function CircuitLab() {
             </svg>
           </div>
 
-          <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800 text-[11px] text-slate-300 leading-relaxed font-sans">
+          <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800 text-[11px] text-slate-300 leading-relaxed font-sans space-y-1">
             <strong className="text-cyan-300 block">💡 電流守恆與分流法則：</strong>
-            <p>• **串聯電路**：單一迴路，處處電流相等 ($I_{\text{total}} = I_1 = I_2$)。</p>
-            <p>• **並聯電路**：節點分流，幹道總電流等於支路電流和 ($I_{\text{total}} = I_1 + I_2$)，電阻小者分得電流大。</p>
+            <p>• 串聯電路：單一迴路，處處電流相等 (I_total = I1 = I2)。</p>
+            <p>• 並聯電路：節點分流，幹道總電流等於支路電流和 (I_total = I1 + I2)，電阻小者分得電流大。</p>
           </div>
         </div>
       </div>
@@ -330,7 +329,7 @@ export default function CircuitLab() {
           </div>
         ) : (
           <div className="text-xs text-slate-400 font-sans leading-relaxed">
-            點擊上方按鈕展開歐姆定律 $V = IR$ 與串並聯等效電阻推導細節。
+            點擊上方按鈕展開歐姆定律 V = IR 與串並聯等效電阻推導細節。
           </div>
         )}
       </div>
