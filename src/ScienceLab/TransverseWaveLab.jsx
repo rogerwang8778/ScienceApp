@@ -317,16 +317,16 @@ export default function TransverseWaveLab({ onAddExp }) {
               <button
                 key={item.label}
                 onClick={() => handlePlayCycleFraction(item.val, item.label)}
-                className={`px-2.5 py-1 rounded-lg transition-all font-mono font-bold text-[11px] flex items-center gap-1 ${
-                  playingCycleLabel === item.label
-                    ? 'bg-amber-500 text-slate-950 shadow-lg animate-pulse'
-                    : 'bg-slate-800 hover:bg-amber-600/30 border border-slate-700 text-amber-300'
-                }`}
-              >
-                ▶ {item.label}
-              </button>
-            ))}
-          </div>
+                <div className="bg-slate-900/90 border border-slate-700 p-4 rounded-xl text-xs space-y-2 text-slate-300">
+        <div className="flex items-center gap-1.5 text-cyan-400 font-bold">
+          <Info className="w-4 h-4" />
+          <span>理化「週期分率動態演示」解題觀察技巧：</span>
+        </div>
+        <ul className="list-disc list-inside space-y-1 text-slate-300 leading-relaxed pl-1">
+          <li><strong>動態觀測 (1/4 T)</strong>：點擊 <span className="text-amber-300 font-bold">▶ 1/4 T</span>，可以觀看質點「花費 1/4 週期，從平衡位置滑動到達波峰」的動態軌跡。</li>
+          <li><strong>動態觀測 (2/4 T)（半週期）</strong>：質點剛好完成半個完整的週期運動，波形正好傳播半個波長 (1/2 λ) 的距離！</li>
+        </ul>
+      </div>
 
           {/* 顯示標籤按鈕 */}
           <button
