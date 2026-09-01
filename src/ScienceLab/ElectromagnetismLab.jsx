@@ -153,7 +153,7 @@ export default function ElectromagnetismLab() {
             理化實驗室：國三下 單元六《電與磁互動實驗室》
           </h2>
           <p className="text-xs text-slate-400 mt-1">
-            重構冷次定律為經典教科書線圈樣式，修復動作箭頭邊界切割與安培右手邏輯
+            重構冷次定律為正統前後立體螺線管，修復說明區文字箭頭與安培右手定則
           </p>
         </div>
 
@@ -299,8 +299,9 @@ export default function ElectromagnetismLab() {
                   ))}
 
                   <text x="240" y="123" textAnchor="middle" fill="#94a3b8" fontSize="10">視角後 (虛線)</text>
+
                   <text x="240" y="165" textAnchor="middle" fill="#38bdf8" fontSize="10" fontWeight="bold">
-                    視角前 ({currentDir === 'up' ? '向右 ➔' : '向左 '})
+                    視角前 ({currentDir === 'up' ? '向右 →' : '向左 ←'})
                   </text>
                   <text x="100" y="143" textAnchor="middle" fill="#38bdf8" fontSize="10" fontWeight="bold">
                     西方 ({currentDir === 'up' ? '穿出 ⦿' : '穿入 ⊗'})
@@ -519,7 +520,7 @@ export default function ElectromagnetismLab() {
       )}
 
       {/* ==========================================
-          3. 冷次定律 (經典教科書螺線管線圈風格)
+          3. 冷次定律 (斜向 3D 透視前後立體螺線管)
       ========================================== */}
       {activeTab === 'lenz' && (
         <div className="space-y-6">
@@ -554,7 +555,7 @@ export default function ElectromagnetismLab() {
                       onClick={() => setActionType(actionType === 'approach' ? 'recede' : 'approach')}
                       className="px-3 py-1 bg-slate-800 text-cyan-400 text-xs font-bold rounded-xl border border-slate-700"
                     >
-                      {actionType === 'approach' ? '向左靠近線圈 ' : '向右遠離線圈 ➔'}
+                      {actionType === 'approach' ? '向左靠近線圈 ←' : '向右遠離線圈 →'}
                     </button>
                   </div>
                 </>
@@ -578,20 +579,20 @@ export default function ElectromagnetismLab() {
 
           <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 flex flex-col items-center justify-center min-h-[320px]">
             <svg width="580" height="260" className="select-none font-mono text-[11px]">
-              {/* 教科書風格螺線環線圈 */}
+              {/* 正統前後透視立體螺線管 */}
               <g>
                 <text x="170" y="22" textAnchor="middle" fill="#a855f7" fontSize="12" fontWeight="bold">感應螺線管線圈</text>
 
-                {/* 1. 螺線管後側 (虛線) */}
+                {/* 1. 螺線管後側 (視角後方：細虛線，從右下斜繞回左上) */}
                 {[0, 1, 2, 3, 4].map((i) => (
                   <path
                     key={`coil-back-${i}`}
-                    d={`M ${90 + i * 35} 110 C ${90 + i * 35} 40, ${125 + i * 35} 40, ${125 + i * 35} 110`}
+                    d={`M ${120 + i * 32} 150 C ${120 + i * 32} 50, ${90 + i * 32} 50, ${90 + i * 32} 70`}
                     fill="none"
                     stroke="#c084fc"
-                    strokeWidth="2.5"
+                    strokeWidth="2.2"
                     strokeDasharray="4 3"
-                    opacity="0.6"
+                    opacity="0.5"
                   />
                 ))}
 
@@ -613,23 +614,23 @@ export default function ElectromagnetismLab() {
                   fill="#06b6d4"
                 />
                 <text x="165" y="100" textAnchor="middle" fill="#06b6d4" fontSize="11" fontWeight="bold">
-                  B感應 ({lenzRes.bDir === 'right' ? '向右 ➔' : '向左 '})
+                  B感應 ({lenzRes.bDir === 'right' ? '向右 →' : '向左 ←'})
                 </text>
 
-                {/* 2. 螺線管前側 (粗實線) */}
+                {/* 2. 螺線管前側 (視角前方：粗實線，從左上斜貫穿至右下) */}
                 {[0, 1, 2, 3, 4].map((i) => (
                   <path
                     key={`coil-front-${i}`}
-                    d={`M ${125 + i * 35} 110 C ${125 + i * 35} 180, ${90 + i * 35} 180, ${90 + i * 35} 110`}
+                    d={`M ${90 + i * 32} 70 C ${90 + i * 32} 170, ${120 + i * 32} 170, ${120 + i * 32} 150`}
                     fill="none"
                     stroke="#a855f7"
-                    strokeWidth="4"
+                    strokeWidth="4.5"
                   />
                 ))}
 
                 {/* 3. 底部完整迴路連接線與檢流計 */}
                 <path
-                  d="M 90 110 L 90 200 L 140 200 M 190 200 L 230 200 L 230 110"
+                  d="M 90 135 L 90 200 L 140 200 M 190 200 L 248 200 L 248 135"
                   fill="none"
                   stroke="#a855f7"
                   strokeWidth="2.5"
@@ -652,17 +653,17 @@ export default function ElectromagnetismLab() {
                 <text x="50" y="115" textAnchor="middle" fill={lenzRes.leftIndPole === 'N' ? '#3b82f6' : '#ef4444'} fontSize="18" fontWeight="bold">
                   {lenzRes.leftIndPole}
                 </text>
-                <text x="250" y="115" textAnchor="middle" fill={lenzRes.rightIndPole === 'N' ? '#3b82f6' : '#ef4444'} fontSize="18" fontWeight="bold">
+                <text x="270" y="115" textAnchor="middle" fill={lenzRes.rightIndPole === 'N' ? '#3b82f6' : '#ef4444'} fontSize="18" fontWeight="bold">
                   {lenzRes.rightIndPole}
                 </text>
 
-                {/* 4. 動態感應電流黃色粒子 (沿螺線管與迴路巡航) */}
+                {/* 4. 動態感應電流黃色粒子 (沿正統 3D 螺旋路徑環繞) */}
                 {isRunning && [0, 1, 2, 3, 4].map((i) => {
                   const dir = lenzRes.frontIUp ? -1 : 1;
                   const t = (animOffset * 4 + i * 72) * Math.PI / 180;
-                  const cx = 107.5 + i * 35 + 17.5 * Math.cos(t);
-                  const cy = 110 + dir * 35 * Math.sin(t);
-                  const isFront = cy >= 110;
+                  const cx = 105 + i * 32 + 15 * Math.cos(t);
+                  const cy = 110 + dir * 40 * Math.sin(t);
+                  const isFront = cy >= 105;
 
                   return (
                     <circle
@@ -684,7 +685,6 @@ export default function ElectromagnetismLab() {
                 <g>
                   {(() => {
                     const baseShift = (animOffset % 40);
-                    // 確保向右遠離時有足夠顯示空間
                     const magnetX = actionType === 'approach' ? 380 - baseShift : 340 + baseShift;
 
                     const leftPole = magnetPole;
@@ -699,10 +699,10 @@ export default function ElectromagnetismLab() {
                         <text x={magnetX + 25} y="115" textAnchor="middle" fill="#ffffff" fontSize="14" fontWeight="bold">{leftPole}</text>
                         <text x={magnetX + 75} y="115" textAnchor="middle" fill="#ffffff" fontSize="14" fontWeight="bold">{rightPole}</text>
 
-                        {/* 動作說明與清晰箭頭標示 */}
+                        {/* 動作說明與高相容性箭頭標示 */}
                         <g>
                           <text x={magnetX + 50} y="72" textAnchor="middle" fill="#38bdf8" fontSize="12" fontWeight="bold">
-                            {actionType === 'approach' ? '向左靠近 ' : '向右遠離 ➔'}
+                            {actionType === 'approach' ? '向左靠近 ←' : '向右遠離 →'}
                           </text>
                           <line
                             x1={actionType === 'approach' ? magnetX + 75 : magnetX + 25}
@@ -759,10 +759,11 @@ export default function ElectromagnetismLab() {
               )}
             </svg>
 
+            {/* 下方卡片文字徹底排查：改用標準相容箭頭，解決破圖亂碼 */}
             <div className="bg-slate-900 p-3.5 rounded-xl border border-slate-800 text-xs space-y-1 w-full mt-2 font-sans">
               <p className="text-purple-300 font-bold">🎯 冷次定律電磁感應幾何與物理對照：</p>
               <p className="text-slate-300">• 感應磁極：線圈左端為 <strong className="text-blue-400">{lenzRes.leftIndPole} 極</strong>，右端為 <strong className="text-rose-400">{lenzRes.rightIndPole} 極</strong>。</p>
-              <p className="text-slate-300">• 內部感應磁場（由 $S \rightarrow N$ 極）：<strong className="text-cyan-300">{lenzRes.bDir === 'right' ? '向右 ➔' : '向左 '}</strong> ({lenzRes.indB})。</p>
+              <p className="text-slate-300">• 內部感應磁場（由 S → N 極）：<strong className="text-cyan-300">{lenzRes.bDir === 'right' ? '向右 →' : '向左 ←'}</strong> ({lenzRes.indB})。</p>
               <p className="text-slate-300">• 前方繞線電流：<strong className="text-amber-300">{lenzRes.frontIUp ? '由下往上 ▲' : '由上往下 ▼'}</strong>。</p>
             </div>
           </div>
