@@ -158,7 +158,7 @@ export default function ScienceLab({ onAddExp }) {
       color: 'from-amber-500/20 to-orange-500/20 border-amber-500/50 text-amber-400',
       badge: '全新上線',
       isAvailable: true,
-    }
+    },
     {
       id: 'circuit',
       title: '歐姆定律與串並聯電路',
