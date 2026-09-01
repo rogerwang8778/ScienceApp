@@ -213,7 +213,6 @@ export default function CircuitLab() {
                   currentX = xEnd;
 
                   if (group.length === 1) {
-                    // 單一串聯元件
                     const item = group[0];
                     const rData = resData.find(d => d.id === item.id);
                     const midX = (xStart + xEnd) / 2;
@@ -227,14 +226,11 @@ export default function CircuitLab() {
                       </g>
                     );
                   } else {
-                    // 並聯元件組 (Fork Branch)
                     const midX = (xStart + xEnd) / 2;
 
                     return (
                       <g key={`g-${gIdx}`}>
-                        {/* 主幹線連接 */}
                         <line x1={xStart} y1="30" x2={xEnd} y2="30" stroke="#64748b" strokeWidth="1.5" strokeDasharray="2 2" />
-                        {/* 垂直分流幹線 */}
                         <line x1={midX} y1="30" x2={midX} y2={30 + group.length * 35} stroke="#a855f7" strokeWidth="2" />
 
                         {group.map((item, subIdx) => {
@@ -243,7 +239,6 @@ export default function CircuitLab() {
 
                           return (
                             <g key={`sub-${item.id}`}>
-                              {/* 平行分支線路 */}
                               <line x1={midX - 25} y1={py} x2={midX + 25} y2={py} stroke="#a855f7" strokeWidth="2" />
                               <rect x={midX - 18} y={py - 12} width="36" height="24" rx="4" fill="#0f172a" stroke="#a855f7" strokeWidth="2" />
                               <text x={midX} y={py + 3} textAnchor="middle" fill="#a855f7" fontSize="9" fontWeight="bold">{item.name}</text>
@@ -261,8 +256,8 @@ export default function CircuitLab() {
 
           <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800 text-[11px] text-slate-300 leading-relaxed font-sans space-y-1">
             <strong className="text-amber-300 block">💡 串並聯結構圖示解析：</strong>
-            <p>• **串聯元件**：導線直線穿過（如藍色框），共享幹道電流。</p>
-            <p>• **並聯分支**：主幹線垂直分叉為平行線路（紫色框），各分支跨接電壓相等。</p>
+            <p>• 串聯元件：導線直線穿過（如青色框），共享幹道電流。</p>
+            <p>• 並聯分支：主幹線垂直分叉為平行線路（紫色框），各分支跨接電壓相等。</p>
           </div>
         </div>
 
@@ -296,7 +291,7 @@ export default function CircuitLab() {
 
           <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800 text-[11px] text-slate-300 leading-relaxed font-sans space-y-1">
             <strong className="text-cyan-300 block">💡 電流守恆與分流法則：</strong>
-            <p>• 節點分流：流入節點總電流等於各分支流出總和 ($I_{\text{total}} = I_1 + I_2 + \dots$)。</p>
+            <p>• 節點分流：流入節點總電流等於各分支流出總和 (I_total = I1 + I2 + ...)。</p>
             <p>• 串聯同電流：串聯路徑上電流處處相等。</p>
           </div>
         </div>
@@ -331,7 +326,7 @@ export default function CircuitLab() {
           </div>
         ) : (
           <div className="text-xs text-slate-400 font-sans leading-relaxed">
-            點擊上方按鈕展開歐姆定律 $V = IR$ 與全電路分組約簡推導細節。
+            點擊上方按鈕展開歐姆定律 V = IR 與全電路分組約簡推導細節。
           </div>
         )}
       </div>
