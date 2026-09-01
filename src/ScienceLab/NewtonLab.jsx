@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldAlert, Play, Pause, RotateCcw, Calculator, Compass, Scale, Table } from 'lucide-react';
+import { ShieldAlert, Play, Pause, RotateCcw, Calculator, Compass, Scale } from 'lucide-react';
 
 export default function NewtonLab() {
   const [activeTab, setActiveTab] = useState('cart'); // 'cart' | 'circular'
@@ -30,7 +30,7 @@ export default function NewtonLab() {
     if (isCartRunning) {
       interval = setInterval(() => {
         setCartTime((prev) => {
-          if (prev >= tDrop + 2) { // 落地後繼續做 2 秒等速運動
+          if (prev >= tDrop + 2) {
             setIsCartRunning(false);
             return Number((tDrop + 2).toFixed(2));
           }
@@ -55,7 +55,6 @@ export default function NewtonLab() {
     ? Number((0.5 * a1 * tDrop * tDrop + vDrop * (cartTime - tDrop)).toFixed(2))
     : Number((0.5 * a1 * cartTime * cartTime).toFixed(2));
 
-  // 砝碼當前下降高度
   const weightY = isDropped ? dFloor : Number((0.5 * a1 * cartTime * cartTime).toFixed(2));
 
   // ==========================================
@@ -65,7 +64,6 @@ export default function NewtonLab() {
   const [omega, setOmega] = useState(2);      // 角速度 w (rad/s)
   const [showV, setShowV] = useState(true);   // 顯示切線速度
   const [showA, setShowA] = useState(true);   // 顯示向心加速度
-  const [showF, setShowF] = useState(true);   // 顯示向心力
 
   const [circAngle, setCircAngle] = useState(0); // 當前旋轉角度 (rad)
   const [isCircRunning, setIsCircRunning] = useState(true);
@@ -194,25 +192,19 @@ export default function NewtonLab() {
 
               <div className="w-full bg-slate-900 rounded-xl p-4 flex items-center justify-center min-h-[220px]">
                 <svg width="340" height="200" className="select-none font-mono text-[10px]">
-                  {/* 桌面與桌緣 */}
                   <line x1="20" y1="90" x2="260" y2="90" stroke="#64748b" strokeWidth="4" />
                   <line x1="260" y1="90" x2="260" y2="190" stroke="#64748b" strokeWidth="4" />
-                  {/* 定滑輪 */}
                   <circle cx="260" cy="90" r="8" fill="#475569" stroke="#94a3b8" strokeWidth="2" />
 
-                  {/* 滑車動態位置 */}
                   {(() => {
                     const cartPx = Math.min(230, 40 + currentX * 35);
                     const weightPy = Math.min(170, 90 + weightY * 20);
 
                     return (
                       <g>
-                        {/* 繩子：滑車到滑輪 */}
                         <line x1={cartPx + 20} y1="78" x2="260" y2="78" stroke="#f59e0b" strokeWidth="2" />
-                        {/* 繩子：滑輪到砝碼 */}
                         <line x1="268" y1="90" x2="268" y2={weightPy} stroke={isDropped ? '#475569' : '#f59e0b'} strokeWidth="2" strokeDasharray={isDropped ? '3 3' : 'none'} />
 
-                        {/* 滑車 */}
                         <rect x={cartPx - 20} y="62" width="40" height="24" rx="4" fill="#3b82f6" stroke="#60a5fa" strokeWidth="2" />
                         <circle cx={cartPx - 10} cy="88" r="4" fill="#0f172a" />
                         <circle cx={cartPx + 10} cy="88" r="4" fill="#0f172a" />
@@ -220,7 +212,6 @@ export default function NewtonLab() {
                           {mCart}kg
                         </text>
 
-                        {/* 滑車受張力箭頭 */}
                         {currentT > 0 && (
                           <g>
                             <line x1={cartPx + 20} y1="78" x2={cartPx + 45} y2="78" stroke="#10b981" strokeWidth="2" />
@@ -231,7 +222,6 @@ export default function NewtonLab() {
                           </g>
                         )}
 
-                        {/* 砝碼 */}
                         <rect x="258" y={weightPy} width="20" height="20" rx="3" fill="#ec4899" stroke="#f472b6" strokeWidth="1.5" />
                         <text x="268" y={weightPy + 14} textAnchor="middle" fill="#ffffff" fontSize="9" fontWeight="bold">
                           {mWeight}kg
@@ -242,7 +232,6 @@ export default function NewtonLab() {
                 </svg>
               </div>
 
-              {/* 即時受力數值卡 */}
               <div className="grid grid-cols-3 gap-2 text-center text-xs font-mono">
                 <div className="bg-slate-900 p-2 rounded-xl border border-slate-800">
                   <span className="text-slate-400 block text-[10px]">繩張力 T</span>
@@ -261,7 +250,6 @@ export default function NewtonLab() {
 
             {/* 右側：v-t 圖與計算過程 */}
             <div className="lg:col-span-5 space-y-4">
-              {/* v-t 關係圖 */}
               <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-2">
                 <span className="text-xs font-bold text-cyan-400 block border-b border-slate-800 pb-1.5">
                   📈 兩階段運動 v-t 圖 (折點為砝碼落地瞬間)
@@ -289,18 +277,14 @@ export default function NewtonLab() {
 
                       return (
                         <g>
-                          {/* 階段一斜線 */}
                           <line x1="30" y1="120" x2={dropPx} y2={dropPy} stroke="#f59e0b" strokeWidth="2.5" />
-                          {/* 階段二等速水平線 */}
                           <line x1={dropPx} y1={dropPy} x2={endPx} y2={dropPy} stroke="#10b981" strokeWidth="2.5" />
 
-                          {/* 落地時間虛線 */}
                           <line x1={dropPx} y1="120" x2={dropPx} y2={dropPy} stroke="#ef4444" strokeWidth="1" strokeDasharray="2 2" />
                           <text x={dropPx} y="133" textAnchor="middle" fill="#ef4444" fontSize="8">
                             t={tDrop}s
                           </text>
 
-                          {/* 當前數據點 */}
                           <circle cx={currPx} cy={currPy} r="4" fill="#38bdf8" />
                         </g>
                       );
@@ -309,7 +293,6 @@ export default function NewtonLab() {
                 </div>
               </div>
 
-              {/* 計算過程卡片 */}
               <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-2">
                 <div className="flex justify-between items-center border-b border-slate-800 pb-2">
                   <span className="text-xs font-bold text-slate-300">⚖️ F=ma 算式詳細拆解</span>
@@ -332,8 +315,8 @@ export default function NewtonLab() {
                 ) : (
                   <div className="bg-slate-900 p-3.5 rounded-xl border border-slate-800 text-xs font-sans text-slate-400 space-y-1 leading-relaxed">
                     <strong className="text-amber-300 block">💡 考點總結：</strong>
-                    <p>• 落地前：砝碼重力驅動全系統，做**等加速度運動** ($a = \frac{mg}{M+m}$)。</p>
-                    <p>• 落地後：合力為 0（$T=0$），滑車依慣性做**等速度運動**。</p>
+                    <p>• 落地前：砝碼重力驅動全系統，做等加速度運動 (a = mg / (M+m))。</p>
+                    <p>• 落地後：合力為 0 (T = 0)，滑車依慣性做等速度運動。</p>
                   </div>
                 )}
               </div>
@@ -384,7 +367,6 @@ export default function NewtonLab() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* 左側：圓周運動畫布 */}
             <div className="lg:col-span-7 bg-slate-950 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between space-y-4">
               <div className="flex justify-between items-center border-b border-slate-800 pb-2">
                 <span className="text-xs font-bold text-slate-300">🔄 等速率圓周運動向量分析</span>
@@ -400,33 +382,26 @@ export default function NewtonLab() {
 
               <div className="w-full bg-slate-900 rounded-xl p-4 flex items-center justify-center min-h-[240px]">
                 <svg width="280" height="240" className="select-none font-mono text-[10px]">
-                  {/* 圓心 */}
                   <circle cx="140" cy="120" r="4" fill="#64748b" />
                   
-                  {/* 圓周軌跡 */}
                   {(() => {
                     const rPx = radius * 18;
                     const ballX = 140 + rPx * Math.cos(circAngle);
                     const ballY = 120 + rPx * Math.sin(circAngle);
 
-                    // 切線速度向量 (垂直於半徑)
                     const vxPx = -Math.sin(circAngle) * 35;
                     const vyPx = Math.cos(circAngle) * 35;
 
-                    // 向心加速度向量 (指向圓心)
                     const axPx = -Math.cos(circAngle) * 30;
                     const ayPx = -Math.sin(circAngle) * 30;
 
                     return (
                       <g>
                         <circle cx="140" cy="120" r={rPx} fill="none" stroke="#475569" strokeWidth="1.5" strokeDasharray="4 4" />
-                        {/* 半徑連線 */}
                         <line x1="140" y1="120" x2={ballX} y2={ballY} stroke="#64748b" strokeWidth="1.5" />
 
-                        {/* 物體 */}
                         <circle cx={ballX} cy={ballY} r="7" fill="#f59e0b" stroke="#ffffff" strokeWidth="1.5" />
 
-                        {/* 切線速度向量 v */}
                         {showV && (
                           <g>
                             <line x1={ballX} y1={ballY} x2={ballX + vxPx} y2={ballY + vyPx} stroke="#10b981" strokeWidth="2.5" />
@@ -436,7 +411,6 @@ export default function NewtonLab() {
                           </g>
                         )}
 
-                        {/* 向心加速度/向心力向量 a_c */}
                         {showA && (
                           <g>
                             <line x1={ballX} y1={ballY} x2={ballX + axPx} y2={ballY + ayPx} stroke="#f43f5e" strokeWidth="2.5" />
@@ -463,7 +437,6 @@ export default function NewtonLab() {
               </div>
             </div>
 
-            {/* 右側：計算過程與觀念卡 */}
             <div className="lg:col-span-5 space-y-4">
               <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-3">
                 <div className="flex justify-between items-center border-b border-slate-800 pb-2">
@@ -486,8 +459,8 @@ export default function NewtonLab() {
                 ) : (
                   <div className="bg-slate-900 p-3.5 rounded-xl border border-slate-800 text-xs font-sans text-slate-400 space-y-1.5 leading-relaxed">
                     <strong className="text-cyan-300 block">💡 圓周運動三大方向法則：</strong>
-                    <p>• **速度方向**：恆沿圓周**切線方向**（若向心力消失，物體將沿切線飛出）。</p>
-                    <p>• **向心力/加速度方向**：恆指向**圓心**，負責改變速度的「方向」而非大小。</p>
+                    <p>• 速度方向：恆沿圓周切線方向（若向心力消失，物體將沿切線飛出）。</p>
+                    <p>• 向心力/加速度方向：恆指向圓心，負責改變速度的「方向」而非大小。</p>
                   </div>
                 )}
               </div>
