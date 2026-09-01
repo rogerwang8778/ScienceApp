@@ -9,9 +9,6 @@ export default function CircuitLab() {
 
   // ==========================================
   // 頁面 1：節點跨接電路 (Node-based Circuit Builder)
-  // 每個電阻定義 [startNode, endNode]
-  // Node 0: 電源正極 (V_source)
-  // Node 99: 電源負極 (0V/接地)
   // ==========================================
   const [nodeResistors, setNodeResistors] = useState([
     { id: 'r1', name: 'R1', value: 6, startNode: 0, endNode: 1 },
@@ -21,14 +18,13 @@ export default function CircuitLab() {
     { id: 'r5', name: 'R5', value: 6, startNode: 4, endNode: 99 },
   ]);
 
-  // 新增電阻
   const addNodeResistor = () => {
     if (nodeResistors.length < 10) {
       const idx = nodeResistors.length + 1;
       const newId = `r${idx}`;
       setNodeResistors([
         ...nodeResistors,
-        { id: newId, name: `R${idx}`, value: 6, startNode: 0, endNode: 99 } // 預設跨接電源兩端
+        { id: newId, name: `R${idx}`, value: 6, startNode: 0, endNode: 99 }
       ]);
     }
   };
@@ -43,22 +39,19 @@ export default function CircuitLab() {
     setNodeResistors(nodeResistors.map((r) => (r.id === id ? { ...r, [key]: val } : r)));
   };
 
-  // 可選節點清單
   const availableNodes = [
-    { id: 0, label: '節點 0 (電源正極 高電位)' },
+    { id: 0, label: '節點 0 (電源正極)' },
     { id: 1, label: '節點 1 (R1與R2之間)' },
     { id: 2, label: '節點 2 (R2與R3之間)' },
     { id: 3, label: '節點 3 (R3與R4之間)' },
     { id: 4, label: '節點 4 (R4與R5之間)' },
-    { id: 99, label: '節點 99 (電源負極 接地0V)' },
+    { id: 99, label: '節點 99 (電源負極 0V)' },
   ];
 
-  // KCL 求解 (Node Voltage Analysis)
-  // 計算內部動態節點 (Node 1, Node 2, Node 3, Node 4)
+  // KCL 求解
   const internalNodes = [1, 2, 3, 4];
   const N = internalNodes.length;
 
-  // 導納矩陣 G * V = I_ext
   let G = Array(N).fill(0).map(() => Array(N).fill(0));
   let B_vec = Array(N).fill(0);
 
@@ -83,7 +76,6 @@ export default function CircuitLab() {
     }
   });
 
-  // 高斯消去法解 V_node
   const solveLinear = (A_mat, b_arr) => {
     let n = b_arr.length;
     let A = A_mat.map((row) => [...row]);
@@ -140,7 +132,6 @@ export default function CircuitLab() {
     return idx !== -1 ? Number(vSol[idx].toFixed(2)) : 0;
   };
 
-  // 各電阻物理量計算
   const nodeResData = nodeResistors.map((r) => {
     const vStart = getNodeVoltage(r.startNode);
     const vEnd = getNodeVoltage(r.endNode);
@@ -151,7 +142,6 @@ export default function CircuitLab() {
     return { ...r, vStart, vEnd, V: vDiff, I: iVal, isSpan };
   });
 
-  // 計算幹道總電流
   const totalI = Number(
     nodeResData
       .filter((r) => r.startNode === 0)
@@ -242,7 +232,7 @@ export default function CircuitLab() {
               </button>
             </div>
 
-            {/* 電阻卡片設定區：設定起點與終點節點 */}
+            {/* 電阻卡片設定區 */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {nodeResistors.map((r) => (
                 <div key={r.id} className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2 relative">
@@ -253,7 +243,6 @@ export default function CircuitLab() {
                     </span>
                   </div>
 
-                  {/* 選擇起點與終點 */}
                   <div className="grid grid-cols-2 gap-2 text-[10px]">
                     <div>
                       <span className="text-slate-400 block mb-0.5">跨接起點 (Start Node)：</span>
@@ -340,15 +329,13 @@ export default function CircuitLab() {
                   <rect x="15" y="90" width="30" height="40" rx="4" fill="#1e293b" stroke="#f59e0b" strokeWidth="2" />
                   <text x="30" y="114" textAnchor="middle" fill="#f59e0b" fontSize="10" fontWeight="bold">{vSource}V</text>
 
-                  {/* 節點 0 高電位幹線 */}
+                  {/* 幹線導線 */}
                   <line x1="30" y1="90" x2="30" y2="40" stroke="#ef4444" strokeWidth="2.5" />
                   <line x1="30" y1="40" x2="60" y2="40" stroke="#ef4444" strokeWidth="2.5" />
-
-                  {/* 節點 99 接地低電位幹線 */}
                   <line x1="30" y1="130" x2="30" y2="180" stroke="#3b82f6" strokeWidth="2.5" />
                   <line x1="30" y1="180" x2="310" y2="180" stroke="#3b82f6" strokeWidth="2.5" />
 
-                  {/* 節點位置標註 (Node 0, 1, 2, 3, 4, 99) */}
+                  {/* 節點圓點標註 */}
                   {[
                     { id: 0, x: 60, y: 40 },
                     { id: 1, x: 110, y: 40 },
@@ -365,9 +352,8 @@ export default function CircuitLab() {
                     </g>
                   ))}
 
-                  {/* 繪製所有電阻與跨接包覆線 */}
+                  {/* 繪製電阻元件與跨接線 */}
                   {nodeResData.map((r, idx) => {
-                    // 主幹線上的電阻 (相鄰節點)
                     if (!r.isSpan) {
                       const startX = r.startNode === 0 ? 60 : 60 + r.startNode * 50;
                       const endX = r.endNode === 99 ? 310 : 60 + r.endNode * 50;
@@ -382,21 +368,19 @@ export default function CircuitLab() {
                         </g>
                       );
                     } else {
-                      // 跨越多個節點的大範圍並聯拱門線 (Arc Bridge Line)
                       const startX = r.startNode === 0 ? 60 : 60 + r.startNode * 50;
                       const endX = r.endNode === 99 ? 310 : 60 + r.endNode * 50;
-                      const arcY = 80 + (idx % 3) * 30; // 下降包覆線
+                      const arcY = 80 + (idx % 3) * 30;
 
                       return (
                         <g key={`r-draw-span-${r.id}`}>
-                          {/* 拱門跨接外圍導線 */}
                           <path d={`M ${startX} 40 L ${startX} ${arcY} L ${endX} ${arcY} L ${endX} ${r.endNode === 99 ? 180 : 40}`} fill="none" stroke="#a855f7" strokeWidth="2" strokeDasharray="3 3" />
                           <rect x={(startX + endX) / 2 - 18} y={arcY - 12} width="36" height="24" rx="4" fill="#0f172a" stroke="#a855f7" strokeWidth="2" />
                           <text x={(startX + endX) / 2} y={arcY + 3} textAnchor="middle" fill="#a855f7" fontSize="8" fontWeight="bold">{r.name} (跨)</text>
                           <text x={(startX + endX) / 2} y={arcY + 20} textAnchor="middle" fill="#eab308" fontSize="7">{r.V}V</text>
                         </g>
                       );
-                    })}
+                    }
                   })}
                 </svg>
               </div>
