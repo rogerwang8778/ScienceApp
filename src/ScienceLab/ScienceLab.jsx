@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Layers, Droplets, Zap, Activity, Sun, ArrowLeft, Beaker, Thermometer, Atom, Scale, Flame } from 'lucide-react';
+import { Layers, Droplets, Zap, Activity, Sun, ArrowLeft, Beaker, Thermometer, Atom, Scale, Flame, Compass } from 'lucide-react';
 import DensityLab from './DensityLab';
 import ConcentrationLab from './ConcentrationLab';
 import TransverseWaveLab from './TransverseWaveLab';
@@ -11,7 +11,8 @@ import RedoxLab from './RedoxLab';
 import AcidBaseLab from './AcidBaseLab';
 import ChemicalEquilibriumLab from './ChemicalEquilibriumLab';
 import OrganicChemistryLab from './OrganicChemistryLab';
-import MechanicsLab from './MechanicsLab'; // 引入力學實驗室
+import MechanicsLab from './MechanicsLab';
+import KinematicsLab from './KinematicsLab'; // 引入運動學實驗室
 
 export default function ScienceLab({ onAddExp }) {
   const [currentLab, setCurrentLab] = useState(null);
@@ -134,6 +135,16 @@ export default function ScienceLab({ onAddExp }) {
       desc: '模擬靜/動摩擦力與外力圖形關係，及阿基米德浮力與沉浮條件。',
       icon: Scale,
       color: 'from-amber-500/20 to-orange-500/20 border-amber-500/50 text-amber-400',
+      badge: '已上線',
+      isAvailable: true,
+    },
+    {
+      id: 'kinematics',
+      title: '運動學 (直線與拋體運動)',
+      unit: '國三理化 上學期 - 單元一 (運動學)',
+      desc: '探索 x-t/v-t/a-t 圖形轉換、等時距位移等差規律與 2D 拋體軌跡。',
+      icon: Activity,
+      color: 'from-purple-500/20 to-indigo-500/20 border-purple-500/50 text-purple-400',
       badge: '全新上線',
       isAvailable: true,
     },
@@ -161,6 +172,7 @@ export default function ScienceLab({ onAddExp }) {
   if (currentLab === 'equilibrium') return (<div className="space-y-4"><button onClick={() => setCurrentLab(null)} className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700 transition-all shadow-md"><ArrowLeft className="w-4 h-4 text-emerald-400" /> 返回理化實驗室大廳</button><ChemicalEquilibriumLab onAddExp={onAddExp} /></div>);
   if (currentLab === 'organic') return (<div className="space-y-4"><button onClick={() => setCurrentLab(null)} className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700 transition-all shadow-md"><ArrowLeft className="w-4 h-4 text-teal-400" /> 返回理化實驗室大廳</button><OrganicChemistryLab onAddExp={onAddExp} /></div>);
   if (currentLab === 'mechanics') return (<div className="space-y-4"><button onClick={() => setCurrentLab(null)} className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700 transition-all shadow-md"><ArrowLeft className="w-4 h-4 text-amber-400" /> 返回理化實驗室大廳</button><MechanicsLab onAddExp={onAddExp} /></div>);
+  if (currentLab === 'kinematics') return (<div className="space-y-4"><button onClick={() => setCurrentLab(null)} className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700 transition-all shadow-md"><ArrowLeft className="w-4 h-4 text-purple-400" /> 返回理化實驗室大廳</button><KinematicsLab onAddExp={onAddExp} /></div>);
 
   return (
     <div className="bg-slate-800 border border-slate-700 rounded-2xl p-4 md:p-6 shadow-xl">
