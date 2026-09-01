@@ -13,7 +13,7 @@ export default function ElectromagnetismLab() {
         setAnimOffset((prev) => (prev + 1) % 100);
       }, 50);
     }
-    return () => strokeInterval(interval);
+    return () => clearInterval(interval);
   }, [isRunning]);
 
   // ==========================================
@@ -66,7 +66,7 @@ export default function ElectromagnetismLab() {
   };
 
   // ==========================================
-  // 3. 冷次定律 State & 電磁感應嚴謹幾何運算
+  // 3. 冷次定律 State & 電磁感應幾何運算
   // ==========================================
   const [sourceType, setSourceType] = useState('magnet'); // 'magnet' | 'wire'
   const [magnetPole, setMagnetPole] = useState('N'); // 'N' | 'S'
@@ -277,7 +277,6 @@ export default function ElectromagnetismLab() {
             <svg width="520" height="280" className="select-none font-mono text-[11px]">
               {wireType === 'straight' ? (
                 <g>
-                  {/* 1. 長直導線：電流向上 (+Y) 俯視逆時針 ➔ 前方 (下半弧) 為【向右 ➔】 */}
                   {/* 同心橢圓後半段 (導線後方：虛線) */}
                   {[45, 80, 115].map((rx) => (
                     <path
@@ -323,13 +322,12 @@ export default function ElectromagnetismLab() {
                     東方 ({currentDir === 'up' ? '穿入 ⊗' : '穿出 ⦿'})
                   </text>
 
-                  {/* 動態粒子導向校正：電流向上時，前方 (y > 140) 必須由左向右流 */}
+                  {/* 動態粒子導向校正 */}
                   {isRunning && [45, 80, 115].map((rx, idx) => {
-                    // 當電流向上：角度加算 offset 使得前方下半弧 (sin > 0) 呈現 x 遞增 (向右)
                     const theta = (currentDir === 'up' ? -1 : 1) * ((animOffset * 3.6 + idx * 40) * Math.PI / 180);
                     const cx = 240 + rx * Math.sin(theta);
                     const cy = 140 + rx * 0.35 * Math.cos(theta);
-                    const isFront = Math.cos(theta) < 0; // 下半段為視角前方
+                    const isFront = Math.cos(theta) < 0;
 
                     return (
                       <g key={`p-${rx}`}>
@@ -660,7 +658,6 @@ export default function ElectromagnetismLab() {
 
                 {/* 前方繞線電流粒子方向精準繪製 */}
                 {isRunning && [0, 1, 2, 3].map((i) => {
-                  // frontIUp 為 true 向上，前側 (y > 100) 粒子向上巡航
                   const dirMultiplier = lenzRes.frontIUp ? 1 : -1;
                   const theta = dirMultiplier * ((animOffset * 4 + i * 90) * Math.PI / 180);
                   const cx = 145 + i * 18 + 15 * Math.sin(theta);
