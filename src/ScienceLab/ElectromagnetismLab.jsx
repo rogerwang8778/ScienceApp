@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Zap, Play, Pause, Compass, RotateCw, Activity, Layers } from 'lucide-react';
 
 export default function ElectromagnetismLab() {
-  const [activeTab, setActiveTab] = useState('ampere');
+  const [activeTab, setActiveTab] = useState('lenz');
   const [isRunning, setIsRunning] = useState(true);
   const [animOffset, setAnimOffset] = useState(0);
 
@@ -68,9 +68,9 @@ export default function ElectromagnetismLab() {
   // ==========================================
   // 3. 冷次定律 State & 電磁感應運算
   // ==========================================
-  const [sourceType, setSourceType] = useState('magnet'); // 'magnet' | 'wire'
+  const [sourceType, setSourceType] = useState('wire'); // 'magnet' | 'wire'
   const [magnetPole, setMagnetPole] = useState('N'); // 'N' | 'S'
-  const [actionType, setActionType] = useState('approach'); // 'approach' | 'recede'
+  const [actionType, setActionType] = useState('strengthen'); // 'approach' | 'recede' | 'strengthen' | 'weaken'
 
   const getLenzResult = () => {
     let indB = '';
@@ -121,7 +121,7 @@ export default function ElectromagnetismLab() {
       }
     } else {
       if (actionType === 'strengthen') {
-        indB = '產生反向感應磁場 (向左抵抗原磁場增加)';
+        indB = '產生反向感應磁場 (向左抵抗原磁場向右增強)';
         indI = '前方繞線向上感應電流 (檢流計向左偏轉)';
         bDir = 'left';
         leftIndPole = 'N';
@@ -129,7 +129,7 @@ export default function ElectromagnetismLab() {
         frontIUp = true;
         needleAngle = -30;
       } else {
-        indB = '產生同向感應磁場 (向右補充電流減弱磁場)';
+        indB = '產生同向感應磁場 (向右補充原磁場向右減弱)';
         indI = '前方繞線向下感應電流 (檢流計向右偏轉)';
         bDir = 'right';
         leftIndPole = 'S';
@@ -153,7 +153,7 @@ export default function ElectromagnetismLab() {
             理化實驗室：國三下 單元六《電與磁互動實驗室》
           </h2>
           <p className="text-xs text-slate-400 mt-1">
-            重構冷次定律黃色感應電流巡航方向、安培右手定則與立體螺線管透視
+            冷次定律主線圈 3D 幾何重構、原磁場動態標記與感應電流精準巡航
           </p>
         </div>
 
@@ -520,7 +520,7 @@ export default function ElectromagnetismLab() {
       )}
 
       {/* ==========================================
-          3. 冷次定律 (黃色電流粒子巡航方向校正)
+          3. 冷次定律 (主線圈雙重升級：3D幾何 + 主磁場極性與動態標示)
       ========================================== */}
       {activeTab === 'lenz' && (
         <div className="space-y-6">
@@ -530,7 +530,11 @@ export default function ElectromagnetismLab() {
                 <span className="text-xs text-slate-300 font-bold">1. 感應源：</span>
                 <select
                   value={sourceType}
-                  onChange={(e) => setSourceType(e.target.value)}
+                  onChange={(e) => {
+                    setSourceType(e.target.value);
+                    if (e.target.value === 'wire') setActionType('strengthen');
+                    else setActionType('approach');
+                  }}
                   className="bg-slate-800 text-purple-300 text-xs font-bold rounded-xl px-3 py-1.5 border border-slate-700"
                 >
                   <option value="magnet">條形磁鐵</option>
@@ -561,29 +565,33 @@ export default function ElectromagnetismLab() {
                 </>
               ) : (
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-slate-300 font-bold">電流變化：</span>
+                  <span className="text-xs text-slate-300 font-bold">主線圈電流控制：</span>
                   <button
                     onClick={() => setActionType(actionType === 'strengthen' ? 'weaken' : 'strengthen')}
-                    className="px-3 py-1 bg-slate-800 text-amber-400 text-xs font-bold rounded-xl border border-slate-700"
+                    className={`px-3.5 py-1.5 text-xs font-bold rounded-xl border transition-all ${
+                      actionType === 'strengthen' 
+                        ? 'bg-amber-600/30 text-amber-300 border-amber-500/50' 
+                        : 'bg-rose-600/30 text-rose-300 border-rose-500/50'
+                    }`}
                   >
-                    {actionType === 'strengthen' ? '主線圈電流加強 (磁場變大)' : '主線圈電流減弱 (磁場變小)'}
+                    {actionType === 'strengthen' ? 'I 電流增強 ▲ (主磁場向右增強)' : 'I 電流減弱 ▼ (主磁場向右減弱)'}
                   </button>
                 </div>
               )}
             </div>
 
             <div className="text-xs font-mono text-purple-400 font-bold">
-              冷次定律：感應電流的磁場永遠抵抗原磁場之變化（來者拒，去者留）
+              冷次定律：感應電流之感應磁場 $B_{\text{感}}$ 永遠抵抗主磁場 $B_{\text{原}}$ 之變化
             </div>
           </div>
 
           <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 flex flex-col items-center justify-center min-h-[320px]">
             <svg width="580" height="260" className="select-none font-mono text-[11px]">
-              {/* 正統前後透視立體螺線管 */}
+              {/* ================= 左側：感應螺線管線圈 ================= */}
               <g>
                 <text x="170" y="22" textAnchor="middle" fill="#a855f7" fontSize="12" fontWeight="bold">感應螺線管線圈</text>
 
-                {/* 1. 螺線管後側 (細虛線) */}
+                {/* 1. 感應線圈後側 (細虛線) */}
                 {[0, 1, 2, 3, 4].map((i) => (
                   <path
                     key={`coil-back-${i}`}
@@ -617,7 +625,7 @@ export default function ElectromagnetismLab() {
                   B感應 ({lenzRes.bDir === 'right' ? '向右 →' : '向左 ←'})
                 </text>
 
-                {/* 2. 螺線管前側 (粗實線) */}
+                {/* 2. 感應線圈前側 (粗實線) */}
                 {[0, 1, 2, 3, 4].map((i) => (
                   <path
                     key={`coil-front-${i}`}
@@ -657,9 +665,9 @@ export default function ElectromagnetismLab() {
                   {lenzRes.rightIndPole}
                 </text>
 
-                {/* 4. 動態感應電流黃色粒子 (校正方向：frontIUp 為 true 時，前方實線上的粒子向上巡航) */}
+                {/* 4. 動態感應電流黃色粒子 (巡航方向精準校正) */}
                 {isRunning && [0, 1, 2, 3, 4].map((i) => {
-                  const dir = lenzRes.frontIUp ? 1 : -1; // 精準轉向修正
+                  const dir = lenzRes.frontIUp ? 1 : -1;
                   const t = (animOffset * 4 + i * 72) * Math.PI / 180;
                   const cx = 105 + i * 32 + 15 * Math.cos(t);
                   const cy = 110 + dir * 40 * Math.sin(t);
@@ -680,7 +688,7 @@ export default function ElectromagnetismLab() {
                 })}
               </g>
 
-              {/* 右側磁鐵與動作說明 */}
+              {/* ================= 右側：磁鐵 或 載流主線圈 ================= */}
               {sourceType === 'magnet' ? (
                 <g>
                   {(() => {
@@ -725,44 +733,118 @@ export default function ElectromagnetismLab() {
                   })()}
                 </g>
               ) : (
+                /* 載流主線圈：完全對齊感應螺線管之正統 3D 立體線圈樣式 */
                 <g>
-                  <text x="400" y="22" textAnchor="middle" fill="#f59e0b" fontSize="12" fontWeight="bold">主線圈 (立體線圈)</text>
+                  <text x="430" y="22" textAnchor="middle" fill="#f59e0b" fontSize="12" fontWeight="bold">
+                    主線圈 (載流螺線管)
+                  </text>
 
-                  {[0, 1, 2].map((i) => (
+                  {/* 1. 主線圈後側 (細虛線) */}
+                  {[0, 1, 2, 3, 4].map((i) => (
                     <path
-                      key={`p-b-${i}`}
-                      d={`M ${360 + i * 25} 110 A 15 50 0 0 1 ${385 + i * 25} 110`}
+                      key={`primary-back-${i}`}
+                      d={`M ${380 + i * 28} 150 C ${380 + i * 28} 50, ${355 + i * 28} 50, ${355 + i * 28} 70`}
                       fill="none"
                       stroke="#fbbf24"
                       strokeWidth="2"
-                      strokeDasharray="3 3"
-                      opacity="0.6"
+                      strokeDasharray="4 3"
+                      opacity="0.5"
                     />
                   ))}
 
-                  {[0, 1, 2].map((i) => (
+                  {/* 2. 主磁場 B_原 向量箭頭與動態增減標記 */}
+                  <line
+                    x1="340"
+                    y1="110"
+                    x2="480"
+                    y2="110"
+                    stroke="#f59e0b"
+                    strokeWidth={actionType === 'strengthen' ? '4' : '2'}
+                  />
+                  <polygon
+                    points="480,105 492,110 480,115"
+                    fill="#f59e0b"
+                  />
+                  <text x="420" y="98" textAnchor="middle" fill="#f59e0b" fontSize="11" fontWeight="bold">
+                    B原 (向右 →) {actionType === 'strengthen' ? '▲ 增強' : '▼ 減弱'}
+                  </text>
+
+                  {/* 3. 主線圈前側 (粗實線，繞線方向由下往上 ▲，故內部主磁場向右) */}
+                  {[0, 1, 2, 3, 4].map((i) => (
                     <path
-                      key={`p-f-${i}`}
-                      d={`M ${385 + i * 25} 110 A 15 50 0 0 1 ${360 + i * 25} 110`}
+                      key={`primary-front-${i}`}
+                      d={`M ${355 + i * 28} 70 C ${355 + i * 28} 170, ${380 + i * 28} 170, ${380 + i * 28} 150`}
                       fill="none"
                       stroke="#f59e0b"
-                      strokeWidth={actionType === 'strengthen' ? '5' : '3'}
+                      strokeWidth={actionType === 'strengthen' ? '4.5' : '3'}
                     />
                   ))}
 
-                  <rect x="370" y="180" width="60" height="24" rx="4" fill="#1e293b" stroke="#f59e0b" strokeWidth="1.5" />
-                  <text x="400" y="196" textAnchor="middle" fill="#f59e0b" fontSize="10" fontWeight="bold">
-                    {actionType === 'strengthen' ? 'I 加強 ▲' : 'I 減弱 ▼'}
-                  </text>
+                  {/* 主線圈極性 (S極在左，N極在右) */}
+                  <text x="325" y="115" textAnchor="middle" fill="#ef4444" fontSize="16" fontWeight="bold">S</text>
+                  <text x="508" y="115" textAnchor="middle" fill="#3b82f6" fontSize="16" fontWeight="bold">N</text>
+
+                  {/* 4. 主線圈電流粒子動畫 (前方實線段由下往上 ▲ 巡航) */}
+                  {isRunning && [0, 1, 2, 3, 4].map((i) => {
+                    const speedMultiplier = actionType === 'strengthen' ? 6 : 2;
+                    const t = (animOffset * speedMultiplier + i * 72) * Math.PI / 180;
+                    const cx = 367 + i * 28 + 12 * Math.cos(t);
+                    const cy = 110 + 40 * Math.sin(t);
+                    const isFront = cy >= 105;
+
+                    return (
+                      <circle
+                        key={`pri-p-${i}`}
+                        cx={cx}
+                        cy={cy}
+                        r={isFront ? (actionType === 'strengthen' ? '5.5' : '4') : '3'}
+                        fill={isFront ? '#fbbf24' : '#d97706'}
+                        stroke="#ffffff"
+                        strokeWidth="1"
+                        opacity={isFront ? 1 : 0.6}
+                      />
+                    );
+                  })}
+
+                  {/* 下方控制狀態標籤 */}
+                  <g transform="translate(420, 200)">
+                    <rect
+                      x="-55"
+                      y="-14"
+                      width="110"
+                      height="28"
+                      rx="8"
+                      fill="#0f172a"
+                      stroke={actionType === 'strengthen' ? '#f59e0b' : '#f43f5e'}
+                      strokeWidth="1.5"
+                    />
+                    <text
+                      x="0"
+                      y="4"
+                      textAnchor="middle"
+                      fill={actionType === 'strengthen' ? '#f59e0b' : '#f43f5e'}
+                      fontSize="11"
+                      fontWeight="bold"
+                    >
+                      {actionType === 'strengthen' ? 'I 電流增強 ▲' : 'I 電流減弱 ▼'}
+                    </text>
+                  </g>
                 </g>
               )}
             </svg>
 
+            {/* 下方課綱解說卡 */}
             <div className="bg-slate-900 p-3.5 rounded-xl border border-slate-800 text-xs space-y-1 w-full mt-2 font-sans">
               <p className="text-purple-300 font-bold">🎯 冷次定律電磁感應幾何與物理對照：</p>
-              <p className="text-slate-300">• 感應磁極：線圈左端為 <strong className="text-blue-400">{lenzRes.leftIndPole} 極</strong>，右端為 <strong className="text-rose-400">{lenzRes.rightIndPole} 極</strong>。</p>
-              <p className="text-slate-300">• 內部感應磁場（由 S → N 極）：<strong className="text-cyan-300">{lenzRes.bDir === 'right' ? '向右 →' : '向左 ←'}</strong> ({lenzRes.indB})。</p>
-              <p className="text-slate-300">• 前方繞線電流：<strong className="text-amber-300">{lenzRes.frontIUp ? '由下往上 ▲' : '由上往下 ▼'}</strong>。</p>
+              <p className="text-slate-300">
+                • 主線圈狀態：<strong className="text-amber-300">前方繞線電流由下往上 ▲</strong>，產生向右之主磁場 <strong className="text-amber-400">B原 (向右 →)</strong>（左端 S 極、右端 N 極）。
+              </p>
+              <p className="text-slate-300">
+                • 磁場變化與冷次定律：當主線圈電流 <strong className="text-amber-300">{actionType === 'strengthen' ? '增強' : '減弱'}</strong> 時，感應螺線管產生 <strong className="text-cyan-300">{lenzRes.indB}</strong>。
+              </p>
+              <p className="text-slate-300">
+                • 感應螺線管：左端為 <strong className="text-blue-400">{lenzRes.leftIndPole} 極</strong>，右端為 <strong className="text-rose-400">{lenzRes.rightIndPole} 極</strong>；前方繞線感應電流為 <strong className="text-amber-300">{lenzRes.frontIUp ? '由下往上 ▲' : '由上往下 ▼'}</strong>。
+              </p>
             </div>
           </div>
         </div>
@@ -832,3 +914,11 @@ export default function ElectromagnetismLab() {
     </div>
   );
 }
+```eof
+
+### ✨ 本次更新重點：
+1. **主線圈 3D 幾何升級**：將原本簡化的曲線改為與左側「感應螺線管」100% 幾何風格對齊的 3D 立體線圈（含實線前繞線、虛線後繞線、黃色電流粒子巡航動畫與 S/N 磁極標示）。
+2. **主磁場 $B_{\text{原}}$ 增強/減弱動態標註**：
+   * 在主線圈內部清晰繪製向右的黃色主磁場向量箭頭，標明 **「$B_{\text{原}}$ (向右 $\rightarrow$)」**。
+   * 當切換「$I$ 電流增強 ▲」時，主磁場線條加粗且顯示 **「▲ 增強」**，粒子巡航速度加快；切換「$I$ 電流減弱 ▼」時，主磁場變細並顯示 **「▼ 減弱」**。
+3. **物理原理完美對照**：讓學生能一目瞭然「主磁場向右增強 $\rightarrow$ 感應磁場向左抵抗」與「主磁場向右減弱 $\rightarrow$ 感應磁場向右補充」的電磁感應機制！
