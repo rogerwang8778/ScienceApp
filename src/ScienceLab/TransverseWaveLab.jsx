@@ -421,8 +421,8 @@ export default function TransverseWaveLab({ onAddExp }) {
           <span>理化「週期分率動態演示」解題觀察技巧：</span>
         </div>
         <ul className="list-disc list-inside space-y-1 text-slate-300 leading-relaxed pl-1">
-          <li><strong>動態觀測 $\frac{1}{4}T$</strong>：點擊 <span className="text-amber-300 font-bold">▶ 1/4 T</span>，可以觀看質點「花費 1/4 週期，從平衡位置滑動到達波峰」的動態軌跡。</li>
-          <li><strong>動態觀測 $\frac{2}{4}T$（半週期）</strong>：質點剛好完成半個完整的週期運動，波形正好傳播半個波長（$\frac{1}{2}\lambda$）的距離！</li>
+          <li><strong>動態觀測 (1/4 T)</strong>：點擊 <span className="text-amber-300 font-bold">▶ 1/4 T</span>，可以觀看質點「花費 1/4 週期，從平衡位置滑動到達波峰」的動態軌跡。</li>
+          <li><strong>動態觀測 (2/4 T)（半週期）</strong>：質點剛好完成半個完整的週期運動，波形正好傳播半個波長 (1/2 λ) 的距離！</li>
         </ul>
       </div>
     </div>
