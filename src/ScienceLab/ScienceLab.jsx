@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Layers, Droplets, Zap, Activity, Sun, ArrowLeft, Beaker, Thermometer, Atom, Scale, Flame, Compass } from 'lucide-react';
+import { Layers, Droplets, Zap, Activity, Sun, ArrowLeft, Beaker, Thermometer, Atom, Scale, Flame, Compass, ShieldAlert } from 'lucide-react';
+
 import DensityLab from './DensityLab';
 import ConcentrationLab from './ConcentrationLab';
 import TransverseWaveLab from './TransverseWaveLab';
@@ -12,8 +13,8 @@ import AcidBaseLab from './AcidBaseLab';
 import ChemicalEquilibriumLab from './ChemicalEquilibriumLab';
 import OrganicChemistryLab from './OrganicChemistryLab';
 import MechanicsLab from './MechanicsLab';
-import KinematicsLab from './KinematicsLab'; // 引入運動學實驗室
-import NewtonLab from './NewtonLab'; // 引入牛頓運動學實驗室
+import KinematicsLab from './KinematicsLab';
+import NewtonLab from './NewtonLab'; // 引入牛頓實驗室
 
 export default function ScienceLab({ onAddExp }) {
   const [currentLab, setCurrentLab] = useState(null);
@@ -146,7 +147,7 @@ export default function ScienceLab({ onAddExp }) {
       desc: '探索 x-t/v-t/a-t 圖形轉換、等時距位移等差規律與 2D 拋體軌跡。',
       icon: Activity,
       color: 'from-purple-500/20 to-indigo-500/20 border-purple-500/50 text-purple-400',
-      badge: '全新上線',
+      badge: '已上線',
       isAvailable: true,
     },
     {
@@ -162,7 +163,7 @@ export default function ScienceLab({ onAddExp }) {
     {
       id: 'circuit',
       title: '歐姆定律與串並聯電路',
-      unit: '國三理化 上學期 - 單元',
+      unit: '國三理化 上學期 - 單元三',
       desc: '自由組裝開關、燈泡與電阻，即時觀測伏特計與安培計偏轉。',
       icon: Zap,
       color: 'from-amber-500/20 to-yellow-500/20 border-amber-500/30 text-amber-400',
