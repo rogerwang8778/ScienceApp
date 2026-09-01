@@ -10,7 +10,8 @@ import ChemicalStoichiometryLab from './ChemicalStoichiometryLab';
 import RedoxLab from './RedoxLab';
 import AcidBaseLab from './AcidBaseLab';
 import ChemicalEquilibriumLab from './ChemicalEquilibriumLab';
-import OrganicChemistryLab from './OrganicChemistryLab'; // 引入有機化學實驗室
+import OrganicChemistryLab from './OrganicChemistryLab';
+import MechanicsLab from './MechanicsLab'; // 引入力學實驗室
 
 export default function ScienceLab({ onAddExp }) {
   const [currentLab, setCurrentLab] = useState(null);
@@ -123,6 +124,16 @@ export default function ScienceLab({ onAddExp }) {
       desc: '探索有機烴類/醇/酸官能基結構式與酸醇酯化脫水縮合反應。',
       icon: Atom,
       color: 'from-teal-500/20 to-cyan-500/20 border-teal-500/50 text-teal-400',
+      badge: '已上線',
+      isAvailable: true,
+    },
+    {
+      id: 'mechanics',
+      title: '力學 (摩擦力與浮力實驗室)',
+      unit: '國二理化 下學期 - 單元六 (力學)',
+      desc: '模擬靜/動摩擦力與外力圖形關係，及阿基米德浮力與沉浮條件。',
+      icon: Scale,
+      color: 'from-amber-500/20 to-orange-500/20 border-amber-500/50 text-amber-400',
       badge: '全新上線',
       isAvailable: true,
     },
@@ -149,6 +160,7 @@ export default function ScienceLab({ onAddExp }) {
   if (currentLab === 'acid-base') return (<div className="space-y-4"><button onClick={() => setCurrentLab(null)} className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700 transition-all shadow-md"><ArrowLeft className="w-4 h-4 text-pink-400" /> 返回理化實驗室大廳</button><AcidBaseLab onAddExp={onAddExp} /></div>);
   if (currentLab === 'equilibrium') return (<div className="space-y-4"><button onClick={() => setCurrentLab(null)} className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700 transition-all shadow-md"><ArrowLeft className="w-4 h-4 text-emerald-400" /> 返回理化實驗室大廳</button><ChemicalEquilibriumLab onAddExp={onAddExp} /></div>);
   if (currentLab === 'organic') return (<div className="space-y-4"><button onClick={() => setCurrentLab(null)} className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700 transition-all shadow-md"><ArrowLeft className="w-4 h-4 text-teal-400" /> 返回理化實驗室大廳</button><OrganicChemistryLab onAddExp={onAddExp} /></div>);
+  if (currentLab === 'mechanics') return (<div className="space-y-4"><button onClick={() => setCurrentLab(null)} className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700 transition-all shadow-md"><ArrowLeft className="w-4 h-4 text-amber-400" /> 返回理化實驗室大廳</button><MechanicsLab onAddExp={onAddExp} /></div>);
 
   return (
     <div className="bg-slate-800 border border-slate-700 rounded-2xl p-4 md:p-6 shadow-xl">
