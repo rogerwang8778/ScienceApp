@@ -314,13 +314,13 @@ export default function ElectromagnetismLab() {
                     東方 ({currentDir === 'up' ? '穿入 ⊗' : '穿出 ⦿'})
                   </text>
 
-                  {/* 動態球狀 B 旋轉方向修復：電流向上為俯視逆時針（視角前向右、視角後向左） */}
+                  {/* 動態球狀 B 粒子：精準校正為俯視逆時針（12點 -> 9點 -> 6點 -> 3點 -> 12點） */}
                   {isRunning && [45, 80, 115].map((rx, idx) => {
                     const dirMultiplier = currentDir === 'up' ? 1 : -1;
-                    const theta = dirMultiplier * ((animOffset * 3.6 + idx * 40) * Math.PI / 180);
-                    const cx = 240 + rx * Math.sin(theta);
-                    const cy = 140 - rx * 0.35 * Math.cos(theta); // 修正 Y 軸方向確保俯視逆時針
-                    const isFront = Math.cos(theta) < 0;
+                    const t = (animOffset * 3.6 + idx * 40) * Math.PI / 180;
+                    const cx = 240 - dirMultiplier * rx * Math.sin(t);
+                    const cy = 140 - rx * 0.35 * Math.cos(t);
+                    const isFront = cy > 140;
 
                     return (
                       <g key={`p-${rx}`}>
