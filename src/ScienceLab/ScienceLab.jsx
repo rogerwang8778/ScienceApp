@@ -18,6 +18,7 @@ import NewtonLab from './NewtonLab';
 import WorkEnergyLab from './WorkEnergyLab';
 import CircuitLab from './CircuitLab';
 import ElectroChemistryLab from './ElectroChemistryLab'; // 引入電化學與電解實驗室
+import ElectromagnetismLab from './ElectromagnetismLab';
 
 export default function ScienceLab({ onAddExp }) {
   const [currentLab, setCurrentLab] = useState(null);
@@ -193,6 +194,16 @@ export default function ScienceLab({ onAddExp }) {
       badge: '全新上線',
       isAvailable: true,
     },
+    {
+      id: 'electromagnetism',
+      title: '安培右手、開掌定則與電磁感應',
+      unit: '國三理化 下學期 - 單元六 (電與磁)',
+      desc: '探索安培右手定則磁場、開掌定則受力方向、冷次定律電磁感應及馬達與發電機原理。',
+      icon: Compass,
+      color: 'from-amber-500/20 to-orange-500/20 border-amber-500/50 text-amber-400',
+      badge: '全新上線',
+      isAvailable: true,
+    },
   ];
 
   if (currentLab === 'density') return (<div className="space-y-4"><button onClick={() => setCurrentLab(null)} className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700 transition-all shadow-md"><ArrowLeft className="w-4 h-4 text-cyan-400" /> 返回理化實驗室大廳</button><DensityLab onAddExp={onAddExp} /></div>);
@@ -212,6 +223,7 @@ export default function ScienceLab({ onAddExp }) {
   if (currentLab === 'work-energy') return (<div className="space-y-4"><button onClick={() => setCurrentLab(null)} className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700 transition-all shadow-md"><ArrowLeft className="w-4 h-4 text-amber-400" /> 返回理化實驗室大廳</button><WorkEnergyLab onAddExp={onAddExp} /></div>);
   if (currentLab === 'circuit') return (<div className="space-y-4"><button onClick={() => setCurrentLab(null)} className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700 transition-all shadow-md"><ArrowLeft className="w-4 h-4 text-amber-400" /> 返回理化實驗室大廳</button><CircuitLab onAddExp={onAddExp} /></div>);
   if (currentLab === 'electrochemistry') return (<div className="space-y-4"><button onClick={() => setCurrentLab(null)} className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700 transition-all shadow-md"><ArrowLeft className="w-4 h-4 text-cyan-400" /> 返回理化實驗室大廳</button><ElectroChemistryLab onAddExp={onAddExp} /></div>);
+  if (currentLab === 'electromagnetism') return (<div className="space-y-4"><button onClick={() => setCurrentLab(null)} className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700 transition-all shadow-md"><ArrowLeft className="w-4 h-4 text-amber-400" /> 返回理化實驗室大廳</button><ElectromagnetismLab onAddExp={onAddExp} /></div>);
 
   return (
     <div className="bg-slate-800 border border-slate-700 rounded-2xl p-4 md:p-6 shadow-xl">
