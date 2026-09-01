@@ -6,9 +6,6 @@ export default function CircuitLab() {
   const [isRunning, setIsRunning] = useState(true);
   const [showCalc, setShowCalc] = useState(false);
 
-  // 惠斯同電橋模式切換：'bridge' (惠斯同電橋) | 'custom' (自由混聯)
-  const [mode, setMode] = useState('bridge');
-
   // 惠斯同電橋五電阻阻值 (Ω)
   // R1: A->B, R2: B->D, R3: A->C, R4: C->D, R5(Bridge): B->C
   const [r1, setR1] = useState(6);
@@ -20,10 +17,6 @@ export default function CircuitLab() {
   // ==========================================
   // 惠斯同電橋 KCL 方程式矩陣求解 (Node Voltage Method)
   // ==========================================
-  // 設 V_A = V_source, V_D = 0
-  // 節點 B: (V_B - V_A)/R1 + V_B/R2 + (V_B - V_C)/R5 = 0
-  // 節點 C: (V_C - V_A)/R3 + V_C/R4 + (V_C - V_B)/R5 = 0
-
   const g1 = 1 / r1, g2 = 1 / r2, g3 = 1 / r3, g4 = 1 / r4, g5 = 1 / r5;
 
   const A_coeff = g1 + g2 + g5;
@@ -186,15 +179,12 @@ export default function CircuitLab() {
               <text x="30" y="104" textAnchor="middle" fill="#f59e0b" fontSize="10" fontWeight="bold">{vSource}V</text>
 
               {/* 導線連接 (鑽石網格架構) */}
-              {/* 電源正極 -> Node A */}
               <line x1="30" y1="80" x2="30" y2="30" stroke="#ef4444" strokeWidth="2.5" />
               <line x1="30" y1="30" x2="160" y2="30" stroke="#ef4444" strokeWidth="2.5" />
 
-              {/* 電源負極 -> Node D */}
               <line x1="30" y1="120" x2="30" y2="170" stroke="#3b82f6" strokeWidth="2.5" />
               <line x1="30" y1="170" x2="160" y2="170" stroke="#3b82f6" strokeWidth="2.5" />
 
-              {/* 鑽石支路導線 */}
               <line x1="160" y1="30" x2="80" y2="100" stroke="#06b6d4" strokeWidth="2" />
               <line x1="80" y1="100" x2="160" y2="170" stroke="#06b6d4" strokeWidth="2" />
 
@@ -204,28 +194,23 @@ export default function CircuitLab() {
               {/* 中央跨接橋臂 R5 */}
               <line x1="80" y1="100" x2="240" y2="100" stroke={isBalanced ? '#10b981' : '#f59e0b'} strokeWidth="3" strokeDasharray={isBalanced ? 'none' : '4 4'} />
 
-              {/* 電阻方塊標籤 */}
-              {/* R1 */}
+              {/* 電阻標籤 */}
               <rect x="105" y="52" width="30" height="20" rx="3" fill="#0f172a" stroke="#06b6d4" strokeWidth="1.5" />
               <text x="120" y="65" textAnchor="middle" fill="#06b6d4" fontSize="8" fontWeight="bold">R1={r1}Ω</text>
 
-              {/* R2 */}
               <rect x="105" y="128" width="30" height="20" rx="3" fill="#0f172a" stroke="#06b6d4" strokeWidth="1.5" />
               <text x="120" y="141" textAnchor="middle" fill="#06b6d4" fontSize="8" fontWeight="bold">R2={r2}Ω</text>
 
-              {/* R3 */}
               <rect x="185" y="52" width="30" height="20" rx="3" fill="#0f172a" stroke="#a855f7" strokeWidth="1.5" />
               <text x="200" y="65" textAnchor="middle" fill="#a855f7" fontSize="8" fontWeight="bold">R3={r3}Ω</text>
 
-              {/* R4 */}
               <rect x="185" y="128" width="30" height="20" rx="3" fill="#0f172a" stroke="#a855f7" strokeWidth="1.5" />
               <text x="200" y="141" textAnchor="middle" fill="#a855f7" fontSize="8" fontWeight="bold">R4={r4}Ω</text>
 
-              {/* R5 橋臂 */}
               <rect x="145" y="90" width="30" height="20" rx="3" fill="#0f172a" stroke="#f59e0b" strokeWidth="1.5" />
               <text x="160" y="103" textAnchor="middle" fill="#f59e0b" fontSize="8" fontWeight="bold">R5={r5}Ω</text>
 
-              {/* 節點點位標籤 */}
+              {/* 節點標籤 */}
               <circle cx="160" cy="30" r="4" fill="#ef4444" />
               <text x="160" y="20" textAnchor="middle" fill="#ef4444" fontSize="9" fontWeight="bold">Node A ({vSource}V)</text>
 
@@ -238,3 +223,85 @@ export default function CircuitLab() {
               <circle cx="160" cy="170" r="4" fill="#3b82f6" />
               <text x="160" y="185" textAnchor="middle" fill="#3b82f6" fontSize="9" fontWeight="bold">Node D (0V)</text>
             </svg>
+          </div>
+
+          <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800 text-[11px] text-slate-300 leading-relaxed font-sans space-y-1">
+            <strong className="text-amber-300 block">💡 惠斯同電橋平衡條件：</strong>
+            <p>• 當 R1 / R2 = R3 / R4 （即 {r1}/{r2} = {r3}/{r4}）時，節點 B 與 C 的電位相等 (VB = VC = {vB}V)。</p>
+            <p>• 此時橋臂電阻 R5 兩端無電壓差，因此完全沒有電流流過 R5 (I_R5 = 0A)。</p>
+          </div>
+        </div>
+
+        {/* 第二張圖：各支路分流關係圖 */}
+        <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between space-y-4">
+          <div className="border-b border-slate-800 pb-2 flex justify-between items-center">
+            <span className="text-xs font-bold text-cyan-400 flex items-center gap-1.5">
+              <Sliders className="w-4 h-4 text-cyan-400" /> 第二張圖：各支路分流列表
+            </span>
+            <span className="text-[10px] text-cyan-300 font-mono font-bold">幹道 I_total = {iTotal} A</span>
+          </div>
+
+          <div className="w-full bg-slate-900 rounded-xl p-4 flex items-center justify-center min-h-[240px] overflow-y-auto">
+            <div className="w-full space-y-2 font-mono text-xs">
+              <div className="flex justify-between items-center bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                <span className="text-slate-200 font-bold">左側上支路 R1 ({r1}Ω)</span>
+                <span className="text-cyan-300 font-bold">I_R1 = {iR1} A</span>
+              </div>
+              <div className="flex justify-between items-center bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                <span className="text-slate-200 font-bold">左側下支路 R2 ({r2}Ω)</span>
+                <span className="text-cyan-300 font-bold">I_R2 = {iR2} A</span>
+              </div>
+              <div className="flex justify-between items-center bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                <span className="text-slate-200 font-bold">右側上支路 R3 ({r3}Ω)</span>
+                <span className="text-purple-300 font-bold">I_R3 = {iR3} A</span>
+              </div>
+              <div className="flex justify-between items-center bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                <span className="text-slate-200 font-bold">右側下支路 R4 ({r4}Ω)</span>
+                <span className="text-purple-300 font-bold">I_R4 = {iR4} A</span>
+              </div>
+              <div className={`flex justify-between items-center p-2.5 rounded-xl border ${isBalanced ? 'bg-emerald-950/60 border-emerald-700' : 'bg-amber-950/60 border-amber-700'}`}>
+                <span className="text-amber-300 font-bold">中央橋臂 R5 ({r5}Ω) [B➔C]</span>
+                <span className={`font-bold ${isBalanced ? 'text-emerald-400' : 'text-amber-300'}`}>I_R5 = {iR5} A</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800 text-[11px] text-slate-300 leading-relaxed font-sans space-y-1">
+            <strong className="text-cyan-300 block">💡 節點 KCL 與分流：</strong>
+            <p>• 節點 B 滿足：I_R1 = I_R2 + I_R5。</p>
+            <p>• 當電橋平衡時 I_R5 = 0，此時 I_R1 = I_R2 且 I_R3 = I_R4。</p>
+          </div>
+        </div>
+      </div>
+
+      {/* 詳細計算過程 */}
+      <div className="bg-slate-900 border border-slate-700 rounded-2xl p-5 space-y-3">
+        <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+          <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+            <Calculator className="w-4 h-4 text-emerald-400" /> 節點電位法 (Node Voltage) 解算過程
+          </span>
+          <button
+            onClick={() => setShowCalc(!showCalc)}
+            className="text-xs bg-slate-800 hover:bg-slate-700 text-cyan-300 px-3 py-1 rounded-lg border border-slate-700 flex items-center gap-1 transition-all"
+          >
+            <Calculator className="w-3.5 h-3.5" /> {showCalc ? '隱藏計算過程' : '詳細計算過程'}
+          </button>
+        </div>
+
+        {showCalc ? (
+          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs font-mono space-y-2 text-slate-300 leading-relaxed">
+            <p className="text-amber-300 font-bold border-b border-slate-800 pb-1">🧮 節點電位 KCL 矩陣解算步驟：</p>
+            <p>1. 對 Node B 建立 KCL：(VB - {vSource})/{r1} + VB/{r2} + (VB - VC)/{r5} = 0 ➔ <strong className="text-cyan-300">VB = {vB} V</strong></p>
+            <p>2. 對 Node C 建立 KCL：(VC - {vSource})/{r3} + VC/{r4} + (VC - VB)/{r5} = 0 ➔ <strong className="text-purple-300">VC = {vC} V</strong></p>
+            <p>3. 橋臂電壓差：ΔV_BC = VB - VC = {vB} - {vC} = <strong className={isBalanced ? 'text-emerald-400 font-bold' : 'text-amber-300 font-bold'}>{(vB - vC).toFixed(2)} V</strong></p>
+            <p>4. 全電路總等效電阻：Req = V_source / I_total = {vSource} / {iTotal} = <strong className="text-cyan-300">{req} Ω</strong></p>
+          </div>
+        ) : (
+          <div className="text-xs text-slate-400 font-sans leading-relaxed">
+            點擊上方按鈕展開節點電位法 VB, VC 與克拉瑪公式求解細節。
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
