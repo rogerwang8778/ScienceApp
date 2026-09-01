@@ -23,14 +23,15 @@ export default function ElectromagnetismLab() {
   const [currentDir, setCurrentDir] = useState('up'); // straight: 'up'|'down'; solenoid: 'up_front'|'down_front'
 
   // ==========================================
-  // 2. 右手開掌定則 State
+  // 2. 右手開掌定則 State & 3D 向量運算
   // ==========================================
   const [bFieldDir, setBFieldDir] = useState('+x');
   const [iFieldDir, setIFieldDir] = useState('+y');
 
+  // 計算磁力 F 方向 (外積 I x B)
   const calculateForceDir = (I, B) => {
     if (I === B || (I.startsWith('+') && B === '-' + I.slice(1)) || (I.startsWith('-') && B === '+' + I.slice(1))) {
-      return '平行不受力 (0)';
+      return { text: '平行不受力 (0)', vec: [0, 0, 0] };
     }
     
     const vecMap = {
@@ -45,16 +46,27 @@ export default function ElectromagnetismLab() {
     const Fy = vI[2] * vB[0] - vI[0] * vB[2];
     const Fz = vI[0] * vB[1] - vI[1] * vB[0];
 
-    if (Fx === 1) return '+X 軸 (向右)';
-    if (Fx === -1) return '-X 軸 (向左)';
-    if (Fy === 1) return '+Y 軸 (向上)';
-    if (Fy === -1) return '-Y 軸 (向下)';
-    if (Fz === 1) return '+Z 軸 (垂直穿出紙面)';
-    if (Fz === -1) return '-Z 軸 (垂直穿入紙面)';
-    return '不受力 (0)';
+    let text = '';
+    if (Fx === 1) text = '+X 軸 (向右)';
+    else if (Fx === -1) text = '-X 軸 (向左)';
+    else if (Fy === 1) text = '+Y 軸 (向上)';
+    else if (Fy === -1) text = '-Y 軸 (向下)';
+    else if (Fz === 1) text = '+Z 軸 (垂直穿出紙面)';
+    else if (Fz === -1) text = '-Z 軸 (垂直穿入紙面)';
+    else text = '不受力 (0)';
+
+    return { text, vec: [Fx, Fy, Fz] };
   };
 
   const forceResult = calculateForceDir(iFieldDir, bFieldDir);
+
+  // 轉換 3D 座標 [x, y, z] 到 2D 投影 (等角視角 ISO Projection)
+  const project3D = (x, y, z, originX = 240, originY = 140, scale = 70) => {
+    // x: 右(+), y: 上(-), z: 斜下出紙面(+)
+    const px = originX + x * scale - z * scale * 0.5;
+    const py = originY - y * scale + z * scale * 0.5;
+    return { x: px, y: py };
+  };
 
   // ==========================================
   // 3. 冷次定律 State
@@ -93,7 +105,7 @@ export default function ElectromagnetismLab() {
             理化實驗室：國三下 單元六《電與磁互動實驗室》
           </h2>
           <p className="text-xs text-slate-400 mt-1">
-            清晰標示長直導線前後空間磁力線防錯視、螺線管磁極方向與電磁感應細節
+            校正右手定則磁場方向、向量座標同步圖示與全功能電磁感應模擬
           </p>
         </div>
 
@@ -209,12 +221,14 @@ export default function ElectromagnetismLab() {
             <svg width="520" height="280" className="select-none font-mono text-[11px]">
               {wireType === 'straight' ? (
                 <g>
-                  {/* 1. 長直導線 (防錯視前後分層) */}
+                  {/* 1. 長直導線 (精準安培右手：電流向上時，俯視為逆時針，前方為向左) */}
                   {/* 同心橢圓後半段 (導線後方：虛線) */}
                   {[45, 80, 115].map((rx) => (
                     <path
                       key={`back-${rx}`}
-                      d={`M ${240 - rx} 140 A ${rx} ${rx * 0.35} 0 0 1 ${240 + rx} 140`}
+                      d={currentDir === 'up'
+                        ? `M ${240 + rx} 140 A ${rx} ${rx * 0.35} 0 0 0 ${240 - rx} 140`
+                        : `M ${240 - rx} 140 A ${rx} ${rx * 0.35} 0 0 0 ${240 + rx} 140`}
                       fill="none"
                       stroke="#38bdf8"
                       strokeWidth="1.8"
@@ -226,8 +240,8 @@ export default function ElectromagnetismLab() {
                   {/* 直立金屬導線 */}
                   <rect x="234" y="30" width="12" height="220" fill="#f59e0b" rx="3" stroke="#ffffff" strokeWidth="1" />
                   
-                  {/* 電流標示 */}
-                  <line x1="240" y1="230" x2="240" y2="40" stroke="#ef4444" strokeWidth="2.5" />
+                  {/* 電流箭頭標示 */}
+                  <line x1="240" y1={currentDir === 'up' ? 230 : 40} x2="240" y2={currentDir === 'up' ? 40 : 230} stroke="#ef4444" strokeWidth="2.5" />
                   <text x="240" y="22" textAnchor="middle" fill="#ef4444" fontSize="12" fontWeight="bold">
                     {currentDir === 'up' ? '▲ 電流 I (向上)' : '▼ 電流 I (向下)'}
                   </text>
@@ -236,22 +250,31 @@ export default function ElectromagnetismLab() {
                   {[45, 80, 115].map((rx) => (
                     <path
                       key={`front-${rx}`}
-                      d={`M ${240 + rx} 140 A ${rx} ${rx * 0.35} 0 0 1 ${240 - rx} 140`}
+                      d={currentDir === 'up'
+                        ? `M ${240 - rx} 140 A ${rx} ${rx * 0.35} 0 0 0 ${240 + rx} 140`
+                        : `M ${240 + rx} 140 A ${rx} ${rx * 0.35} 0 0 0 ${240 - rx} 140`}
                       fill="none"
                       stroke="#0284c7"
                       strokeWidth="2.5"
                     />
                   ))}
 
-                  {/* 導線前後/東西方位清晰文字標示 */}
-                  <text x="240" y="125" textAnchor="middle" fill="#94a3b8" fontSize="10">導線後方 (虛線)</text>
-                  <text x="240" y="165" textAnchor="middle" fill="#38bdf8" fontSize="10" fontWeight="bold">導線前方 (實線)</text>
-                  <text x="110" y="143" textAnchor="middle" fill="#38bdf8" fontSize="10" fontWeight="bold">西方 (左)</text>
-                  <text x="370" y="143" textAnchor="middle" fill="#38bdf8" fontSize="10" fontWeight="bold">東方 (右)</text>
+                  {/* 導線前後/東西方位文字標示 */}
+                  <text x="240" y="123" textAnchor="middle" fill="#94a3b8" fontSize="10">導線後方 (虛線)</text>
+                  <text x="240" y="165" textAnchor="middle" fill="#38bdf8" fontSize="10" fontWeight="bold">
+                    導線前方 ({currentDir === 'up' ? '向左 ' : '向右 ➔'})
+                  </text>
+                  <text x="100" y="143" textAnchor="middle" fill="#38bdf8" fontSize="10" fontWeight="bold">
+                    西方 ({currentDir === 'up' ? '穿出 ⦿' : '穿入 ⊗'})
+                  </text>
+                  <text x="380" y="143" textAnchor="middle" fill="#38bdf8" fontSize="10" fontWeight="bold">
+                    東方 ({currentDir === 'up' ? '穿入 ⊗' : '穿出 ⦿'})
+                  </text>
 
-                  {/* 前後離子/箭頭動態指引 */}
+                  {/* 動態粒子導向 */}
                   {isRunning && [45, 80, 115].map((rx, idx) => {
-                    const angle = ((animOffset * 4 + idx * 40) * Math.PI) / 180 * (currentDir === 'up' ? 1 : -1);
+                    // 電流向上：逆時針 (+ angle)；電流向下：順時針 (- angle)
+                    const angle = ((animOffset * 4 + idx * 40) * Math.PI) / 180 * (currentDir === 'up' ? -1 : 1);
                     const cx = 240 + rx * Math.cos(angle);
                     const cy = 140 + rx * 0.35 * Math.sin(angle);
                     const isFront = Math.sin(angle) > 0;
@@ -266,49 +289,48 @@ export default function ElectromagnetismLab() {
                 </g>
               ) : (
                 <g>
-                  {/* 2. 螺線管 (參照示例圖：軟鐵芯 + 導線前實後虛 + 完整磁力線) */}
+                  {/* 2. 螺線管 (安培右手校正：前方向上 ➔ 大拇指指左 ➔ 左端 N 極) */}
                   
                   {/* 鐵芯內部磁力線 (由 S 指向 N) */}
-                  <line
-                    x1="120" y1="140" x2="380" y2="140"
-                    stroke="#0284c7"
-                    strokeWidth="3"
-                    strokeDasharray="5 3"
-                  />
+                  {currentDir === 'up_front' ? (
+                    // 前方向上 ➔ 左為 N，內部磁線向左
+                    <line x1="380" y1="140" x2="120" y2="140" stroke="#0284c7" strokeWidth="3.5" strokeDasharray="5 3" />
+                  ) : (
+                    // 前方向下 ➔ 右為 N，內部磁線向右
+                    <line x1="120" y1="140" x2="380" y2="140" stroke="#0284c7" strokeWidth="3.5" strokeDasharray="5 3" />
+                  )}
                   
-                  {/* 兩端外部發散磁力線 */}
-                  {/* 左端發散 */}
+                  {/* 兩端發散磁力線 */}
                   <path d="M 120 140 Q 60 100 20 60" fill="none" stroke="#38bdf8" strokeWidth="1.8" strokeDasharray="4 3" />
                   <path d="M 120 140 Q 60 180 20 220" fill="none" stroke="#38bdf8" strokeWidth="1.8" strokeDasharray="4 3" />
-                  {/* 右端發散 */}
                   <path d="M 380 140 Q 440 100 480 60" fill="none" stroke="#38bdf8" strokeWidth="1.8" strokeDasharray="4 3" />
                   <path d="M 380 140 Q 440 180 480 220" fill="none" stroke="#38bdf8" strokeWidth="1.8" strokeDasharray="4 3" />
 
                   {/* 實體軟鐵芯 */}
                   <rect x="120" y="110" width="260" height="60" fill="url(#coreGradient)" rx="4" stroke="#64748b" strokeWidth="1.5" />
 
-                  {/* N/S 極文字說明 */}
+                  {/* N/S 極文字標記 (正確校正) */}
                   {currentDir === 'up_front' ? (
                     <>
-                      {/* 前方向上 ➔ 左端 S 極、右端 N 極 */}
-                      <rect x="70" y="120" width="40" height="40" fill="#ef4444" rx="4" />
-                      <text x="90" y="145" textAnchor="middle" fill="#ffffff" fontSize="16" fontWeight="bold">S</text>
-
-                      <rect x="390" y="120" width="40" height="40" fill="#3b82f6" rx="4" />
-                      <text x="410" y="145" textAnchor="middle" fill="#ffffff" fontSize="16" fontWeight="bold">N</text>
-                    </>
-                  ) : (
-                    <>
-                      {/* 前方向下 ➔ 左端 N 極、右端 S 極 */}
+                      {/* 前方向上 ➔ 左端 N 極、右端 S 極 */}
                       <rect x="70" y="120" width="40" height="40" fill="#3b82f6" rx="4" />
                       <text x="90" y="145" textAnchor="middle" fill="#ffffff" fontSize="16" fontWeight="bold">N</text>
 
                       <rect x="390" y="120" width="40" height="40" fill="#ef4444" rx="4" />
                       <text x="410" y="145" textAnchor="middle" fill="#ffffff" fontSize="16" fontWeight="bold">S</text>
                     </>
+                  ) : (
+                    <>
+                      {/* 前方向下 ➔ 左端 S 極、右端 N 極 */}
+                      <rect x="70" y="120" width="40" height="40" fill="#ef4444" rx="4" />
+                      <text x="90" y="145" textAnchor="middle" fill="#ffffff" fontSize="16" fontWeight="bold">S</text>
+
+                      <rect x="390" y="120" width="40" height="40" fill="#3b82f6" rx="4" />
+                      <text x="410" y="145" textAnchor="middle" fill="#ffffff" fontSize="16" fontWeight="bold">N</text>
+                    </>
                   )}
 
-                  {/* 後繞線 (虛線/繞到鐵芯後方) */}
+                  {/* 後繞線 (虛線) */}
                   {[0, 1, 2, 3, 4, 5].map((i) => (
                     <path
                       key={`b-wire-${i}`}
@@ -320,7 +342,7 @@ export default function ElectromagnetismLab() {
                     />
                   ))}
 
-                  {/* 前繞線 (粗實線/位於鐵芯前方，明顯下至上或上至下) */}
+                  {/* 前繞線 (粗實線) */}
                   {[0, 1, 2, 3, 4, 5].map((i) => (
                     <g key={`f-wire-${i}`}>
                       <path
@@ -348,11 +370,9 @@ export default function ElectromagnetismLab() {
                     </g>
                   ))}
 
-                  {/* 電流進入與離開引線 */}
                   <line x1="120" y1="210" x2="140" y2="170" stroke="#f59e0b" strokeWidth="3" />
                   <line x1="370" y1="110" x2="390" y2="70" stroke="#f59e0b" strokeWidth="3" />
 
-                  {/* 漸層定色 */}
                   <defs>
                     <linearGradient id="coreGradient" x1="0%" y1="0%" x2="100%" y2="0%">
                       <stop offset="0%" stopColor="#94a3b8" />
@@ -368,11 +388,11 @@ export default function ElectromagnetismLab() {
             <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 text-slate-300 text-xs w-full mt-3 font-sans">
               {wireType === 'straight' ? (
                 <p>
-                  💡 <strong>空間判讀防錯視提醒：</strong> 實線弧線為導線<strong>前方</strong>磁力線；虛線弧線為導線<strong>後方</strong>磁力線。電流向上時，導線東側 (右) 磁場指向紙內，西側 (左) 磁場指向紙外。
+                  💡 <strong>長直導線：</strong> 電流向上（{currentDir === 'up' ? '▲' : '▼'}）時，右手大拇指朝上，四指彎曲方向指示磁場為<strong>俯視逆時針</strong>。導線東側（右）磁場指向紙內（⊗），西側（左）指向紙外（⦿）。
                 </p>
               ) : (
                 <p>
-                  💡 <strong>螺線管判讀技巧：</strong> 用右手四指順著<strong>「前方繞線」</strong>的電流方向（{currentDir === 'up_front' ? '由下往上' : '由上往下'}）握住線圈，大拇指指向的端點即為磁鐵的 <strong>N 極</strong>。
+                  💡 <strong>螺線管：</strong> 右手四指順著<strong>「前方繞線」</strong>電流（{currentDir === 'up_front' ? '由下往上 ▲' : '由上往下 ▼'}）握住，大拇指指向 <strong>{currentDir === 'up_front' ? '左端 (N極)' : '右端 (N極)'}</strong>。內部磁力線由 S 極指向 N 極。
                 </p>
               )}
             </div>
@@ -381,7 +401,7 @@ export default function ElectromagnetismLab() {
       )}
 
       {/* ==========================================
-          2. 右手開掌定則
+          2. 右手開掌定則 (包含同步 3D 向量圖示)
       ========================================== */}
       {activeTab === 'palm' && (
         <div className="space-y-6">
@@ -421,32 +441,94 @@ export default function ElectromagnetismLab() {
             </div>
 
             <div className="text-xs font-mono text-emerald-400 font-bold">
-              受力方向 F (掌心推出)：{forceResult}
+              受力方向 F (掌心推出)：{forceResult.text}
             </div>
           </div>
 
-          <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 flex flex-col items-center justify-center min-h-[280px]">
-            <div className="text-center space-y-4 font-mono text-xs w-full max-w-xl">
-              <div className="grid grid-cols-3 gap-4 text-center">
-                <div className="bg-slate-900 p-3 rounded-xl border border-cyan-500/50">
-                  <span className="text-cyan-400 font-bold block">四指 (磁場 B)</span>
-                  <span className="text-white text-sm font-bold">{bFieldDir}</span>
-                </div>
-                <div className="bg-slate-900 p-3 rounded-xl border border-amber-500/50">
-                  <span className="text-amber-400 font-bold block">大拇指 (電流 I)</span>
-                  <span className="text-white text-sm font-bold">{iFieldDir}</span>
-                </div>
-                <div className="bg-slate-900 p-3 rounded-xl border border-emerald-500/50">
-                  <span className="text-emerald-400 font-bold block">掌心 (磁力 F)</span>
-                  <span className="text-emerald-300 text-sm font-bold">{forceResult}</span>
-                </div>
-              </div>
+          <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 flex flex-col items-center justify-center min-h-[340px]">
+            {/* 即時同步繪製 3D 向量空間圖示 */}
+            <svg width="480" height="260" className="select-none font-mono text-[11px]">
+              {/* 3D 參考軸 (XYZ) */}
+              {(() => {
+                const origin = { x: 240, y: 130 };
+                const xAxis = project3D(1.5, 0, 0, origin.x, origin.y);
+                const yAxis = project3D(0, 1.5, 0, origin.x, origin.y);
+                const zAxis = project3D(0, 0, 1.5, origin.x, origin.y);
 
-              <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 text-slate-300 text-left text-[11px] leading-relaxed font-sans">
-                💡 <strong>右手開掌定則解題步驟：</strong>
-                <p>1. 右手平展伸直，四指指向 <strong>磁場方向 B</strong>。</p>
-                <p>2. 大拇指指向 <strong>電流方向 I</strong>。</p>
-                <p>3. 手掌心推出的方向即為 <strong>導線受磁力方向 F</strong>（若電流與磁場平行則不受力）。</p>
+                // 電流 I 向量
+                const vecI = {
+                  '+x': [1, 0, 0], '-x': [-1, 0, 0],
+                  '+y': [0, 1, 0], '-y': [0, -1, 0],
+                  '+z': [0, 0, 1], '-z': [0, 0, -1]
+                }[iFieldDir];
+
+                // 磁場 B 向量
+                const vecB = {
+                  '+x': [1, 0, 0], '-x': [-1, 0, 0],
+                  '+y': [0, 1, 0], '-y': [0, -1, 0],
+                  '+z': [0, 0, 1], '-z': [0, 0, -1]
+                }[bFieldDir];
+
+                // 受力 F 向量
+                const vecF = forceResult.vec;
+
+                const endI = project3D(vecI[0] * 1.2, vecI[1] * 1.2, vecI[2] * 1.2, origin.x, origin.y);
+                const endB = project3D(vecB[0] * 1.2, vecB[1] * 1.2, vecB[2] * 1.2, origin.x, origin.y);
+                const endF = project3D(vecF[0] * 1.2, vecF[1] * 1.2, vecF[2] * 1.2, origin.x, origin.y);
+
+                return (
+                  <g>
+                    {/* 背景軸虛線 */}
+                    <line x1={origin.x} y1={origin.y} x2={xAxis.x} y2={xAxis.y} stroke="#475569" strokeWidth="1.5" strokeDasharray="3 3" />
+                    <text x={xAxis.x + 8} y={xAxis.y} fill="#64748b" fontSize="10">X</text>
+
+                    <line x1={origin.x} y1={origin.y} x2={yAxis.x} y2={yAxis.y} stroke="#475569" strokeWidth="1.5" strokeDasharray="3 3" />
+                    <text x={yAxis.x} y={yAxis.y - 8} fill="#64748b" fontSize="10">Y</text>
+
+                    <line x1={origin.x} y1={origin.y} x2={zAxis.x} y2={zAxis.y} stroke="#475569" strokeWidth="1.5" strokeDasharray="3 3" />
+                    <text x={zAxis.x - 12} y={zAxis.y + 12} fill="#64748b" fontSize="10">Z (穿出)</text>
+
+                    {/* 原點載流體 */}
+                    <circle cx={origin.x} cy={origin.y} r="8" fill="#334155" stroke="#ffffff" strokeWidth="2" />
+
+                    {/* 1. 電流 I 向量 (橘色) */}
+                    <line x1={origin.x} y1={origin.y} x2={endI.x} y2={endI.y} stroke="#f59e0b" strokeWidth="4.5" />
+                    <circle cx={endI.x} cy={endI.y} r="6" fill="#f59e0b" />
+                    <text x={endI.x + 10} y={endI.y - 5} fill="#f59e0b" fontSize="12" fontWeight="bold">I (電流)</text>
+
+                    {/* 2. 磁場 B 向量 (藍色) */}
+                    <line x1={origin.x} y1={origin.y} x2={endB.x} y2={endB.y} stroke="#06b6d4" strokeWidth="4.5" />
+                    <circle cx={endB.x} cy={endB.y} r="6" fill="#06b6d4" />
+                    <text x={endB.x + 10} y={endB.y - 5} fill="#06b6d4" fontSize="12" fontWeight="bold">B (磁場)</text>
+
+                    {/* 3. 磁力 F 向量 (綠色) */}
+                    {(vecF[0] !== 0 || vecF[1] !== 0 || vecF[2] !== 0) && (
+                      <g>
+                        <line x1={origin.x} y1={origin.y} x2={endF.x} y2={endF.y} stroke="#10b981" strokeWidth="5" />
+                        <polygon
+                          points={`${endF.x},${endF.y - 8} ${endF.x - 6},${endF.y + 6} ${endF.x + 6},${endF.y + 6}`}
+                          fill="#10b981"
+                        />
+                        <text x={endF.x + 12} y={endF.y + 5} fill="#10b981" fontSize="13" fontWeight="bold">F (磁力)</text>
+                      </g>
+                    )}
+                  </g>
+                );
+              })()}
+            </svg>
+
+            <div className="grid grid-cols-3 gap-4 text-center w-full max-w-xl mt-2 font-mono text-xs">
+              <div className="bg-slate-900 p-2.5 rounded-xl border border-cyan-500/50">
+                <span className="text-cyan-400 font-bold block">四指 (磁場 B)</span>
+                <span className="text-white text-xs font-bold">{bFieldDir}</span>
+              </div>
+              <div className="bg-slate-900 p-2.5 rounded-xl border border-amber-500/50">
+                <span className="text-amber-400 font-bold block">大拇指 (電流 I)</span>
+                <span className="text-white text-xs font-bold">{iFieldDir}</span>
+              </div>
+              <div className="bg-slate-900 p-2.5 rounded-xl border border-emerald-500/50">
+                <span className="text-emerald-400 font-bold block">掌心 (磁力 F)</span>
+                <span className="text-emerald-300 text-xs font-bold">{forceResult.text}</span>
               </div>
             </div>
           </div>
@@ -513,15 +595,12 @@ export default function ElectromagnetismLab() {
 
           <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 flex flex-col items-center justify-center min-h-[280px]">
             <svg width="480" height="220" className="select-none font-mono text-[11px]">
-              {/* 感應線圈 */}
               <ellipse cx="160" cy="110" rx="30" ry="60" fill="none" stroke="#a855f7" strokeWidth="6" />
 
-              {/* 檢流計 G */}
               <line x1="160" y1="170" x2="160" y2="200" stroke="#a855f7" strokeWidth="2" />
               <circle cx="160" cy="200" r="14" fill="#0f172a" stroke="#a855f7" strokeWidth="2" />
               <text x="160" y="204" textAnchor="middle" fill="#a855f7" fontSize="10" fontWeight="bold">G</text>
 
-              {/* 磁鐵 */}
               {sourceType === 'magnet' && (
                 <g>
                   <rect x="280" y="90" width="100" height="40" rx="4" fill="#334155" stroke="#ffffff" strokeWidth="1" />
@@ -614,7 +693,7 @@ export default function ElectromagnetismLab() {
             <div className="bg-slate-900 p-3.5 rounded-xl border border-slate-800 text-xs text-slate-300 space-y-1 w-full mt-2 font-sans">
               <p className="text-emerald-400 font-bold">💡 發電機核心考點：</p>
               <p>1. 線圈面與磁場垂直時，磁通量最大但變化率為 0 ➔ <strong>感應電流 = 0</strong>。</p>
-              <p>2. 線圈面與磁場平行時，磁通量為 0 但變化率最大 ➔ <strong>感应電流最大</strong>。</p>
+              <p>2. 線圈面與磁場平行時，磁通量為 0 但變化率最大 ➔ <strong>感應電流最大</strong>。</p>
               <p>3. 交流發電機搭配 <strong>全環集電環</strong>；直流發電機搭配 <strong>半環轉向器</strong>。</p>
             </div>
           </div>
