@@ -323,13 +323,12 @@ export default function ElectromagnetismLab() {
   const rightSidePoint = ptA.x < ptD.x ? ptD : ptA;
 
   // ==========================================
-  // 5. 互動式直流發電機 (含半圓形集電環與手動旋轉)
+  // 5. 互動式直流發電機 (完全修復連接、單向直流檢流計與磁場標示)
   // ==========================================
   const [genAngle, setGenAngle] = useState(0);
   const [isGenDragging, setIsGenDragging] = useState(false);
   const genDragRef = useRef({ startX: 0, initialAngle: 0 });
 
-  // 自動旋轉同步
   useEffect(() => {
     if (isRunning && !isGenDragging) {
       setGenAngle((animOffset * 3.6) % 360);
@@ -354,7 +353,6 @@ export default function ElectromagnetismLab() {
     setIsGenDragging(false);
   };
 
-  // 發電機物理運算
   const genRad = (genAngle * Math.PI) / 180;
   const genAxisX = 295;
   const projGen3D = (x, y, z) => {
@@ -372,13 +370,20 @@ export default function ElectromagnetismLab() {
   const gPtC = projGen3D(gXRot, -gYRot, -70);
   const gPtD = projGen3D(gXRot, -gYRot, 70);
 
-  // 計算切割磁力線之感應電動勢 (磁通量變化率 dPhi/dt 正比於 sin(rad))
-  // 當角度為 0/180/360 度時切割速度最快；90/270 度時平行不切割
-  const rawInducedI = Math.cos(genRad); // 內部線圈感應電流
-  
-  // 半圓形集電環整流：外電路電流始終維持單向（直流發電機）
+  const genRingCenter = { x: genAxisX, y: 205 };
+  const gConnS1 = {
+    x: genRingCenter.x - 12 * Math.cos(genRad),
+    y: genRingCenter.y - 12 * Math.sin(genRad)
+  };
+  const gConnS2 = {
+    x: genRingCenter.x + 12 * Math.cos(genRad),
+    y: genRingCenter.y + 12 * Math.sin(genRad)
+  };
+
+  const rawInducedI = Math.cos(genRad); 
   const externalInducedI = Math.abs(rawInducedI); 
-  const needleAngle = Math.sin(genRad) * 42; // 檢流計偏轉角度
+  // 直流電整流後，檢流計指針始終向右單向偏轉
+  const needleAngleDC = Math.abs(Math.sin(genRad)) * 40; 
 
   return (
     <div 
@@ -1339,13 +1344,13 @@ export default function ElectromagnetismLab() {
         </div>
       )}
 
-      {/* 5. 互動式發電機原理 (含半圓形集電環與檢流計) */}
+      {/* 5. 互動式直流發電機原理 (完全修復三點問題) */}
       {activeTab === 'generator' && (
         <div className="space-y-6">
           <div className="bg-slate-900 border border-slate-700 p-4 rounded-2xl flex flex-wrap items-center justify-between gap-4">
             <div className="text-xs text-emerald-300 font-bold flex items-center gap-2">
               <Zap className="w-4 h-4 animate-pulse text-emerald-400"/>
-              直流發電機原理：外力旋轉電樞線圈切割磁力線（法拉第電磁感應）產生感應電流
+              直流發電機原理：外力旋轉電樞線圈切割磁力線（法拉第電磁感應）產生單向直流電流
             </div>
             <div className="text-xs font-mono text-amber-300 font-bold bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700">
               手動/自動旋轉角度：{Math.round(genAngle)}° 
@@ -1355,7 +1360,7 @@ export default function ElectromagnetismLab() {
           <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 flex flex-col items-center justify-center min-h-[380px] overflow-x-auto">
             <svg 
               width="600" 
-              height="340" 
+              height="350" 
               className="select-none font-mono text-[11px] cursor-grab active:cursor-grabbing"
               onPointerDown={handleGenPointerDown}
             >
@@ -1369,16 +1374,21 @@ export default function ElectromagnetismLab() {
               <path d="M 370 70 L 400 50 L 400 170 L 370 150 Z" fill="#b91c1c" />
               <text x="445" y="115" fill="#ffffff" fontSize="22" fontWeight="bold" textAnchor="middle">S</text>
 
-              {/* 磁力線虛線 */}
-              {[70, 110, 150].map((yVal, idx) => (
-                <line key={`g-b-${idx}`} x1="195" y1={yVal} x2="365" y2={yVal} stroke="#38bdf8" strokeWidth="1.5" strokeDasharray="4 3" opacity="0.5" />
-              ))}
+              {/* [修正3] 場磁鐵主磁場向量 B場 (N -> S) */}
+              <g>
+                {[65, 110, 155].map((yVal, idx) => (
+                  <g key={`g-b-${idx}`}>
+                    <line x1="195" y1={yVal} x2="365" y2={yVal} stroke="#38bdf8" strokeWidth="1.8" strokeDasharray="4 3" opacity="0.6" />
+                    <polygon points={`365,${yVal - 3} 373,${yVal} 365,${yVal + 3}`} fill="#38bdf8" opacity="0.8" />
+                  </g>
+                ))}
+                <text x="280" y="55" textAnchor="middle" fill="#38bdf8" fontSize="11" fontWeight="bold">B場磁鐵磁場 (向右 →)</text>
+              </g>
 
               {/* 線圈 ABCD 與旋轉軸 */}
               <g>
                 <line x1={genAxisX} y1="15" x2={genAxisX} y2="220" stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="4 3" />
 
-                {/* 轉動提示文字 */}
                 <g transform={`translate(${genAxisX}, 32)`}>
                   <rect x="-42" y="-10" width="84" height="20" rx="10" fill="#0284c7" opacity="0.8" />
                   <text x="0" y="4" textAnchor="middle" fill="#ffffff" fontSize="10" fontWeight="bold">拖曳旋轉電樞</text>
@@ -1412,46 +1422,88 @@ export default function ElectromagnetismLab() {
                     )}
                   </g>
                 )}
+
+                {/* [修正3] 電樞內部感應磁場向量 B感 (抵抗磁通量變化) */}
+                {Math.abs(Math.sin(genRad)) > 0.2 && (
+                  <g>
+                    <line 
+                      x1={genAxisX} 
+                      y1="110" 
+                      x2={genAxisX + (rawInducedI > 0 ? -35 : 35)} 
+                      y2="110" 
+                      stroke="#c084fc" 
+                      strokeWidth="2.5" 
+                    />
+                    <polygon 
+                      points={
+                        rawInducedI > 0 
+                          ? `${genAxisX - 35},106 ${genAxisX - 43},110 ${genAxisX - 35},114`
+                          : `${genAxisX + 35},106 ${genAxisX + 43},110 ${genAxisX + 35},114`
+                      } 
+                      fill="#c084fc" 
+                    />
+                    <text x={genAxisX} y="100" textAnchor="middle" fill="#c084fc" fontSize="10" fontWeight="bold">
+                      B感 ({rawInducedI > 0 ? '← 向左' : '向右 →'})
+                    </text>
+                  </g>
+                )}
+              </g>
+
+              {/* [修正1] 電樞與集電環實體連接線路 */}
+              <g>
+                <path
+                  d={`M ${gPtA.x} ${gPtA.y} Q ${gPtA.x} ${gPtA.y + 15} ${gConnS1.x} ${gConnS1.y - 8}`}
+                  fill="none"
+                  stroke="#22c55e"
+                  strokeWidth="2.5"
+                />
+                <path
+                  d={`M ${gPtD.x} ${gPtD.y} Q ${gPtD.x} ${gPtD.y + 15} ${gConnS2.x} ${gConnS2.y - 8}`}
+                  fill="none"
+                  stroke="#16a34a"
+                  strokeWidth="2.5"
+                />
               </g>
 
               {/* 兩個半圓形集電環（換向器）與電刷 */}
               <g transform={`translate(${genAxisX}, 205)`}>
                 <circle cx="0" cy="0" r="14" fill="#0f172a" stroke="#64748b" strokeWidth="1.5" />
 
-                {/* 隨線圈旋轉的半圓形集電環 (紅色/橘色) */}
+                {/* 隨線圈旋轉的半圓形集電環 */}
                 <g transform={`rotate(${genAngle})`}>
                   <path d="M -12 -3 A 12 12 0 0 1 12 -3 L 10 -3 A 10 10 0 0 0 -10 -3 Z" fill="#ef4444" />
                   <path d="M 12 3 A 12 12 0 0 1 -12 3 L -10 3 A 10 10 0 0 0 10 3 Z" fill="#f97316" />
                 </g>
 
-                {/* 固定兩側電刷 (藍色) */}
+                {/* 固定電刷 */}
                 <rect x="-20" y="-5" width="6" height="10" fill="#0284c7" rx="1" />
                 <rect x="14" y="-5" width="6" height="10" fill="#0284c7" rx="1" />
 
                 {/* 外電路導線 */}
                 <path d="M -17 5 L -17 50 L -40 50 L -40 85 M 17 5 L 17 50 L 40 50 L 40 85" fill="none" stroke="#22c55e" strokeWidth="2.5" />
 
-                {/* 外電路感應電流箭頭 (單向直流流向檢流計) */}
+                {/* 外電路感應電流箭頭 (單向直流，方向恆定) */}
                 {externalInducedI > 0.15 && (
                   <g>
                     <polygon points="-17,30 -22,20 -12,20" fill="#22c55e" />
-                    <polygon points="40,65 35,55 45,55" fill="#22c55e" />
+                    <polygon points="-40,65 -45,55 -35,55" fill="#22c55e" />
+                    <polygon points="40,55 35,65 45,65" fill="#22c55e" />
                   </g>
                 )}
 
-                {/* 檢流計 G (代替燈泡) */}
+                {/* [修正2] 檢流計 G (指針永遠單向向右偏轉，呈現脈動直流) */}
                 <g transform="translate(0, 85)">
                   <circle cx="0" cy="0" r="22" fill="#0f172a" stroke="#22c55e" strokeWidth="2.5" />
                   <text x="0" y="-8" textAnchor="middle" fill="#22c55e" fontSize="12" fontWeight="bold">G</text>
                   <text x="-12" y="14" textAnchor="middle" fill="#94a3b8" fontSize="8">-</text>
                   <text x="12" y="14" textAnchor="middle" fill="#94a3b8" fontSize="8">+</text>
 
-                  {/* 動態偏轉指針 */}
+                  {/* 檢流計指針：偏轉角度 Math.abs() 正值單向偏轉 */}
                   <line
                     x1="0"
                     y1="0"
-                    x2={16 * Math.sin((needleAngle * Math.PI) / 180)}
-                    y2={-16 * Math.cos((needleAngle * Math.PI) / 180)}
+                    x2={16 * Math.sin((needleAngleDC * Math.PI) / 180)}
+                    y2={-16 * Math.cos((needleAngleDC * Math.PI) / 180)}
                     stroke="#ef4444"
                     strokeWidth="3"
                   />
@@ -1462,15 +1514,15 @@ export default function ElectromagnetismLab() {
 
             <div className="bg-slate-900 p-3.5 rounded-xl border border-slate-800 text-xs space-y-1.5 w-full mt-3 font-sans">
               <p className="text-emerald-300 font-bold flex items-center justify-between">
-                <span>🎯 直流發電機原理（法拉第電磁感應定律）：</span>
+                <span>🎯 直流發電機原理（法拉第電磁感應）：</span>
                 <span className="text-amber-400 font-mono">
                   {Math.abs(Math.cos(genRad)) < 0.2 ? '【線圈垂直：磁通量最大，切割速度 0，I=0】' : '【線圈水平：切割磁力線最快，感應電流最大】'}
                 </span>
               </p>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-slate-300 pt-1">
-                <p>• 半圓形集電環：<strong className="text-cyan-300">每旋轉半圈整流一次，維持單向直流</strong></p>
-                <p>• 檢流計偏轉：<strong className="text-amber-300">偏轉幅度正比於切割磁力線速率</strong></p>
-                <p>• 能量轉換：<strong className="text-purple-300">手動轉動（機械能）➔ 感應電流（電能）</strong></p>
+                <p>• 半環集電環（換向器）：<strong className="text-cyan-300">每旋轉 180° 整流一次，將交流電轉為單向直流電</strong></p>
+                <p>• 檢流計偏轉：<strong className="text-amber-300">指針恆向右單向偏轉（呈現脈動直流電）</strong></p>
+                <p>• 磁場標示：<strong className="text-purple-300">標有場磁鐵主磁場 B場 與電樞抵抗變化的 B感</strong></p>
               </div>
             </div>
           </div>
