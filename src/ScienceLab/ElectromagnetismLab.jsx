@@ -66,11 +66,11 @@ export default function ElectromagnetismLab() {
   };
 
   // ==========================================
-  // 3. 冷次定律 State & 雙子分頁控制 (支援磁鐵穿透線圈)
+  // 3. 冷次定律 State & 雙子分頁控制 (放寬可完全穿透邊界)
   // ==========================================
   const [lenzSubTab, setLenzSubTab] = useState('magnet'); // 'magnet' | 'primaryWire'
   
-  // 子分頁 1：手動拖曳磁鐵 (可穿透範圍 50 ~ 500)
+  // 子分頁 1：手動拖曳磁鐵 (放寬拖曳範圍至 -60 ~ 500)
   const [magnetPole, setMagnetPole] = useState('N'); // 'N' | 'S' (左端極性)
   const [magnetX, setMagnetX] = useState(380); 
   const [isDragging, setIsDragging] = useState(false);
@@ -94,8 +94,8 @@ export default function ElectromagnetismLab() {
     const clientX = e.clientX || (e.touches && e.touches[0].clientX) || 0;
     const deltaX = clientX - dragRef.current.startX;
     
-    // 放寬拖曳範圍至 40 ~ 500，允許穿透感應線圈
-    const newX = Math.max(40, Math.min(500, dragRef.current.initialMagnetX + deltaX));
+    // 將邊緣放寬至 -60，讓磁鐵可以完全移到左側外部
+    const newX = Math.max(-60, Math.min(500, dragRef.current.initialMagnetX + deltaX));
     setMagnetX(newX);
 
     const now = Date.now();
@@ -131,24 +131,25 @@ export default function ElectromagnetismLab() {
     return () => clearTimeout(timer);
   }, [primaryCurrent]);
 
-  // 根據磁鐵穿透位置與移動方向運算冷次定律結果
+  // 全方位冷次定律邏輯運算 (含左側完全穿出)
   const getLenzLogic = () => {
     if (lenzSubTab === 'magnet') {
       const isMoving = Math.abs(velocity) > 15;
       const isMovingLeft = velocity < 0; // true: 向左, false: 向右
 
-      // 線圈物理範圍：左端點 X=90, 右端點 X=220
+      // 磁鐵位置資訊 (磁鐵寬度 100)
       const magnetLeftEdge = magnetX;
       const magnetRightEdge = magnetX + 100;
       const magnetCenter = magnetX + 50;
 
-      // 判斷磁鐵是否完全浸沒在螺線管內部 (內部磁通量穩定，感應電流歸零)
-      const isFullyInside = magnetLeftEdge >= 70 && magnetRightEdge <= 240;
+      // 螺線管範圍 X=90 ~ X=220
+      // 磁鐵完全在內部條件
+      const isFullyInside = magnetLeftEdge >= 40 && magnetRightEdge <= 270;
 
       if (!isMoving || isFullyInside) {
         return {
           isMoving: false,
-          indB: isFullyInside ? '磁鐵完全在線圈內部，磁通量穩定無變化' : '磁鐵靜止，無磁通量變化',
+          indB: isFullyInside ? '磁鐵完全在內部，磁通量無變化' : '磁鐵靜止，無磁通量變化',
           indI: '無感應電流 (檢流計指向 0)',
           bDir: 'none',
           leftIndPole: '',
@@ -164,35 +165,35 @@ export default function ElectromagnetismLab() {
       let frontIUp = false;
       const speedMagnitude = Math.min(Math.abs(velocity) / 15, 1);
 
-      // 1. 磁鐵位於線圈右側區域 (X > 165)
-      if (magnetCenter >= 165) {
+      // 1. 磁鐵位於右側區域 (中心在 X > 155)
+      if (magnetCenter >= 155) {
         if (magnetPole === 'N') {
-          if (isMovingLeft) { // N極靠近右端 -> 右端產生 N 極抵抗 -> 感應磁場向右
+          if (isMovingLeft) { // N極靠近右端 -> 感應磁場向右
             bDir = 'right'; leftIndPole = 'S'; rightIndPole = 'N'; frontIUp = false;
-          } else { // N極遠離右端 -> 右端產生 S 極吸引 -> 感應磁場向左
+          } else { // N極遠離右端 -> 感應磁場向左
             bDir = 'left'; leftIndPole = 'N'; rightIndPole = 'S'; frontIUp = true;
           }
         } else { // S極
-          if (isMovingLeft) { // S極靠近右端 -> 右端產生 S 極抵抗 -> 感應磁場向左
+          if (isMovingLeft) { // S極靠近右端 -> 感應磁場向左
             bDir = 'left'; leftIndPole = 'N'; rightIndPole = 'S'; frontIUp = true;
-          } else { // S極遠離右端 -> 右端產生 N 極吸引 -> 感應磁場向右
+          } else { // S極遠離右端 -> 感應磁場向右
             bDir = 'right'; leftIndPole = 'S'; rightIndPole = 'N'; frontIUp = false;
           }
         }
       } 
-      // 2. 磁鐵穿透至線圈左側區域 (X < 165)
+      // 2. 磁鐵位於左側區域 (中心在 X < 155)
       else {
-        const rightPole = magnetPole === 'N' ? 'S' : 'N'; // 穿出端極性
+        const rightPole = magnetPole === 'N' ? 'S' : 'N'; // 靠近/穿出左端的極性
         if (rightPole === 'S') {
-          if (isMovingLeft) { // S極遠離左端 -> 左端產生 N 極吸引 -> 感應磁場向右
+          if (isMovingLeft) { // S極遠離左端 -> 感應磁場向右
             bDir = 'right'; leftIndPole = 'N'; rightIndPole = 'S'; frontIUp = false;
-          } else { // S極靠近左端 -> 左端產生 S 極抵抗 -> 感應磁場向左
+          } else { // S極靠近左端 -> 感應磁場向左
             bDir = 'left'; leftIndPole = 'S'; rightIndPole = 'N'; frontIUp = true;
           }
-        } else { // N極穿出
-          if (isMovingLeft) { // N極遠離左端 -> 左端產生 S 極吸引 -> 感應磁場向左
+        } else { // N極穿出/靠近左端
+          if (isMovingLeft) { // N極遠離左端 -> 感應磁場向左
             bDir = 'left'; leftIndPole = 'S'; rightIndPole = 'N'; frontIUp = true;
-          } else { // N極靠近左端 -> 左端產生 N 極抵抗 -> 感應磁場向右
+          } else { // N極靠近左端 -> 感應磁場向右
             bDir = 'right'; leftIndPole = 'N'; rightIndPole = 'S'; frontIUp = false;
           }
         }
@@ -647,7 +648,7 @@ export default function ElectromagnetismLab() {
       )}
 
       {/* ==========================================
-          3. 冷次定律（支援條形磁鐵自由穿透螺線管）
+          3. 冷次定律（支援條形磁鐵完全穿透左側邊界）
       ========================================== */}
       {activeTab === 'lenz' && (
         <div className="space-y-6">
@@ -693,7 +694,7 @@ export default function ElectromagnetismLab() {
                   </button>
                 </div>
                 <span className="text-xs text-cyan-300 font-bold flex items-center gap-1">
-                  <MoveHorizontal className="w-4 h-4 animate-pulse" /> 左右拖曳磁鐵穿透螺線管
+                  <MoveHorizontal className="w-4 h-4 animate-pulse" /> 左右拖曳磁鐵穿透螺線管 (已開放完全穿出左側)
                 </span>
               </div>
             ) : (
@@ -738,7 +739,7 @@ export default function ElectromagnetismLab() {
                   />
                 ))}
 
-                {/* 可穿透的條形磁鐵 (置於後側導線與前側導線之間的 3D 中間層) */}
+                {/* 可完全穿透至左側的條形磁鐵 */}
                 {lenzSubTab === 'magnet' && (
                   <g 
                     className="cursor-grab active:cursor-grabbing"
