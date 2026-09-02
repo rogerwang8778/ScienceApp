@@ -66,14 +66,14 @@ export default function ElectromagnetismLab() {
   };
 
   // ==========================================
-  // 3. 冷次定律 State & 雙子分頁控制 (對稱邊界不消失)
+  // 3. 冷次定律 State & 雙子分頁控制 (校正冷次定律磁場邏輯)
   // ==========================================
   const [lenzSubTab, setLenzSubTab] = useState('magnet'); // 'magnet' | 'primaryWire'
   
-  // 線圈基準原點偏移量 (將整體線圈右移以空出左側視窗)
+  // 線圈基準原點偏移量
   const offsetX = 40; 
 
-  // 子分頁 1：手動拖曳磁鐵 (範圍改為 -20 ~ 420，對稱且不超出畫面)
+  // 子分頁 1：手動拖曳磁鐵 (-20 ~ 420)
   const [magnetPole, setMagnetPole] = useState('N'); // 'N' | 'S' (左端極性)
   const [magnetX, setMagnetX] = useState(380); 
   const [isDragging, setIsDragging] = useState(false);
@@ -97,7 +97,6 @@ export default function ElectromagnetismLab() {
     const clientX = e.clientX || (e.touches && e.touches[0].clientX) || 0;
     const deltaX = clientX - dragRef.current.startX;
     
-    // 磁鐵可移動範圍 (-20 ~ 420)
     const newX = Math.max(-20, Math.min(420, dragRef.current.initialMagnetX + deltaX));
     setMagnetX(newX);
 
@@ -134,17 +133,17 @@ export default function ElectromagnetismLab() {
     return () => clearTimeout(timer);
   }, [primaryCurrent]);
 
-  // 全方位冷次定律邏輯運算
+  // 全方位冷次定律邏輯運算 (包含完全校正後的極性與感應磁場方向)
   const getLenzLogic = () => {
     if (lenzSubTab === 'magnet') {
       const isMoving = Math.abs(velocity) > 15;
-      const isMovingLeft = velocity < 0; 
+      const isMovingLeft = velocity < 0; // true: 向左, false: 向右
 
       const magnetLeftEdge = magnetX;
       const magnetRightEdge = magnetX + 100;
       const magnetCenter = magnetX + 50;
 
-      // 線圈實際範圍 X = 130 ~ 260
+      // 線圈實際中心點 X 座標
       const coilCenter = 130 + offsetX + 25; // 195
       const isFullyInside = magnetLeftEdge >= (80 + offsetX) && magnetRightEdge <= (220 + offsetX);
 
@@ -161,43 +160,49 @@ export default function ElectromagnetismLab() {
         };
       }
 
-      let bDir = 'right';
       let leftIndPole = 'S';
       let rightIndPole = 'N';
-      let frontIUp = false;
+      let bDir = 'right'; // 內部感應磁場 (S -> N)
+      let frontIUp = true; // 大拇指朝右時，前方導線向上 (▲)
       const speedMagnitude = Math.min(Math.abs(velocity) / 15, 1);
 
+      // A. 磁鐵在線圈右側 (中心點 >= 線圈中心)
       if (magnetCenter >= coilCenter) {
-        if (magnetPole === 'N') {
-          if (isMovingLeft) { 
-            bDir = 'right'; leftIndPole = 'S'; rightIndPole = 'N'; frontIUp = false;
-          } else { 
-            bDir = 'left'; leftIndPole = 'N'; rightIndPole = 'S'; frontIUp = true;
-          }
-        } else { 
-          if (isMovingLeft) { 
-            bDir = 'left'; leftIndPole = 'N'; rightIndPole = 'S'; frontIUp = true;
-          } else { 
-            bDir = 'right'; leftIndPole = 'S'; rightIndPole = 'N'; frontIUp = false;
-          }
+        const facingPole = magnetPole; // 靠近/遠離右端的極性 (左端極性)
+        if (isMovingLeft) {
+          // 靠近右端：抵抗靠近 -> 右端產生同極
+          rightIndPole = facingPole;
+          leftIndPole = facingPole === 'N' ? 'S' : 'N';
+        } else {
+          // 遠離右端：吸引遠離 -> 右端產生異極
+          rightIndPole = facingPole === 'N' ? 'S' : 'N';
+          leftIndPole = facingPole;
         }
-      } else {
-        const rightPole = magnetPole === 'N' ? 'S' : 'N'; 
-        if (rightPole === 'S') {
-          if (isMovingLeft) { 
-            bDir = 'right'; leftIndPole = 'N'; rightIndPole = 'S'; frontIUp = false;
-          } else { 
-            bDir = 'left'; leftIndPole = 'S'; rightIndPole = 'N'; frontIUp = true;
-          }
-        } else { 
-          if (isMovingLeft) { 
-            bDir = 'left'; leftIndPole = 'S'; rightIndPole = 'N'; frontIUp = true;
-          } else { 
-            bDir = 'right'; leftIndPole = 'N'; rightIndPole = 'S'; frontIUp = false;
-          }
+      } 
+      // B. 磁鐵在線圈左側 (中心點 < 線圈中心)
+      else {
+        const facingPole = magnetPole === 'N' ? 'S' : 'N'; // 靠近/遠離左端的極性 (右端極性)
+        if (!isMovingLeft) {
+          // 向右移動靠近左端：抵抗靠近 -> 左端產生同極
+          leftIndPole = facingPole;
+          rightIndPole = facingPole === 'N' ? 'S' : 'N';
+        } else {
+          // 向左移動遠離左端：吸引遠離 -> 左端產生異極
+          leftIndPole = facingPole === 'N' ? 'S' : 'N';
+          rightIndPole = facingPole;
         }
       }
 
+      // 依線圈內部極性 (S -> N) 確定感應磁場方向與電流手勢
+      if (leftIndPole === 'S' && rightIndPole === 'N') {
+        bDir = 'right';  // 內部磁場向右
+        frontIUp = true; // 大拇指朝右 -> 前方導線電流向上 (▲)
+      } else {
+        bDir = 'left';   // 內部磁場向左
+        frontIUp = false; // 大拇指朝左 -> 前方導線電流向下 (▼)
+      }
+
+      // 檢流計偏轉：前方導線向上時，電流繞經右側向下流回檢流計，指針向左偏轉
       const needleAngle = frontIUp ? -35 * speedMagnitude : 35 * speedMagnitude;
 
       return {
@@ -212,6 +217,7 @@ export default function ElectromagnetismLab() {
         needleAngle
       };
     } else {
+      // 主線圈模式
       const isChanging = Math.abs(currentChangeRate) > 0.5;
 
       if (!isChanging) {
@@ -231,19 +237,19 @@ export default function ElectromagnetismLab() {
       let bDir = 'right';
       let leftIndPole = 'S';
       let rightIndPole = 'N';
-      let frontIUp = false;
+      let frontIUp = true;
 
       if (primaryCurrent >= 0) {
         if (isIncreasing) {
-          bDir = 'left'; leftIndPole = 'N'; rightIndPole = 'S'; frontIUp = true;
+          bDir = 'left'; leftIndPole = 'N'; rightIndPole = 'S'; frontIUp = false;
         } else {
-          bDir = 'right'; leftIndPole = 'S'; rightIndPole = 'N'; frontIUp = false;
+          bDir = 'right'; leftIndPole = 'S'; rightIndPole = 'N'; frontIUp = true;
         }
       } else {
         if (isIncreasing) {
-          bDir = 'left'; leftIndPole = 'N'; rightIndPole = 'S'; frontIUp = true;
+          bDir = 'left'; leftIndPole = 'N'; rightIndPole = 'S'; frontIUp = false;
         } else {
-          bDir = 'right'; leftIndPole = 'S'; rightIndPole = 'N'; frontIUp = false;
+          bDir = 'right'; leftIndPole = 'S'; rightIndPole = 'N'; frontIUp = true;
         }
       }
 
@@ -646,7 +652,7 @@ export default function ElectromagnetismLab() {
       )}
 
       {/* ==========================================
-          3. 冷次定律（寬視窗與對稱邊界）
+          3. 冷次定律（校正完整物理邏輯）
       ========================================== */}
       {activeTab === 'lenz' && (
         <div className="space-y-6">
@@ -688,11 +694,11 @@ export default function ElectromagnetismLab() {
                       magnetPole === 'N' ? 'bg-blue-600/30 text-blue-300 border-blue-500/50' : 'bg-rose-600/30 text-rose-300 border-rose-500/50'
                     }`}
                   >
-                    左端為 {magnetPole} 極
+                    左端為 {magnetPole} 極 (右端為 {magnetPole === 'N' ? 'S' : 'N'} 極)
                   </button>
                 </div>
                 <span className="text-xs text-cyan-300 font-bold flex items-center gap-1">
-                  <MoveHorizontal className="w-4 h-4 animate-pulse" /> 左右拖曳磁鐵穿透螺線管 (左側移動距離已完全對稱不消失)
+                  <MoveHorizontal className="w-4 h-4 animate-pulse" /> 左右拖曳磁鐵穿透螺線管
                 </span>
               </div>
             ) : (
@@ -719,7 +725,6 @@ export default function ElectromagnetismLab() {
           </div>
 
           <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 flex flex-col items-center justify-center min-h-[340px] overflow-x-auto">
-            {/* SVG 畫布寬度增加至 660 */}
             <svg width="660" height="260" className="select-none font-mono text-[11px]">
               {/* ================= 左側：感應螺線管線圈 ================= */}
               <g>
@@ -738,7 +743,7 @@ export default function ElectromagnetismLab() {
                   />
                 ))}
 
-                {/* 條形磁鐵 (置於後側導線與前側導線之間) */}
+                {/* 條形磁鐵 */}
                 {lenzSubTab === 'magnet' && (
                   <g 
                     className="cursor-grab active:cursor-grabbing"
@@ -857,16 +862,16 @@ export default function ElectromagnetismLab() {
                     {lenzRes.frontIUp ? (
                       <>
                         <polygon points={`${90 + offsetX},158 ${85 + offsetX},168 ${95 + offsetX},168`} fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
-                        <polygon points={`${110 + offsetX},200 ${120 + offsetX},195 ${120 + offsetX},205`} fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
-                        <polygon points={`${210 + offsetX},200 ${220 + offsetX},195 ${220 + offsetX},205`} fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
-                        <polygon points={`${248 + offsetX},172 ${243 + offsetX},162 ${253 + offsetX},162`} fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
+                        <polygon points={`${120 + offsetX},200 ${110 + offsetX},195 ${110 + offsetX},205`} fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
+                        <polygon points={`${220 + offsetX},200 ${210 + offsetX},195 ${210 + offsetX},205`} fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
+                        <polygon points={`${248 + offsetX},158 ${243 + offsetX},168 ${253 + offsetX},168`} fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
                       </>
                     ) : (
                       <>
                         <polygon points={`${90 + offsetX},172 ${85 + offsetX},162 ${95 + offsetX},162`} fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
-                        <polygon points={`${122 + offsetX},200 ${112 + offsetX},195 ${112 + offsetX},205`} fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
-                        <polygon points={`${222 + offsetX},200 ${212 + offsetX},195 ${212 + offsetX},205`} fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
-                        <polygon points={`${248 + offsetX},158 ${243 + offsetX},168 ${253 + offsetX},168`} fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
+                        <polygon points={`${110 + offsetX},200 ${120 + offsetX},195 ${120 + offsetX},205`} fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
+                        <polygon points={`${210 + offsetX},200 ${220 + offsetX},195 ${220 + offsetX},205`} fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
+                        <polygon points={`${248 + offsetX},172 ${243 + offsetX},162 ${253 + offsetX},162`} fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
                       </>
                     )}
                   </g>
