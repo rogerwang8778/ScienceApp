@@ -8,7 +8,7 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
   const [score, setScore] = useState(0);
   const [questionCount, setQuestionCount] = useState(1);
 
-  // 雙人 PK 模式獨立狀態 (加入各自的題號計數，確保 1~3 題過後出週期題)
+  // 雙人 PK 模式獨立狀態
   const [p1Progress, setP1Progress] = useState(0);
   const [p2Progress, setP2Progress] = useState(0);
   const [p1QIndex, setP1QIndex] = useState(1);
@@ -16,7 +16,7 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
   const [p1Round, setP1Round] = useState(null);
   const [p2Round, setP2Round] = useState(null);
 
-  // 當前回合與視覺動態狀態
+  // 當開啟與視覺動態狀態
   const [singleRound, setSingleRound] = useState(null);
   const [actionState, setActionState] = useState('idle'); 
   const [isFinished, setIsFinished] = useState(false);
@@ -36,13 +36,13 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
   const animRefP2 = useRef(null);
 
   // ==========================================
-  // 1. 嚴謹物理數學模型題庫生成器
+  // 1. 嚴謹物理數學模型題庫生成器 (支援跨週期題型)
   // ==========================================
   const generateParticleQuestion = (qIndex) => {
     const waveDirection = Math.random() > 0.5 ? 'right' : 'left';
 
     if (qIndex <= 3) {
-      // === 前 3 題：瞬間運動方向判斷 ===
+      // === 第 1 ~ 3 題：瞬間運動方向判斷 ===
       const phases = [45, 135, 225, 315];
       const particlePhase = phases[Math.floor(Math.random() * phases.length)];
 
@@ -64,8 +64,8 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
         correctAns,
         particleName: '介面質點 P'
       };
-    } else {
-      // === 第 4 題起：週期位移題型 (含精準週期移位動畫) ===
+    } else if (qIndex >= 4 && qIndex <= 8) {
+      // === 第 4 ~ 8 題：基礎週期題型 (1/4T ~ 4/4T) ===
       const isTypeA = Math.random() > 0.5;
 
       if (isTypeA) {
@@ -135,6 +135,41 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
           particleName: '衝浪手'
         };
       }
+    } else {
+      // === 第 9 ~ 10 題：高階題型 (跨 4/4T 週期，例如：5/4, 6/4, 7/4, 8/4 個週期) ===
+      const startPhases = [90, 180, 270];
+      const startPhase = startPhases[Math.floor(Math.random() * startPhases.length)];
+      
+      // 隨機抽選 5 ~ 8 個 1/4T (即 5/4T ~ 8/4T)
+      const deltaQuarters = [5, 6, 7, 8][Math.floor(Math.random() * 4)];
+
+      let phaseShift = deltaQuarters * 90;
+      let finalPhase = 0;
+
+      if (waveDirection === 'right') {
+        finalPhase = (startPhase - phaseShift % 360 + 360) % 360;
+      } else {
+        finalPhase = (startPhase + phaseShift) % 360;
+      }
+
+      let correctAns = '';
+      if (Math.abs(finalPhase - 90) < 5 || Math.abs(finalPhase - 450) < 5) correctAns = '波峰';
+      else if (Math.abs(finalPhase - 270) < 5) correctAns = '波谷';
+      else correctAns = '平衡位置';
+
+      const phaseName = startPhase === 90 ? '波峰' : startPhase === 270 ? '波谷' : '平衡位置';
+
+      return {
+        qCategory: 'over_period_position',
+        waveDirection,
+        particlePhase: startPhase,
+        deltaQuarters: deltaQuarters / 4, // 1.25, 1.5, 1.75, 2.0 個週期
+        title: `第 ${qIndex} 題：跨週期極限挑戰`,
+        desc: `波向${waveDirection === 'right' ? '右' : '左'}傳播。衝浪手原本位於【${phaseName}】，經過 ${deltaQuarters}/4 個週期 (T) 後，會位於什麼位置？`,
+        options: ['波峰', '波谷', '平衡位置'],
+        correctAns,
+        particleName: '衝浪手'
+      };
     }
   };
 
@@ -175,7 +210,7 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
   // ==========================================
   const triggerWaveAnimation = (targetKey, direction, deltaPeriodFraction, callback) => {
     let start = null;
-    const duration = 1200;
+    const duration = 1400;
     const fullWaveLength = 340; 
     const distance = (direction === 'right' ? 1 : -1) * (fullWaveLength * deltaPeriodFraction);
 
@@ -305,7 +340,6 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
 
     const particleX = (roundData.particlePhase / 360) * width;
     
-    // 依據即時平移距離換算成弧度
     const phaseOffsetRad = (currentAnimOffset / width) * 2 * Math.PI;
     const particleY = centerY - Math.sin((roundData.particlePhase * Math.PI) / 180 - phaseOffsetRad) * amplitude;
 
@@ -315,16 +349,20 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
           {/* 平衡基準線 */}
           <line x1="0" y1={centerY} x2={width} y2={centerY} stroke="#475569" strokeDasharray="4 4" strokeWidth="1" />
 
-          {/* 1. 平移正弦波形 */}
+          {/* 1. 平移正弦波形 (擴展延伸波形支援 2 個週期以上的平移) */}
           <g transform={`translate(${currentAnimOffset}, 0)`}>
             <path
-              d={`M -340 ${centerY - Math.sin(-340 * Math.PI / 170) * amplitude} 
+              d={`M -680 ${centerY - Math.sin(-680 * Math.PI / 170) * amplitude} 
+                 Q ${width * 0.25 - 680} ${centerY - amplitude * 1.4}, ${width * 0.5 - 680} ${centerY} 
+                 T -340 ${centerY}
                  Q ${width * 0.25 - 340} ${centerY - amplitude * 1.4}, ${width * 0.5 - 340} ${centerY} 
                  T 0 ${centerY}
                  Q ${width * 0.25} ${centerY - amplitude * 1.4}, ${width * 0.5} ${centerY} 
                  T ${width} ${centerY}
                  Q ${width * 1.25} ${centerY - amplitude * 1.4}, ${width * 1.5} ${centerY} 
-                 T ${width * 2} ${centerY}`}
+                 T ${width * 2} ${centerY}
+                 Q ${width * 2.25} ${centerY - amplitude * 1.4}, ${width * 2.5} ${centerY} 
+                 T ${width * 3} ${centerY}`}
               fill="none"
               stroke="#38bdf8"
               strokeWidth="4"
@@ -541,7 +579,7 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
               }
             </h3>
             <p className="text-xs text-slate-400 mt-1">
-              {progress >= 10 ? '精通「微移法」與週期規律，輕鬆掌控介面質點振動！' : '熟記一週期 = 4/4T 振動一次，微移法能精準推算瞬間移動方向！'}
+              {progress >= 10 ? '精通「微移法」與週期規律，輕鬆掌控介面質點振動！' : '熟記一週期 = 4/4T 振動一次，扣除整週期即可快速算解答！'}
             </p>
           </div>
 
