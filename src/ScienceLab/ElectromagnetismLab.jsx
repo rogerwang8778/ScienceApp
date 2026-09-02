@@ -255,7 +255,7 @@ export default function ElectromagnetismLab() {
   const lenzRes = getLenzLogic();
 
   // ==========================================
-  // 4. 馬達原理 3D 運算 (高顯眼度電流箭頭渲染組件)
+  // 4. 馬達原理 3D 運算 (嚴謹校正物理受力與電流方向)
   // ==========================================
   const motorAngle = (animOffset * 3.6) % 360; 
   const rad = (motorAngle * Math.PI) / 180;
@@ -291,7 +291,7 @@ export default function ElectromagnetismLab() {
     y: ringCenter.y + 12 * Math.sin(rad)
   };
 
-  // 繪製極度清晰的切線電流箭頭繪製函式
+  // 高顯顯度切線電流箭頭渲染組件
   const renderCurrentArrow = (pStart, pEnd, reverse = false, label = 'I') => {
     const p1 = reverse ? pEnd : pStart;
     const p2 = reverse ? pStart : pEnd;
@@ -303,11 +303,8 @@ export default function ElectromagnetismLab() {
 
     return (
       <g transform={`translate(${midX}, ${midY}) rotate(${angleDeg})`}>
-        {/* 底層外框發光區 */}
         <polygon points="-12,-8 14,0 -12,8 -6,0" fill="#ffffff" stroke="#ffffff" strokeWidth="2.5" />
-        {/* 鮮紅高顯眼度主箭頭 */}
         <polygon points="-10,-6 12,0 -10,6 -5,0" fill="#ef4444" />
-        {/* 箭頭旁文字標註 */}
         <text
           x="0"
           y="-12"
@@ -322,6 +319,10 @@ export default function ElectromagnetismLab() {
       </g>
     );
   };
+
+  // 判定目前在左側與右側的電樞導線
+  const leftPoint = ptA.x < ptD.x ? ptA : ptD;
+  const rightPoint = ptA.x < ptD.x ? ptD : ptA;
 
   return (
     <div 
@@ -1136,7 +1137,7 @@ export default function ElectromagnetismLab() {
         </div>
       )}
 
-      {/* 4. 馬達原理 (高顯顯度電流向量與貼合導線之箭頭標示) */}
+      {/* 4. 馬達原理 (嚴謹物理邏輯：左側電樞受力向下、右側受力向上) */}
       {activeTab === 'motor' && (
         <div className="space-y-6">
           <div className="bg-slate-900 border border-slate-700 p-4 rounded-2xl flex flex-wrap items-center justify-between gap-4">
@@ -1206,38 +1207,7 @@ export default function ElectromagnetismLab() {
                 <text x={ptC.x + 10} y={ptC.y - 5} fill="#fbbf24" fontSize="12" fontWeight="bold">C</text>
                 <text x={ptD.x + 10} y={ptD.y + 5} fill="#fbbf24" fontSize="12" fontWeight="bold">D</text>
 
-                {/* 動態流動電子粒子 */}
-                {isRunning && [0.25, 0.75].map((posRatio, pIdx) => {
-                  const getPointAlongCoil = (ratio) => {
-                    if (ratio < 0.33) {
-                      const t = ratio / 0.33;
-                      return { x: ptA.x + (ptB.x - ptA.x) * t, y: ptA.y + (ptB.y - ptA.y) * t };
-                    } else if (ratio < 0.66) {
-                      const t = (ratio - 0.33) / 0.33;
-                      return { x: ptB.x + (ptC.x - ptB.x) * t, y: ptB.y + (ptC.y - ptB.y) * t };
-                    } else {
-                      const t = (ratio - 0.66) / 0.34;
-                      return { x: ptC.x + (ptD.x - ptC.x) * t, y: ptC.y + (ptD.y - ptC.y) * t };
-                    }
-                  };
-
-                  const currentPos = ((animOffset / 100) + posRatio) % 1;
-                  const p = getPointAlongCoil(isCommutated ? 1 - currentPos : currentPos);
-
-                  return (
-                    <circle
-                      key={`flow-p-${pIdx}`}
-                      cx={p.x}
-                      cy={p.y}
-                      r="4.5"
-                      fill="#fef08a"
-                      stroke="#ef4444"
-                      strokeWidth="1.5"
-                    />
-                  );
-                })}
-
-                {/* 精確切線方向高顯眼度電流箭頭 */}
+                {/* 切線電流箭頭 (正向：A->B->C->D, 換向：D->C->B->A) */}
                 {isRunning && (
                   <g>
                     {/* A -> B 段 */}
@@ -1249,16 +1219,18 @@ export default function ElectromagnetismLab() {
                   </g>
                 )}
 
-                {/* 導線受力 F (右手開掌定則) */}
+                {/* 導線受力 F (嚴謹右手開掌定則：左側受力向下 ▼，右側受力向上 ▲) */}
                 {Math.abs(Math.sin(rad)) > 0.15 && (
                   <g>
-                    <line x1={ptA.x} y1={ptA.y} x2={ptA.x} y2={ptA.y - 35} stroke="#10b981" strokeWidth="3" />
-                    <polygon points={`${ptA.x - 4},${ptA.y - 35} ${ptA.x},${ptA.y - 43} ${ptA.x + 4},${ptA.y - 35}`} fill="#10b981" />
-                    <text x={ptA.x - 22} y={ptA.y - 25} fill="#10b981" fontSize="11" fontWeight="bold">F (向上)</text>
+                    {/* 左側導線受力 F (向下 ▼) */}
+                    <line x1={leftPoint.x} y1={leftPoint.y} x2={leftPoint.x} y2={leftPoint.y + 35} stroke="#10b981" strokeWidth="3" />
+                    <polygon points={`${leftPoint.x - 4},${leftPoint.y + 35} ${leftPoint.x},${leftPoint.y + 43} ${leftPoint.x + 4},${leftPoint.y + 35}`} fill="#10b981" />
+                    <text x={leftPoint.x - 24} y={leftPoint.y + 25} fill="#10b981" fontSize="11" fontWeight="bold">F (向下)</text>
 
-                    <line x1={ptD.x} y1={ptD.y} x2={ptD.x} y2={ptD.y + 35} stroke="#10b981" strokeWidth="3" />
-                    <polygon points={`${ptD.x - 4},${ptD.y + 35} ${ptD.x},${ptD.y + 43} ${ptD.x + 4},${ptD.y + 35}`} fill="#10b981" />
-                    <text x={ptD.x + 10} y={ptD.y + 30} fill="#10b981" fontSize="11" fontWeight="bold">F (向下)</text>
+                    {/* 右側導線受力 F (向上 ▲) */}
+                    <line x1={rightPoint.x} y1={rightPoint.y} x2={rightPoint.x} y2={rightPoint.y - 35} stroke="#10b981" strokeWidth="3" />
+                    <polygon points={`${rightPoint.x - 4},${rightPoint.y - 35} ${rightPoint.x},${rightPoint.y - 43} ${rightPoint.x + 4},${rightPoint.y - 35}`} fill="#10b981" />
+                    <text x={rightPoint.x + 10} y={rightPoint.y - 25} fill="#10b981" fontSize="11" fontWeight="bold">F (向上)</text>
                   </g>
                 )}
 
@@ -1309,7 +1281,7 @@ export default function ElectromagnetismLab() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-slate-300 pt-1">
                 <p>• 磁場方向 B：<strong className="text-cyan-300">由 N 極向右指向 S 極</strong></p>
                 <p>• 電流換向：<strong className="text-amber-300">集電環 (S1/S2) 每半圈切換一次</strong></p>
-                <p>• 電樞旋轉：<strong className="text-purple-300">受磁力矩推動持續順時針旋轉</strong></p>
+                <p>• 電樞受力：<strong className="text-purple-300">左側導線受力向下，右側導線受力向上</strong></p>
               </div>
             </div>
           </div>
