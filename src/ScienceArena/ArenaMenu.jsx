@@ -2,47 +2,47 @@ import React from 'react';
 import { Swords, User, Users, Flame, Layers, Play } from 'lucide-react';
 
 export default function ArenaMenu({ gameMode, setGameMode, onSelectGame }) {
-  // 小遊戲清單資料庫（預留未來擴充 10+ 款遊戲）
+  // 小遊戲卡片清單（以天空競技場樓層規劃）
   const gameList = [
     {
-      id: 'rightHand',
-      unit: '單元六《電與磁》',
-      title: '電磁學右手定則速度 PK',
-      desc: '極速判斷電流 I、磁場 B 與受力 F 的右手掌心方向！',
-      icon: '⚡',
+      id: 'density1F', // 對應 ScienceArena.jsx 中的 currentGame === 'density1F'
+      unit: '天空競技場 1F',
+      title: '1F 密度擂台：浮沉剋制戰',
+      desc: '極速判斷 M-V 密度，運用物體與液體的浮沉特性剋制敵人！',
+      icon: '🧪',
       color: 'from-amber-500/20 to-indigo-500/20',
       borderColor: 'border-amber-500/40 hover:border-amber-400',
       badgeColor: 'bg-amber-500/20 text-amber-300'
     },
     {
-      id: 'circuit',
-      unit: '單元五《電路與歐姆定律》',
-      title: '電路故障除錯大比拼',
-      desc: '即時除錯！找出串並聯短路、斷路與燈泡亮暗問題。',
+      id: 'waves50F',
+      unit: '天空競技場 50F',
+      title: '50F 聲波頻率對決',
+      desc: '分析振幅、頻率與波長，聽音辨位搶答音調與響度變化！',
+      icon: '🔊',
+      color: 'from-purple-500/20 to-pink-500/20',
+      borderColor: 'border-purple-500/40 hover:border-purple-400',
+      badgeColor: 'bg-purple-500/20 text-purple-300'
+    },
+    {
+      id: 'circuit100F',
+      unit: '天空競技場 100F',
+      title: '100F 歐姆電流大亂鬥',
+      desc: '即時除錯！找出串並聯短路、斷路與伏特/安培計讀數。',
       icon: '💡',
       color: 'from-cyan-500/20 to-blue-500/20',
       borderColor: 'border-cyan-500/40 hover:border-cyan-400',
       badgeColor: 'bg-cyan-500/20 text-cyan-300'
     },
     {
-      id: 'acidBase',
-      unit: '單元四《酸鹼鹽與反應速率》',
-      title: '酸鹼沉澱與離子配對賽',
-      desc: '快答 pH 值變換、離子沉澱反應與催化劑特性！',
-      icon: '🧪',
-      color: 'from-emerald-500/20 to-teal-500/20',
-      borderColor: 'border-emerald-500/40 hover:border-emerald-400',
-      badgeColor: 'bg-emerald-500/20 text-emerald-300'
-    },
-    {
-      id: 'waves',
-      unit: '單元三《波動與聲音》',
-      title: '聲波三要素頻率挑戰',
-      desc: '分析振幅、頻率與波長，搶答音調與響度變化！',
-      icon: '🔊',
-      color: 'from-purple-500/20 to-pink-500/20',
-      borderColor: 'border-purple-500/40 hover:border-purple-400',
-      badgeColor: 'bg-purple-500/20 text-purple-300'
+      id: 'electromagnet200F',
+      unit: '200F (念能力層)',
+      title: '200F 右手定則極限 PK',
+      desc: '安培右手、右手開掌與冷次定律極速快答！',
+      icon: '⚡',
+      color: 'from-rose-500/20 to-amber-500/20',
+      borderColor: 'border-rose-500/40 hover:border-rose-400',
+      badgeColor: 'bg-rose-500/20 text-rose-300'
     }
   ];
 
@@ -53,10 +53,10 @@ export default function ArenaMenu({ gameMode, setGameMode, onSelectGame }) {
         <div>
           <h2 className="text-xl md:text-2xl font-black text-white flex items-center gap-2">
             <Swords className="w-7 h-7 text-rose-400" />
-            理化競技場遊戲大廳
+            獵人天空競技場大廳
           </h2>
           <p className="text-xs text-slate-400 mt-1">
-            選擇對戰遊戲與模式，答錯扣除血條 HP，考驗你的概念反應速度！
+            挑戰各樓層理化關主！答錯扣除血條 HP，考驗你的概念反應速度！
           </p>
         </div>
 
@@ -85,10 +85,10 @@ export default function ArenaMenu({ gameMode, setGameMode, onSelectGame }) {
         </div>
       </div>
 
-      {/* 小遊戲卡片列表 */}
+      {/* 樓層小遊戲卡片列表 */}
       <div className="space-y-4">
         <h3 className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
-          <Layers className="w-4 h-4 text-indigo-400" /> 選擇挑戰的小遊戲單元：
+          <Layers className="w-4 h-4 text-indigo-400" /> 選擇挑戰的天空競技場樓層：
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -118,7 +118,7 @@ export default function ArenaMenu({ gameMode, setGameMode, onSelectGame }) {
                   <Flame className="w-3.5 h-3.5 text-amber-400" /> 扣血機制: 答錯 -20 HP
                 </span>
                 <span className="text-xs font-bold text-indigo-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-                  進入遊戲 <Play className="w-3.5 h-3.5 fill-indigo-400" />
+                  挑戰樓層 <Play className="w-3.5 h-3.5 fill-indigo-400" />
                 </span>
               </div>
             </div>
