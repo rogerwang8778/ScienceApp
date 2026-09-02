@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Zap, Play, Pause, Compass, RotateCw, Activity, Layers, MoveHorizontal } from 'lucide-react';
+import { Zap, Play, Pause, Compass, RotateCw, Activity, Layers, MoveHorizontal, Sliders } from 'lucide-react';
 
 export default function ElectromagnetismLab() {
   const [activeTab, setActiveTab] = useState('lenz');
@@ -66,16 +66,18 @@ export default function ElectromagnetismLab() {
   };
 
   // ==========================================
-  // 3. 冷次定律（可手動拖曳磁鐵互動實驗室）
+  // 3. 冷次定律 State & 雙子分頁控制
   // ==========================================
+  const [lenzSubTab, setLenzSubTab] = useState('magnet'); // 'magnet' | 'primaryWire'
+  
+  // 子分頁 1：手動拖曳磁鐵
   const [magnetPole, setMagnetPole] = useState('N'); // 'N' | 'S' (左端極性)
-  const [magnetX, setMagnetX] = useState(380); // 磁鐵 X 軸座標
+  const [magnetX, setMagnetX] = useState(380); 
   const [isDragging, setIsDragging] = useState(false);
-  const [velocity, setVelocity] = useState(0); // 移動速度 (+: 向右遠離, -: 向左靠近)
+  const [velocity, setVelocity] = useState(0); 
 
   const dragRef = useRef({ startX: 0, initialMagnetX: 380, lastX: 380, lastTime: Date.now() });
 
-  // 滑鼠 / 觸控拖曳處理
   const handlePointerDown = (e) => {
     setIsDragging(true);
     const clientX = e.clientX || (e.touches && e.touches[0].clientX) || 0;
@@ -92,11 +94,9 @@ export default function ElectromagnetismLab() {
     const clientX = e.clientX || (e.touches && e.touches[0].clientX) || 0;
     const deltaX = clientX - dragRef.current.startX;
     
-    // 限制拖曳範圍 (280 ~ 480)
     const newX = Math.max(280, Math.min(480, dragRef.current.initialMagnetX + deltaX));
     setMagnetX(newX);
 
-    // 計算即時速度
     const now = Date.now();
     const dt = (now - dragRef.current.lastTime) / 1000;
     if (dt > 0.02) {
@@ -112,89 +112,166 @@ export default function ElectromagnetismLab() {
     setVelocity(0);
   };
 
-  // 根據磁鐵極性與移動速度動態計算冷次定律感應結果
-  const getInteractiveLenzResult = () => {
-    const isMoving = Math.abs(velocity) > 15;
-    const moveDir = velocity < 0 ? 'approach' : 'recede'; // approach: 向左靠近, recede: 向右遠離
+  // 子分頁 2：主線圈電流控制
+  const [primaryCurrent, setPrimaryCurrent] = useState(50); // 主線圈電流 (-100 ~ 100)
+  const [prevCurrent, setPrevCurrent] = useState(50);
+  const [currentChangeRate, setCurrentChangeRate] = useState(0); // 電流變化率 (dI/dt)
 
-    if (!isMoving) {
-      return {
-        isMoving: false,
-        indB: '磁鐵靜止，無磁通量變化',
-        indI: '無感應電流 (檢流計指向 0)',
-        bDir: 'none',
-        leftIndPole: '',
-        rightIndPole: '',
-        frontIUp: false,
-        needleAngle: 0
-      };
-    }
-
-    let bDir = 'right';
-    let leftIndPole = 'S';
-    let rightIndPole = 'N';
-    let frontIUp = false;
-    
-    // 計算指針偏轉角度 (隨速度大小變化，上限 40 度)
-    const speedMagnitude = Math.min(Math.abs(velocity) / 15, 1);
-    let needleAngle = 0;
-
-    if (magnetPole === 'N') {
-      if (moveDir === 'approach') {
-        // N 極靠近 -> 右端產生 N 極抵抗 -> 內部感應磁場向右
-        bDir = 'right';
-        leftIndPole = 'S';
-        rightIndPole = 'N';
-        frontIUp = false;
-        needleAngle = 35 * speedMagnitude;
-      } else {
-        // N 極遠離 -> 右端產生 S 極吸引 -> 內部感應磁場向左
-        bDir = 'left';
-        leftIndPole = 'N';
-        rightIndPole = 'S';
-        frontIUp = true;
-        needleAngle = -35 * speedMagnitude;
-      }
-    } else { // S 極
-      if (moveDir === 'approach') {
-        // S 極靠近 -> 右端產生 S 極抵抗 -> 內部感應磁場向左
-        bDir = 'left';
-        leftIndPole = 'N';
-        rightIndPole = 'S';
-        frontIUp = true;
-        needleAngle = -35 * speedMagnitude;
-      } else {
-        // S 極遠離 -> 右端產生 N 極吸引 -> 內部感應磁場向右
-        bDir = 'right';
-        leftIndPole = 'S';
-        rightIndPole = 'N';
-        frontIUp = false;
-        needleAngle = 35 * speedMagnitude;
-      }
-    }
-
-    const indB = moveDir === 'approach' 
-      ? `右端產生 ${rightIndPole} 極抵抗靠近 (感應磁場向${bDir === 'right' ? '右' : '左'})`
-      : `右端產生 ${rightIndPole} 極吸引遠離 (感應磁場向${bDir === 'right' ? '右' : '左'})`;
-
-    const indI = frontIUp 
-      ? '前方繞線向上感應電流 (檢流計向左偏轉)' 
-      : '前方繞線向下感應電流 (檢流計向右偏轉)';
-
-    return {
-      isMoving: true,
-      moveDir,
-      indB,
-      indI,
-      bDir,
-      leftIndPole,
-      rightIndPole,
-      frontIUp,
-      needleAngle
-    };
+  const handlePrimaryCurrentChange = (val) => {
+    const newCurrent = Number(val);
+    const diff = newCurrent - primaryCurrent;
+    setCurrentChangeRate(diff);
+    setPrimaryCurrent(newCurrent);
   };
 
-  const lenzRes = getInteractiveLenzResult();
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setCurrentChangeRate(0);
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [primaryCurrent]);
+
+
+  // 根據兩組子分頁運算冷次定律結果
+  const getLenzLogic = () => {
+    if (lenzSubTab === 'magnet') {
+      const isMoving = Math.abs(velocity) > 15;
+      const moveDir = velocity < 0 ? 'approach' : 'recede'; 
+
+      if (!isMoving) {
+        return {
+          isMoving: false,
+          indB: '磁鐵靜止，無磁通量變化',
+          indI: '無感應電流 (檢流計指向 0)',
+          bDir: 'none',
+          leftIndPole: '',
+          rightIndPole: '',
+          frontIUp: false,
+          needleAngle: 0
+        };
+      }
+
+      let bDir = 'right';
+      let leftIndPole = 'S';
+      let rightIndPole = 'N';
+      let frontIUp = false;
+      
+      const speedMagnitude = Math.min(Math.abs(velocity) / 15, 1);
+      let needleAngle = 0;
+
+      if (magnetPole === 'N') {
+        if (moveDir === 'approach') {
+          bDir = 'right';
+          leftIndPole = 'S';
+          rightIndPole = 'N';
+          frontIUp = false;
+          needleAngle = 35 * speedMagnitude;
+        } else {
+          bDir = 'left';
+          leftIndPole = 'N';
+          rightIndPole = 'S';
+          frontIUp = true;
+          needleAngle = -35 * speedMagnitude;
+        }
+      } else { 
+        if (moveDir === 'approach') {
+          bDir = 'left';
+          leftIndPole = 'N';
+          rightIndPole = 'S';
+          frontIUp = true;
+          needleAngle = -35 * speedMagnitude;
+        } else {
+          bDir = 'right';
+          leftIndPole = 'S';
+          rightIndPole = 'N';
+          frontIUp = false;
+          needleAngle = 35 * speedMagnitude;
+        }
+      }
+
+      return {
+        isMoving: true,
+        moveDir,
+        indB: moveDir === 'approach' 
+          ? `右端產生 ${rightIndPole} 極抵抗靠近 (感應磁場向${bDir === 'right' ? '右' : '左'})`
+          : `右端產生 ${rightIndPole} 極吸引遠離 (感應磁場向${bDir === 'right' ? '右' : '左'})`,
+        indI: frontIUp ? '前方繞線向上感應電流 (檢流計向左偏轉)' : '前方繞線向下感應電流 (檢流計向右偏轉)',
+        bDir,
+        leftIndPole,
+        rightIndPole,
+        frontIUp,
+        needleAngle
+      };
+    } else {
+      // 主線圈模式
+      const isChanging = Math.abs(currentChangeRate) > 0.5;
+
+      if (!isChanging) {
+        return {
+          isMoving: false,
+          indB: '主線圈電流穩定，無磁通量變化',
+          indI: '無感應電流 (檢流計指向 0)',
+          bDir: 'none',
+          leftIndPole: '',
+          rightIndPole: '',
+          frontIUp: false,
+          needleAngle: 0
+        };
+      }
+
+      // 假設主線圈電流 > 0 時，主磁場向右
+      const isIncreasing = currentChangeRate > 0;
+      let bDir = 'right';
+      let leftIndPole = 'S';
+      let rightIndPole = 'N';
+      let frontIUp = false;
+
+      if (primaryCurrent >= 0) {
+        if (isIncreasing) {
+          // 主磁場向右增加 -> 感應磁場向左抵抗
+          bDir = 'left';
+          leftIndPole = 'N';
+          rightIndPole = 'S';
+          frontIUp = true;
+        } else {
+          // 主磁場向右減少 -> 感應磁場向右補充
+          bDir = 'right';
+          leftIndPole = 'S';
+          rightIndPole = 'N';
+          frontIUp = false;
+        }
+      } else {
+        if (isIncreasing) {
+          // 主磁場向左減少 -> 感應磁場向左補充
+          bDir = 'left';
+          leftIndPole = 'N';
+          rightIndPole = 'S';
+          frontIUp = true;
+        } else {
+          // 主磁場向左增加 -> 感應磁場向右抵抗
+          bDir = 'right';
+          leftIndPole = 'S';
+          rightIndPole = 'N';
+          frontIUp = false;
+        }
+      }
+
+      const needleAngle = frontIUp ? -30 : 30;
+
+      return {
+        isMoving: true,
+        indB: isIncreasing ? '主磁場增強，感應磁場反向抵抗' : '主磁場減弱，感應磁場同向補充',
+        indI: frontIUp ? '前方繞線向上感應電流 (檢流計向左偏轉)' : '前方繞線向下感應電流 (檢流計向右偏轉)',
+        bDir,
+        leftIndPole,
+        rightIndPole,
+        frontIUp,
+        needleAngle
+      };
+    }
+  };
+
+  const lenzRes = getLenzLogic();
 
   return (
     <div 
@@ -211,7 +288,7 @@ export default function ElectromagnetismLab() {
             理化實驗室：國三下 單元六《電與磁互動實驗室》
           </h2>
           <p className="text-xs text-slate-400 mt-1">
-            冷次定律電磁感應拖曳模擬器（可自由左右手動拖曳磁鐵）
+            冷次定律實驗室：感應電流向量箭頭、手動拖曳磁鐵與載流螺線管變壓雙模組
           </p>
         </div>
 
@@ -250,7 +327,7 @@ export default function ElectromagnetismLab() {
             activeTab === 'lenz' ? 'bg-purple-600 text-white shadow-lg' : 'bg-slate-700 text-slate-300 hover:bg-slate-650'
           }`}
         >
-          <Layers className="w-3.5 h-3.5 text-purple-300" /> 3. 冷次定律拖曳模擬
+          <Layers className="w-3.5 h-3.5 text-purple-300" /> 3. 冷次定律實驗室
         </button>
         <button
           onClick={() => setActiveTab('motor')}
@@ -359,7 +436,7 @@ export default function ElectromagnetismLab() {
                   <text x="240" y="123" textAnchor="middle" fill="#94a3b8" fontSize="10">視角後 (虛線)</text>
 
                   <text x="240" y="165" textAnchor="middle" fill="#38bdf8" fontSize="10" fontWeight="bold">
-                    視角前 ({currentDir === 'up' ? '向右 →' : '向向左 ←'})
+                    視角前 ({currentDir === 'up' ? '向右 →' : '向左 ←'})
                   </text>
                   <text x="100" y="143" textAnchor="middle" fill="#38bdf8" fontSize="10" fontWeight="bold">
                     西方 ({currentDir === 'up' ? '穿出 ⦿' : '穿入 ⊗'})
@@ -578,38 +655,81 @@ export default function ElectromagnetismLab() {
       )}
 
       {/* ==========================================
-          3. 冷次定律（完全重構：自由拖曳磁鐵互動實驗室）
+          3. 冷次定律（雙子分頁 + 感應螺線管導線電流箭頭）
       ========================================== */}
       {activeTab === 'lenz' && (
         <div className="space-y-6">
-          <div className="bg-slate-900 border border-slate-700 p-4 rounded-2xl flex flex-wrap items-center justify-between gap-4">
-            <div className="flex flex-wrap items-center gap-4">
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-300 font-bold">1. 切換磁鐵靠近端極性：</span>
-                <button
-                  onClick={() => setMagnetPole(magnetPole === 'N' ? 'S' : 'N')}
-                  className={`px-3.5 py-1.5 text-xs font-bold rounded-xl border transition-all ${
-                    magnetPole === 'N' ? 'bg-blue-600/30 text-blue-300 border-blue-500/50' : 'bg-rose-600/30 text-rose-300 border-rose-500/50'
-                  }`}
-                >
-                  左端為 {magnetPole} 極 (按此反轉極性)
-                </button>
-              </div>
-
-              <div className="flex items-center gap-2 text-xs text-cyan-300 font-bold bg-cyan-950/60 px-3 py-1.5 rounded-xl border border-cyan-800/50">
-                <MoveHorizontal className="w-4 h-4 animate-pulse" />
-                用滑鼠/手勢「左右拖曳磁鐵」進行實驗
-              </div>
+          {/* 子分頁導覽列 */}
+          <div className="bg-slate-900 border border-slate-700 p-3 rounded-2xl flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setLenzSubTab('magnet')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                  lenzSubTab === 'magnet' ? 'bg-purple-600 text-white shadow' : 'bg-slate-800 text-slate-400 hover:text-white'
+                }`}
+              >
+                <MoveHorizontal className="w-3.5 h-3.5" /> 實驗一：條形磁鐵移動
+              </button>
+              <button
+                onClick={() => setLenzSubTab('primaryWire')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                  lenzSubTab === 'primaryWire' ? 'bg-amber-600 text-white shadow' : 'bg-slate-800 text-slate-400 hover:text-white'
+                }`}
+              >
+                <Sliders className="w-3.5 h-3.5" /> 實驗二：載流主線圈 (改變電流)
+              </button>
             </div>
 
             <div className="text-xs font-mono text-purple-400 font-bold">
-              冷次定律：感應電流之感應磁場 B<sub>感</sub> 永遠抵抗主磁場之變化
+              冷次定律：感應磁場 B<sub>感</sub> 永遠抵抗主磁場之變化
             </div>
+          </div>
+
+          {/* 控制面板卡片 */}
+          <div className="bg-slate-900/80 border border-slate-700/80 p-3.5 rounded-2xl flex flex-wrap items-center justify-between gap-4">
+            {lenzSubTab === 'magnet' ? (
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-300 font-bold">靠近端極性：</span>
+                  <button
+                    onClick={() => setMagnetPole(magnetPole === 'N' ? 'S' : 'N')}
+                    className={`px-3 py-1 text-xs font-bold rounded-xl border transition-all ${
+                      magnetPole === 'N' ? 'bg-blue-600/30 text-blue-300 border-blue-500/50' : 'bg-rose-600/30 text-rose-300 border-rose-500/50'
+                    }`}
+                  >
+                    左端為 {magnetPole} 極
+                  </button>
+                </div>
+                <span className="text-xs text-cyan-300 font-bold flex items-center gap-1">
+                  <MoveHorizontal className="w-4 h-4 animate-pulse" /> 滑鼠/手勢左右拖曳磁鐵
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-4 flex-wrap w-full">
+                <span className="text-xs text-amber-300 font-bold flex items-center gap-1">
+                  <Sliders className="w-4 h-4" /> 調整主線圈電流 I<sub>主</sub>：
+                </span>
+                <input
+                  type="range"
+                  min="-100"
+                  max="100"
+                  value={primaryCurrent}
+                  onChange={(e) => handlePrimaryCurrentChange(e.target.value)}
+                  className="w-48 h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                />
+                <span className="text-xs font-mono font-bold text-amber-400 w-16">
+                  {primaryCurrent}%
+                </span>
+                <span className="text-xs text-slate-400">
+                  (拖曳滑桿改變電流大小以產生感應磁場)
+                </span>
+              </div>
+            )}
           </div>
 
           <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 flex flex-col items-center justify-center min-h-[340px]">
             <svg width="580" height="260" className="select-none font-mono text-[11px]">
-              {/* 左側：感應螺線管線圈 */}
+              {/* ================= 左側：感應螺線管線圈 ================= */}
               <g>
                 <text x="170" y="22" textAnchor="middle" fill="#a855f7" fontSize="12" fontWeight="bold">感應螺線管線圈</text>
 
@@ -626,7 +746,7 @@ export default function ElectromagnetismLab() {
                   />
                 ))}
 
-                {/* 內部感應磁場 B_ind 向量箭頭 (僅在磁鐵移動時顯現) */}
+                {/* 內部感應磁場 B_ind 向量箭頭 */}
                 {lenzRes.isMoving && (
                   <g>
                     <line
@@ -651,16 +771,41 @@ export default function ElectromagnetismLab() {
                   </g>
                 )}
 
-                {/* 2. 感應線圈前側 (粗實線) */}
-                {[0, 1, 2, 3, 4].map((i) => (
-                  <path
-                    key={`coil-front-${i}`}
-                    d={`M ${90 + i * 32} 70 C ${90 + i * 32} 170, ${120 + i * 32} 170, ${120 + i * 32} 150`}
-                    fill="none"
-                    stroke="#a855f7"
-                    strokeWidth="4.5"
-                  />
-                ))}
+                {/* 2. 感應線圈前側 (粗實線) & 【感應電流箭頭方向標示】 */}
+                {[0, 1, 2, 3, 4].map((i) => {
+                  const startX = 90 + i * 32;
+                  const endX = 120 + i * 32;
+
+                  return (
+                    <g key={`coil-front-${i}`}>
+                      <path
+                        d={`M ${startX} 70 C ${startX} 170, ${endX} 170, ${endX} 150`}
+                        fill="none"
+                        stroke="#a855f7"
+                        strokeWidth="4.5"
+                      />
+
+                      {/* 在前方導線上精準繪製感應電流方向箭頭 */}
+                      {lenzRes.isMoving && (
+                        <g>
+                          {lenzRes.frontIUp ? (
+                            /* 由下往上 ▲ 箭頭標示 */
+                            <polygon
+                              points={`${startX + 10},100 ${startX + 15},112 ${startX + 5},112`}
+                              fill="#f59e0b"
+                            />
+                          ) : (
+                            /* 由上往下 ▼ 箭頭標示 */
+                            <polygon
+                              points={`${startX + 18},120 ${startX + 13},108 ${startX + 23},108`}
+                              fill="#f59e0b"
+                            />
+                          )}
+                        </g>
+                      )}
+                    </g>
+                  );
+                })}
 
                 {/* 3. 底部迴路與檢流計 */}
                 <path
@@ -674,7 +819,6 @@ export default function ElectromagnetismLab() {
                 <circle cx="165" cy="200" r="16" fill="#0f172a" stroke="#a855f7" strokeWidth="2" />
                 <text x="165" y="204" textAnchor="middle" fill="#a855f7" fontSize="10" fontWeight="bold">G</text>
                 
-                {/* 檢流計指針 (動態跟隨偏轉角度) */}
                 <line
                   x1="165"
                   y1="200"
@@ -684,7 +828,7 @@ export default function ElectromagnetismLab() {
                   strokeWidth="2.5"
                 />
 
-                {/* 線圈兩端極性 (移動時即時產生) */}
+                {/* 線圈兩端極性 */}
                 {lenzRes.isMoving && (
                   <g>
                     <text x="50" y="115" textAnchor="middle" fill={lenzRes.leftIndPole === 'N' ? '#3b82f6' : '#ef4444'} fontSize="18" fontWeight="bold">
@@ -696,7 +840,7 @@ export default function ElectromagnetismLab() {
                   </g>
                 )}
 
-                {/* 4. 動態感應電流黃色粒子 (僅在移動時巡航) */}
+                {/* 4. 動態感應電流黃色粒子 (巡航) */}
                 {isRunning && lenzRes.isMoving && [0, 1, 2, 3, 4].map((i) => {
                   const dir = lenzRes.frontIUp ? 1 : -1;
                   const t = (animOffset * 5 + i * 72) * Math.PI / 180;
@@ -719,55 +863,137 @@ export default function ElectromagnetismLab() {
                 })}
               </g>
 
-              {/* 右側：可滑鼠/觸控自由拖曳的條形磁鐵 */}
-              <g 
-                className="cursor-grab active:cursor-grabbing"
-                onPointerDown={handlePointerDown}
-              >
-                {/* 磁鐵本體 */}
-                <rect x={magnetX} y="90" width="100" height="40" rx="4" fill="#334155" stroke="#ffffff" strokeWidth={isDragging ? '2.5' : '1.5'} />
-                <rect x={magnetX} y="90" width="50" height="40" rx="2" fill={magnetPole === 'N' ? '#3b82f6' : '#ef4444'} />
-                <rect x={magnetX + 50} y="90" width="50" height="40" rx="2" fill={magnetPole === 'N' ? '#ef4444' : '#3b82f6'} />
-                
-                <text x={magnetX + 25} y="115" textAnchor="middle" fill="#ffffff" fontSize="14" fontWeight="bold">{magnetPole}</text>
-                <text x={magnetX + 75} y="115" textAnchor="middle" fill="#ffffff" fontSize="14" fontWeight="bold">{magnetPole === 'N' ? 'S' : 'N'}</text>
+              {/* ================= 右側：條形磁鐵 或 載流主線圈 ================= */}
+              {lenzSubTab === 'magnet' ? (
+                <g 
+                  className="cursor-grab active:cursor-grabbing"
+                  onPointerDown={handlePointerDown}
+                >
+                  <rect x={magnetX} y="90" width="100" height="40" rx="4" fill="#334155" stroke="#ffffff" strokeWidth={isDragging ? '2.5' : '1.5'} />
+                  <rect x={magnetX} y="90" width="50" height="40" rx="2" fill={magnetPole === 'N' ? '#3b82f6' : '#ef4444'} />
+                  <rect x={magnetX + 50} y="90" width="50" height="40" rx="2" fill={magnetPole === 'N' ? '#ef4444' : '#3b82f6'} />
+                  
+                  <text x={magnetX + 25} y="115" textAnchor="middle" fill="#ffffff" fontSize="14" fontWeight="bold">{magnetPole}</text>
+                  <text x={magnetX + 75} y="115" textAnchor="middle" fill="#ffffff" fontSize="14" fontWeight="bold">{magnetPole === 'N' ? 'S' : 'N'}</text>
 
-                {/* 拖曳提示 Icon */}
-                <g transform={`translate(${magnetX + 38}, 62)`}>
-                  <rect x="-4" y="-2" width="32" height="18" rx="4" fill="#0284c7" opacity="0.8" />
-                  <text x="12" y="11" textAnchor="middle" fill="#ffffff" fontSize="9" fontWeight="bold">拖曳</text>
-                </g>
-
-                {/* 移動狀態箭頭 */}
-                {lenzRes.isMoving && (
-                  <g>
-                    <line
-                      x1={lenzRes.moveDir === 'approach' ? magnetX + 75 : magnetX + 25}
-                      y1="145"
-                      x2={lenzRes.moveDir === 'approach' ? magnetX + 25 : magnetX + 75}
-                      y2="145"
-                      stroke="#38bdf8"
-                      strokeWidth="2.5"
-                    />
-                    <polygon
-                      points={
-                        lenzRes.moveDir === 'approach'
-                          ? `${magnetX + 25},141 ${magnetX + 15},145 ${magnetX + 25},149`
-                          : `${magnetX + 75},141 ${magnetX + 85},145 ${magnetX + 75},149`
-                      }
-                      fill="#38bdf8"
-                    />
+                  <g transform={`translate(${magnetX + 38}, 62)`}>
+                    <rect x="-4" y="-2" width="32" height="18" rx="4" fill="#0284c7" opacity="0.8" />
+                    <text x="12" y="11" textAnchor="middle" fill="#ffffff" fontSize="9" fontWeight="bold">拖曳</text>
                   </g>
-                )}
-              </g>
+
+                  {lenzRes.isMoving && (
+                    <g>
+                      <line
+                        x1={lenzRes.moveDir === 'approach' ? magnetX + 75 : magnetX + 25}
+                        y1="145"
+                        x2={lenzRes.moveDir === 'approach' ? magnetX + 25 : magnetX + 75}
+                        y2="145"
+                        stroke="#38bdf8"
+                        strokeWidth="2.5"
+                      />
+                      <polygon
+                        points={
+                          lenzRes.moveDir === 'approach'
+                            ? `${magnetX + 25},141 ${magnetX + 15},145 ${magnetX + 25},149`
+                            : `${magnetX + 75},141 ${magnetX + 85},145 ${magnetX + 75},149`
+                        }
+                        fill="#38bdf8"
+                      />
+                    </g>
+                  )}
+                </g>
+              ) : (
+                /* 載流主線圈模組 */
+                <g>
+                  <text x="430" y="22" textAnchor="middle" fill="#f59e0b" fontSize="12" fontWeight="bold">
+                    主線圈 (載流螺線管)
+                  </text>
+
+                  {[0, 1, 2, 3, 4].map((i) => (
+                    <path
+                      key={`primary-back-${i}`}
+                      d={`M ${380 + i * 28} 150 C ${380 + i * 28} 50, ${355 + i * 28} 50, ${355 + i * 28} 70`}
+                      fill="none"
+                      stroke="#fbbf24"
+                      strokeWidth="2"
+                      strokeDasharray="4 3"
+                      opacity="0.5"
+                    />
+                  ))}
+
+                  {/* 主磁場向量標示 */}
+                  {primaryCurrent !== 0 && (
+                    <g>
+                      <line
+                        x1={primaryCurrent > 0 ? '340' : '480'}
+                        y1="110"
+                        x2={primaryCurrent > 0 ? '480' : '340'}
+                        y2="110"
+                        stroke="#f59e0b"
+                        strokeWidth={Math.min(Math.abs(primaryCurrent) / 20 + 1.5, 5)}
+                      />
+                      <polygon
+                        points={
+                          primaryCurrent > 0
+                            ? '480,105 492,110 480,115'
+                            : '340,105 328,110 340,115'
+                        }
+                        fill="#f59e0b"
+                      />
+                      <text x="420" y="98" textAnchor="middle" fill="#f59e0b" fontSize="11" fontWeight="bold">
+                        B主 ({primaryCurrent > 0 ? '向右 →' : '向左 ←'})
+                      </text>
+                    </g>
+                  )}
+
+                  {[0, 1, 2, 3, 4].map((i) => (
+                    <path
+                      key={`primary-front-${i}`}
+                      d={`M ${355 + i * 28} 70 C ${355 + i * 355 + i * 28} 170, ${380 + i * 28} 170, ${380 + i * 28} 150`}
+                      fill="none"
+                      stroke="#f59e0b"
+                      strokeWidth={Math.min(Math.abs(primaryCurrent) / 20 + 2, 5)}
+                    />
+                  ))}
+
+                  <text x="325" y="115" textAnchor="middle" fill={primaryCurrent >= 0 ? '#ef4444' : '#3b82f6'} fontSize="16" fontWeight="bold">
+                    {primaryCurrent >= 0 ? 'S' : 'N'}
+                  </text>
+                  <text x="508" y="115" textAnchor="middle" fill={primaryCurrent >= 0 ? '#3b82f6' : '#ef4444'} fontSize="16" fontWeight="bold">
+                    {primaryCurrent >= 0 ? 'N' : 'S'}
+                  </text>
+
+                  {/* 主線圈粒子 */}
+                  {isRunning && primaryCurrent !== 0 && [0, 1, 2, 3, 4].map((i) => {
+                    const dir = primaryCurrent > 0 ? 1 : -1;
+                    const t = (animOffset * (Math.abs(primaryCurrent) / 15) + i * 72) * Math.PI / 180;
+                    const cx = 367 + i * 28 + 12 * Math.cos(t);
+                    const cy = 110 + dir * 40 * Math.sin(t);
+                    const isFront = cy >= 105;
+
+                    return (
+                      <circle
+                        key={`pri-p-${i}`}
+                        cx={cx}
+                        cy={cy}
+                        r={isFront ? '4.5' : '3'}
+                        fill={isFront ? '#fbbf24' : '#d97706'}
+                        stroke="#ffffff"
+                        strokeWidth="1"
+                        opacity={isFront ? 1 : 0.6}
+                      />
+                    );
+                  })}
+                </g>
+              )}
             </svg>
 
-            {/* 下方課綱解說與動態數據卡 */}
+            {/* 下方數據說明 */}
             <div className="bg-slate-900 p-3.5 rounded-xl border border-slate-800 text-xs space-y-1.5 w-full mt-2 font-sans">
               <p className="text-purple-300 font-bold flex items-center justify-between">
                 <span>🎯 電磁感應實驗狀態：</span>
                 <span className={lenzRes.isMoving ? 'text-emerald-400 font-mono' : 'text-slate-400 font-mono'}>
-                  {lenzRes.isMoving ? (lenzRes.moveDir === 'approach' ? '⚡ 磁鐵向左靠近中' : '⚡ 磁鐵向右遠離中') : '⏸ 磁鐵靜止中'}
+                  {lenzRes.isMoving ? '⚡ 電磁感應發生中' : '⏸ 磁通量無變化'}
                 </span>
               </p>
               <p className="text-slate-300">• 感應磁場：<strong className="text-cyan-300">{lenzRes.indB}</strong></p>
