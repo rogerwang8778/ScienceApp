@@ -4,6 +4,7 @@ import { Swords, User, Users, Flame, Layers, Play, ArrowLeft } from 'lucide-reac
 // 引入各樓層小遊戲元件
 import DensityFloorGame from './games/DensityFloorGame';
 import ConcentrationFloorGame from './games/ConcentrationFloorGame';
+import ParticleSurfGame from './games/ParticleSurfGame';
 
 export default function ScienceArena({ onAddExp }) {
   // currentGame: null (選單大廳) | 'density1F' | 'concentration10F' | ...
@@ -31,6 +32,16 @@ export default function ScienceArena({ onAddExp }) {
       color: 'from-cyan-500/20 to-blue-500/20',
       borderColor: 'border-cyan-500/40 hover:border-cyan-400',
       badgeColor: 'bg-cyan-500/20 text-cyan-300'
+    },
+    {
+      id: 'waves20F',
+      unit: '天空競技場 20F',
+      title: '20F 波動擂台：質點衝浪手',
+      desc: '運用理化「微移法」預測波前進時介面質點的瞬間運動方向！',
+      icon: '🏄‍♂️',
+      color: 'from-blue-500/20 to-cyan-500/20',
+      borderColor: 'border-blue-500/40 hover:border-blue-400',
+      badgeColor: 'bg-blue-500/20 text-blue-300'
     },
     {
       id: 'waves50F',
@@ -171,6 +182,9 @@ export default function ScienceArena({ onAddExp }) {
 
       {currentGame === 'concentration10F' && (
         <ConcentrationFloorGame mode={gameMode} onGameOver={handleGameOver} />
+      )}
+      {currentGame === 'waves20F' && (
+        <ParticleSurfGame mode={gameMode} onGameOver={handleGameOver} />
       )}
     </div>
   );
