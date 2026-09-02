@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Trophy, RefreshCw, ArrowRight, ArrowLeft, ArrowUp, ArrowDown, Waves } from 'lucide-react';
+import { Trophy, RefreshCw, ArrowRight, ArrowLeft, ArrowUp, ArrowDown, Waves, CheckCircle2 } from 'lucide-react';
 
 export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
   // 遊戲狀態
@@ -19,8 +19,9 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
   const [actionState, setActionState] = useState('idle'); 
   const [isFinished, setIsFinished] = useState(false);
 
-  // 波動動畫 controls: waveOffset 代表波平移距離 (px), particleYOffset 代表質點垂直偏移量
+  // 動畫控制：波形橫移量 (px) 與動畫結束定格標記
   const [animOffset, setAnimOffset] = useState(0);
+  const [showFinalTarget, setShowFinalTarget] = useState(false);
   const animRef = useRef(null);
 
   // ==========================================
@@ -31,16 +32,13 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
 
     if (qIndex <= 3) {
       // === 前 3 題：瞬間運動方向判斷 ===
-      // 選定斜率點：45° (波峰左), 135° (波峰右), 225° (波谷左), 315° (波谷右)
       const phases = [45, 135, 225, 315];
       const particlePhase = phases[Math.floor(Math.random() * phases.length)];
 
       let correctAns = '';
       if (waveDirection === 'right') {
-        // 向右傳：45°, 315° 下降 ； 135°, 225° 上升
         correctAns = (particlePhase === 45 || particlePhase === 315) ? '向下移動' : '向上移動';
       } else {
-        // 向左傳：45°, 315° 上升 ； 135°, 225° 下降
         correctAns = (particlePhase === 45 || particlePhase === 315) ? '向上移動' : '向下移動';
       }
 
@@ -48,6 +46,7 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
         qCategory: 'direction',
         waveDirection,
         particlePhase,
+        deltaQuarters: 0.25, // 預設微移 1/4 個週期進行動畫展示
         title: `第 ${qIndex} 題：瞬間運動方向`,
         desc: `波向${waveDirection === 'right' ? '右' : '左'}傳播，請判斷質點 P 此刻的瞬間運動方向？`,
         options: ['向上移動', '向下移動'],
@@ -55,19 +54,14 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
         particleName: '介面質點 P'
       };
     } else {
-      // === 第 4 題起：週期位移題型 (徹底修正傳播方向與相位對應) ===
+      // === 第 4 題起：週期位移題型 (含精準週期移位動畫) ===
       const isTypeA = Math.random() > 0.5;
 
       if (isTypeA) {
-        // 題型 A：經過 deltaQuarters / 4 個週期後的位置
-        // Phase 定義：90°=波峰, 270°=波谷, 180°=中間平衡點
         const startPhases = [90, 180, 270]; 
         const startPhase = startPhases[Math.floor(Math.random() * startPhases.length)];
         const deltaQuarters = [1, 2, 3, 4][Math.floor(Math.random() * 4)];
 
-        // 時間推移造成的相位變化量：
-        // 若波向右傳 (y = A sin(kx - wt))，時間 t 增加相當於相位減少 (轉動方向向後)
-        // 若波向左傳 (y = A sin(kx + wt))，時間 t 增加相當於相位增加
         let phaseShift = deltaQuarters * 90;
         let finalPhase = 0;
 
@@ -88,6 +82,7 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
           qCategory: 'period_position',
           waveDirection,
           particlePhase: startPhase,
+          deltaQuarters: deltaQuarters / 4, // 1/4, 2/4, 3/4, 4/4 個週期
           title: `第 ${qIndex} 題：週期隨後位置`,
           desc: `波向${waveDirection === 'right' ? '右' : '左'}傳播。衝浪手原本位於【${phaseName}】，經過 ${deltaQuarters}/4 個週期 (T) 後，會位於什麼位置？`,
           options: ['波峰', '波谷', '平衡位置'],
@@ -95,7 +90,6 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
           particleName: '衝浪手'
         };
       } else {
-        // 題型 B：最快需要幾個週期
         const startPhases = [90, 180, 270];
         const startPhase = startPhases[Math.floor(Math.random() * startPhases.length)];
         
@@ -104,7 +98,6 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
         else if (startPhase === 270) targetPhase = 90;
         else targetPhase = Math.random() > 0.5 ? 90 : 270;
 
-        // 計算所需的四分之一週期個數
         let deltaPhase = 0;
         if (waveDirection === 'right') {
           deltaPhase = (startPhase - targetPhase + 360) % 360;
@@ -123,6 +116,7 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
           qCategory: 'period_time',
           waveDirection,
           particlePhase: startPhase,
+          deltaQuarters: requiredQuarters / 4,
           title: `第 ${qIndex} 題：最快週期推算`,
           desc: `波向${waveDirection === 'right' ? '右' : '左'}傳播。衝浪手原本位於【${startName}】，最快需要經過多少個週期才能到達【${targetName}】？`,
           options: ['1/4 個週期', '2/4 個週期', '3/4 個週期', '4/4 個週期'],
@@ -141,13 +135,14 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
       setP2Round(generateParticleQuestion(qIdx));
     }
     setAnimOffset(0);
+    setShowFinalTarget(false);
   };
 
   useEffect(() => {
     generateNextRounds(1);
   }, [mode]);
 
-  // 單人倒數計時器
+  // 計時器
   useEffect(() => {
     let timer = null;
     if (mode === 'single' && !isFinished && timeLeft > 0) {
@@ -159,12 +154,15 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
   }, [timeLeft, isFinished, mode]);
 
   // ==========================================
-  // 2. 觸發波形移動與質點上下振動動畫
+  // 2. 觸發精準週期波形平移動畫
   // ==========================================
-  const triggerWaveAnimation = (direction, callback) => {
+  const triggerWaveAnimation = (direction, deltaPeriodFraction, callback) => {
     let start = null;
-    const duration = 1200; // 動畫撥放 1.2 秒
-    const distance = direction === 'right' ? 80 : -80; // 橫移像素距離
+    const duration = 1500; // 動畫播放 1.5 秒讓學生看清動態演變
+    
+    // 一個完整波長 λ 定義為 340px，因此 deltaPeriodFraction 決定平移距離
+    const fullWaveLength = 340; 
+    const distance = (direction === 'right' ? 1 : -1) * (fullWaveLength * deltaPeriodFraction);
 
     const step = (timestamp) => {
       if (!start) start = timestamp;
@@ -176,7 +174,10 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
       if (progressTime < duration) {
         animRef.current = requestAnimationFrame(step);
       } else {
-        if (callback) callback();
+        setShowFinalTarget(true); // 動畫到達終點，開啟終點定格標記
+        setTimeout(() => {
+          if (callback) callback();
+        }, 800); // 定格停留 0.8 秒給學生吸收
       }
     };
 
@@ -189,10 +190,10 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
     const isCorrect = userAns === singleRound.correctAns;
     const nextQIdx = questionCount + 1;
 
-    // 啟動動畫
     setActionState(isCorrect ? 'success' : 'fall');
 
-    triggerWaveAnimation(singleRound.waveDirection, () => {
+    // 啟動與題目週期比例完全吻合的橫移物理動畫
+    triggerWaveAnimation(singleRound.waveDirection, singleRound.deltaQuarters || 0.25, () => {
       if (isCorrect) {
         const nextProg = progress + 1;
         setProgress(nextProg);
@@ -250,7 +251,7 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
   };
 
   // ==========================================
-  // 3. SVG 波動動畫畫布
+  // 3. SVG 畫布：顯示即時平移與最終抵達點
   // ==========================================
   const renderWaveCanvas = (roundData, isFallAnimation = false) => {
     if (!roundData) return null;
@@ -260,11 +261,9 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
     const centerY = 65;
     const amplitude = 35;
 
-    // 當波平移 animOffset (px) 時，質點維持原 X 軸 (particleX)
-    // 質點處的新 Y 座標由當前平移後的波形決定的 (微移原理)
     const particleX = (roundData.particlePhase / 360) * width;
     
-    // 平移相位 offset
+    // 平移相位 offset，換算成弧度
     const phaseOffsetRad = (animOffset / width) * 2 * Math.PI;
     const particleY = centerY - Math.sin((roundData.particlePhase * Math.PI) / 180 - phaseOffsetRad) * amplitude;
 
@@ -274,42 +273,66 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
           {/* 平衡基準線 */}
           <line x1="0" y1={centerY} x2={width} y2={centerY} stroke="#475569" strokeDasharray="4 4" strokeWidth="1" />
 
-          {/* 1. 動態平移的正弦波形 */}
+          {/* 1. 平移正弦波形 */}
           <g transform={`translate(${animOffset}, 0)`}>
             <path
-              d={`M -100 ${centerY - Math.sin(-100 * Math.PI / 170) * amplitude} 
+              d={`M -340 ${centerY - Math.sin(-340 * Math.PI / 170) * amplitude} 
+                 Q ${width * 0.25 - 340} ${centerY - amplitude * 1.4}, ${width * 0.5 - 340} ${centerY} 
+                 T 0 ${centerY}
                  Q ${width * 0.25} ${centerY - amplitude * 1.4}, ${width * 0.5} ${centerY} 
-                 T ${width + 100} ${centerY}`}
+                 T ${width} ${centerY}
+                 Q ${width * 1.25} ${centerY - amplitude * 1.4}, ${width * 1.5} ${centerY} 
+                 T ${width * 2} ${centerY}`}
               fill="none"
               stroke="#38bdf8"
               strokeWidth="4"
             />
           </g>
 
-          {/* 2. 質點純垂直上下振動指示虛線 (保持 X 軸固定) */}
+          {/* 2. 質點純垂直振動軸線 */}
           <line x1={particleX} y1="10" x2={particleX} y2={height - 10} stroke="#f59e0b" strokeDasharray="2 2" opacity="0.4" />
 
-          {/* 3. 衝浪手質點 (在固定 X 軸上跟隨平移後的波高上下滑行) */}
+          {/* 3. 動畫結束時的高亮定格圓圈標記 */}
+          {showFinalTarget && (
+            <circle
+              cx={particleX}
+              cy={particleY}
+              r="16"
+              fill="none"
+              stroke="#22c55e"
+              strokeWidth="3"
+              className="animate-ping"
+            />
+          )}
+
+          {/* 4. 衝浪手質點 */}
           <g
             transform={`translate(${particleX}, ${
               isFallAnimation ? particleY + 35 : particleY
             })`}
             className="transition-transform duration-75"
           >
-            <circle r="8" fill={isFallAnimation ? '#ef4444' : '#f59e0b'} className="animate-ping opacity-75" />
-            <circle r="6" fill={isFallAnimation ? '#ef4444' : '#fbbf24'} stroke="#ffffff" strokeWidth="2" />
+            <circle r="8" fill={isFallAnimation ? '#ef4444' : showFinalTarget ? '#22c55e' : '#f59e0b'} className="animate-ping opacity-75" />
+            <circle r="6" fill={isFallAnimation ? '#ef4444' : showFinalTarget ? '#22c55e' : '#fbbf24'} stroke="#ffffff" strokeWidth="2" />
             <text x="0" y="-12" textAnchor="middle" fill="#ffffff" fontSize="15">
               {isFallAnimation ? '🏊‍♂️' : '🏄‍♂️'}
             </text>
           </g>
         </svg>
+
+        {/* 5. 終點動態定格浮籤文字 */}
+        {showFinalTarget && (
+          <div className="absolute bottom-1 bg-emerald-500/90 text-white font-black text-xs px-3 py-1 rounded-full shadow-lg border border-emerald-300 animate-bounce flex items-center gap-1">
+            <CheckCircle2 className="w-4 h-4" /> 最終抵達：{singleRound?.correctAns}
+          </div>
+        )}
       </div>
     );
   };
 
   return (
     <div className="bg-slate-950 border border-slate-800 rounded-3xl p-4 md:p-8 max-w-4xl mx-auto space-y-6 text-slate-100 select-none overflow-hidden">
-      {/* 頂部資訊標頭 */}
+      {/* 頂部資訊列 */}
       <div className="flex justify-between items-center border-b border-slate-800 pb-4">
         <div>
           <div className="flex items-center gap-2">
@@ -362,7 +385,7 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
         </div>
       )}
 
-      {/* 主對戰區 */}
+      {/* 主戰場區 */}
       {!isFinished && (
         <>
           {mode === 'single' ? (
