@@ -255,7 +255,7 @@ export default function ElectromagnetismLab() {
   const lenzRes = getLenzLogic();
 
   // ==========================================
-  // 4. 馬達原理 3D 運算
+  // 4. 馬達原理 3D 運算 (高顯眼度電流箭頭渲染組件)
   // ==========================================
   const motorAngle = (animOffset * 3.6) % 360; 
   const rad = (motorAngle * Math.PI) / 180;
@@ -289,6 +289,38 @@ export default function ElectromagnetismLab() {
   const connS2 = {
     x: ringCenter.x + 12 * Math.cos(rad),
     y: ringCenter.y + 12 * Math.sin(rad)
+  };
+
+  // 繪製極度清晰的切線電流箭頭繪製函式
+  const renderCurrentArrow = (pStart, pEnd, reverse = false, label = 'I') => {
+    const p1 = reverse ? pEnd : pStart;
+    const p2 = reverse ? pStart : pEnd;
+
+    const midX = (p1.x + p2.x) / 2;
+    const midY = (p1.y + p2.y) / 2;
+
+    const angleDeg = (Math.atan2(p2.y - p1.y, p2.x - p1.x) * 180) / Math.PI;
+
+    return (
+      <g transform={`translate(${midX}, ${midY}) rotate(${angleDeg})`}>
+        {/* 底層外框發光區 */}
+        <polygon points="-12,-8 14,0 -12,8 -6,0" fill="#ffffff" stroke="#ffffff" strokeWidth="2.5" />
+        {/* 鮮紅高顯眼度主箭頭 */}
+        <polygon points="-10,-6 12,0 -10,6 -5,0" fill="#ef4444" />
+        {/* 箭頭旁文字標註 */}
+        <text
+          x="0"
+          y="-12"
+          textAnchor="middle"
+          fill="#fef08a"
+          fontSize="12"
+          fontWeight="900"
+          transform={`rotate(${-angleDeg})`}
+        >
+          {label}
+        </text>
+      </g>
+    );
   };
 
   return (
@@ -1104,7 +1136,7 @@ export default function ElectromagnetismLab() {
         </div>
       )}
 
-      {/* 4. 馬達原理 */}
+      {/* 4. 馬達原理 (高顯顯度電流向量與貼合導線之箭頭標示) */}
       {activeTab === 'motor' && (
         <div className="space-y-6">
           <div className="bg-slate-900 border border-slate-700 p-4 rounded-2xl flex flex-wrap items-center justify-between gap-4">
@@ -1174,74 +1206,50 @@ export default function ElectromagnetismLab() {
                 <text x={ptC.x + 10} y={ptC.y - 5} fill="#fbbf24" fontSize="12" fontWeight="bold">C</text>
                 <text x={ptD.x + 10} y={ptD.y + 5} fill="#fbbf24" fontSize="12" fontWeight="bold">D</text>
 
-                {/* 電流方向 I */}
+                {/* 動態流動電子粒子 */}
+                {isRunning && [0.25, 0.75].map((posRatio, pIdx) => {
+                  const getPointAlongCoil = (ratio) => {
+                    if (ratio < 0.33) {
+                      const t = ratio / 0.33;
+                      return { x: ptA.x + (ptB.x - ptA.x) * t, y: ptA.y + (ptB.y - ptA.y) * t };
+                    } else if (ratio < 0.66) {
+                      const t = (ratio - 0.33) / 0.33;
+                      return { x: ptB.x + (ptC.x - ptB.x) * t, y: ptB.y + (ptC.y - ptB.y) * t };
+                    } else {
+                      const t = (ratio - 0.66) / 0.34;
+                      return { x: ptC.x + (ptD.x - ptC.x) * t, y: ptC.y + (ptD.y - ptC.y) * t };
+                    }
+                  };
+
+                  const currentPos = ((animOffset / 100) + posRatio) % 1;
+                  const p = getPointAlongCoil(isCommutated ? 1 - currentPos : currentPos);
+
+                  return (
+                    <circle
+                      key={`flow-p-${pIdx}`}
+                      cx={p.x}
+                      cy={p.y}
+                      r="4.5"
+                      fill="#fef08a"
+                      stroke="#ef4444"
+                      strokeWidth="1.5"
+                    />
+                  );
+                })}
+
+                {/* 精確切線方向高顯眼度電流箭頭 */}
                 {isRunning && (
                   <g>
-                    {/* A -> B */}
-                    {(() => {
-                      const midX = (ptA.x + ptB.x) / 2;
-                      const midY = (ptA.y + ptB.y) / 2;
-                      const dir = isCommutated ? -1 : 1;
-                      return (
-                        <g>
-                          <circle cx={midX} cy={midY} r="5" fill="#f59e0b" />
-                          <polygon
-                            points={
-                              dir === 1
-                                ? `${midX - 3},${midY + 5} ${midX - 1},${midY - 6} ${midX + 5},${midY + 2}`
-                                : `${midX + 3},${midY - 5} ${midX + 1},${midY + 6} ${midX - 5},${midY - 2}`
-                            }
-                            fill="#ffffff"
-                          />
-                          <text x={midX - 18} y={midY + 4} fill="#f59e0b" fontSize="10" fontWeight="bold">I</text>
-                        </g>
-                      );
-                    })()}
-
-                    {/* B -> C */}
-                    {(() => {
-                      const midX = (ptB.x + ptC.x) / 2;
-                      const midY = (ptB.y + ptC.y) / 2;
-                      const dir = isCommutated ? -1 : 1;
-                      return (
-                        <g>
-                          <circle cx={midX} cy={midY} r="5" fill="#f59e0b" />
-                          <polygon
-                            points={
-                              dir === 1
-                                ? `${midX - 5},${midY - 2} ${midX + 6},${midY - 1} ${midX - 2},${midY + 5}`
-                                : `${midX + 5},${midY + 2} ${midX - 6},${midY + 1} ${midX + 2},${midY - 5}`
-                            }
-                            fill="#ffffff"
-                          />
-                        </g>
-                      );
-                    })()}
-
-                    {/* C -> D */}
-                    {(() => {
-                      const midX = (ptC.x + ptD.x) / 2;
-                      const midY = (ptC.y + ptD.y) / 2;
-                      const dir = isCommutated ? -1 : 1;
-                      return (
-                        <g>
-                          <circle cx={midX} cy={midY} r="5" fill="#f59e0b" />
-                          <polygon
-                            points={
-                              dir === 1
-                                ? `${midX - 3},${midY - 5} ${midX + 1},${midY + 6} ${midX + 5},${midY - 2}`
-                                : `${midX + 3},${midY + 5} ${midX - 1},${midY - 6} ${midX - 5},${midY + 2}`
-                            }
-                            fill="#ffffff"
-                          />
-                          <text x={midX + 10} y={midY + 4} fill="#f59e0b" fontSize="10" fontWeight="bold">I</text>
-                        </g>
-                      );
-                    })()}
+                    {/* A -> B 段 */}
+                    {renderCurrentArrow(ptA, ptB, isCommutated, 'I')}
+                    {/* B -> C 段 */}
+                    {renderCurrentArrow(ptB, ptC, isCommutated, 'I')}
+                    {/* C -> D 段 */}
+                    {renderCurrentArrow(ptC, ptD, isCommutated, 'I')}
                   </g>
                 )}
 
-                {/* 導線受力 F */}
+                {/* 導線受力 F (右手開掌定則) */}
                 {Math.abs(Math.sin(rad)) > 0.15 && (
                   <g>
                     <line x1={ptA.x} y1={ptA.y} x2={ptA.x} y2={ptA.y - 35} stroke="#10b981" strokeWidth="3" />
