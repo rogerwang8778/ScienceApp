@@ -255,12 +255,11 @@ export default function ElectromagnetismLab() {
   const lenzRes = getLenzLogic();
 
   // ==========================================
-  // 4. 馬達原理 (微調旋轉軸移至紅圈中心 + 電流 A->B->C->D 正確對齊)
+  // 4. 馬達原理 (微調旋轉軸至 295，電流修正為 D->C->B->A，電源反接)
   // ==========================================
   const motorAngle = (animOffset * 3.6) % 360; 
   const rad = (motorAngle * Math.PI) / 180;
 
-  // 將 3D 原點 (軸心) 精確對齊至圖中圈起來的 AC/BD 中心 (originX = 295)
   const axisX = 295;
   const projMotor3D = (x, y, z) => {
     const originY = 125;
@@ -1138,7 +1137,7 @@ export default function ElectromagnetismLab() {
         </div>
       )}
 
-      {/* 4. 馬達原理 (微調旋轉軸移至紅圈中心 + 電流 A->B->C->D 正確對齊) */}
+      {/* 4. 馬達原理 (電流 D->C->B->A，直流電源右極為正、極性反接修正) */}
       {activeTab === 'motor' && (
         <div className="space-y-6">
           <div className="bg-slate-900 border border-slate-700 p-4 rounded-2xl flex flex-wrap items-center justify-between gap-4">
@@ -1147,7 +1146,7 @@ export default function ElectromagnetismLab() {
               直流馬達原理：通電線圈在場磁鐵中受磁力作用（右手開掌定則）產生力矩旋轉
             </div>
             <div className="text-xs font-mono text-amber-300 font-bold bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700">
-              線圈旋轉角度：{Math.round(motorAngle)}° ({isCommutated ? '半環換向中 (D→C→B→A)' : '正向通電中 (A→B→C→D)'})
+              線圈旋轉角度：{Math.round(motorAngle)}° ({isCommutated ? '半環換向中 (A→B→C→D)' : '正向通電中 (D→C→B→A)'})
             </div>
           </div>
 
@@ -1209,15 +1208,15 @@ export default function ElectromagnetismLab() {
                 <text x={ptC.x + 10} y={ptC.y - 5} fill="#fbbf24" fontSize="12" fontWeight="bold">C</text>
                 <text x={ptD.x + 10} y={ptD.y + 5} fill="#fbbf24" fontSize="12" fontWeight="bold">D</text>
 
-                {/* 切線電流箭頭：A -> B -> C -> D */}
+                {/* 切線電流箭頭：D -> C -> B -> A */}
                 {isRunning && (
                   <g>
-                    {/* A -> B 段 (左側電流向內流) */}
-                    {renderCurrentArrow(ptA, ptB, isCommutated, 'I')}
-                    {/* B -> C 段 */}
-                    {renderCurrentArrow(ptB, ptC, isCommutated, 'I')}
-                    {/* C -> D 段 (右側電流向外流) */}
-                    {renderCurrentArrow(ptC, ptD, isCommutated, 'I')}
+                    {/* D -> C 段 */}
+                    {renderCurrentArrow(ptD, ptC, isCommutated, 'I')}
+                    {/* C -> B 段 */}
+                    {renderCurrentArrow(ptC, ptB, isCommutated, 'I')}
+                    {/* B -> A 段 (左側電流向外流) */}
+                    {renderCurrentArrow(ptB, ptA, isCommutated, 'I')}
                   </g>
                 )}
 
@@ -1241,7 +1240,7 @@ export default function ElectromagnetismLab() {
                 <text x={axisX} y="15" textAnchor="middle" fill="#c084fc" fontSize="10" fontWeight="bold">旋轉方向 (順時針)</text>
               </g>
 
-              {/* 集電環 S1, S2 與電刷 B1, B2 */}
+              {/* 集電環 S1, S2 與電刷 B1, B2 (電源反接：B2 為正極 +，B1 為負極 -) */}
               <g transform={`translate(${axisX}, 220)`}>
                 <circle cx="0" cy="0" r="14" fill="#1e293b" stroke="#64748b" strokeWidth="1.5" />
 
@@ -1252,24 +1251,27 @@ export default function ElectromagnetismLab() {
                   <text x="12" y="12" fill="#d97706" fontSize="9" fontWeight="bold">S2</text>
                 </g>
 
+                {/* 左側 B1 反接為 (-) */}
                 <rect x="-20" y="-5" width="6" height="10" fill="#94a3b8" rx="1" />
-                <text x="-32" y="3" fill="#ef4444" fontSize="10" fontWeight="bold">B1 (+)</text>
+                <text x="-32" y="3" fill="#3b82f6" fontSize="10" fontWeight="bold">B1 (-)</text>
 
+                {/* 右側 B2 反接為 (+) */}
                 <rect x="14" y="-5" width="6" height="10" fill="#94a3b8" rx="1" />
-                <text x="23" y="3" fill="#3b82f6" fontSize="10" fontWeight="bold">B2 (-)</text>
+                <text x="23" y="3" fill="#ef4444" fontSize="10" fontWeight="bold">B2 (+)</text>
 
                 <path d="M -17 5 L -17 38 L -8 38 M 17 5 L 17 38 L 8 38" fill="none" stroke="#64748b" strokeWidth="1.5" />
                 
-                <line x1="-8" y1="31" x2="-8" y2="45" stroke="#ef4444" strokeWidth="2.5" />
-                <text x="-14" y="28" fill="#ef4444" fontSize="10" fontWeight="bold">+</text>
+                {/* 反接電源示意圖：右長 (+) 左短 (-) */}
+                <line x1="-8" y1="35" x2="-8" y2="41" stroke="#3b82f6" strokeWidth="3.5" />
+                <text x="-14" y="28" fill="#3b82f6" fontSize="10" fontWeight="bold">-</text>
 
-                <line x1="-2" y1="35" x2="-2" y2="41" stroke="#3b82f6" strokeWidth="3.5" />
+                <line x1="-2" y1="31" x2="-2" y2="45" stroke="#ef4444" strokeWidth="2.5" />
                 
-                <line x1="4" y1="31" x2="4" y2="45" stroke="#ef4444" strokeWidth="2.5" />
-                <line x1="10" y1="35" x2="10" y2="41" stroke="#3b82f6" strokeWidth="3.5" />
-                <text x="12" y="28" fill="#3b82f6" fontSize="10" fontWeight="bold">-</text>
+                <line x1="4" y1="35" x2="4" y2="41" stroke="#3b82f6" strokeWidth="3.5" />
+                <line x1="10" y1="31" x2="10" y2="45" stroke="#ef4444" strokeWidth="2.5" />
+                <text x="12" y="28" fill="#ef4444" fontSize="10" fontWeight="bold">+</text>
 
-                <text x="0" y="58" textAnchor="middle" fill="#f59e0b" fontSize="9" fontWeight="bold">直流電源 E</text>
+                <text x="0" y="58" textAnchor="middle" fill="#f59e0b" fontSize="9" fontWeight="bold">直流電源 E (已反接)</text>
               </g>
             </svg>
 
@@ -1282,7 +1284,7 @@ export default function ElectromagnetismLab() {
               </p>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-slate-300 pt-1">
                 <p>• 磁場方向 B：<strong className="text-cyan-300">由 N 極向右指向 S 極</strong></p>
-                <p>• 電流流向：<strong className="text-amber-300">A → B → C → D (從正極 B1 流入)</strong></p>
+                <p>• 電流流向：<strong className="text-amber-300">D → C → B → A (從正極 B2 流入)</strong></p>
                 <p>• 電樞受力：<strong className="text-purple-300">左側受力向上，右側受力向下 (帶動順時針旋轉)</strong></p>
               </div>
             </div>
