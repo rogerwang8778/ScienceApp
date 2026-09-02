@@ -649,7 +649,7 @@ export default function ElectromagnetismLab() {
       )}
 
       {/* ==========================================
-          3. 冷次定律（雙子分頁 + 導線貼合箭頭與檢流計電流箭頭）
+          3. 冷次定律（含主線圈直流電源與動態電流箭頭）
       ========================================== */}
       {activeTab === 'lenz' && (
         <div className="space-y-6">
@@ -670,7 +670,7 @@ export default function ElectromagnetismLab() {
                   lenzSubTab === 'primaryWire' ? 'bg-amber-600 text-white shadow' : 'bg-slate-800 text-slate-400 hover:text-white'
                 }`}
               >
-                <Sliders className="w-3.5 h-3.5" /> 實驗二：載流主線圈 (改變電流)
+                <Sliders className="w-3.5 h-3.5" /> 實驗二：載流主線圈 (直流電源控制)
               </button>
             </div>
 
@@ -701,7 +701,7 @@ export default function ElectromagnetismLab() {
             ) : (
               <div className="flex items-center gap-4 flex-wrap w-full">
                 <span className="text-xs text-amber-300 font-bold flex items-center gap-1">
-                  <Sliders className="w-4 h-4" /> 調整主線圈電流 I<sub>主</sub>：
+                  <Sliders className="w-4 h-4" /> 調整直流電源電流 I<sub>主</sub>：
                 </span>
                 <input
                   type="range"
@@ -715,7 +715,7 @@ export default function ElectromagnetismLab() {
                   {primaryCurrent}%
                 </span>
                 <span className="text-xs text-slate-400">
-                  (拖曳滑桿改變電流大小以產生感應磁場)
+                  (改變電流強度帶動主磁場增減，正值為正向電源，負值為反向電源)
                 </span>
               </div>
             )}
@@ -765,12 +765,10 @@ export default function ElectromagnetismLab() {
                   </g>
                 )}
 
-                {/* 2. 感應線圈前側 (粗實線) & 【直接貼合在導線上的箭頭】 */}
+                {/* 2. 感應線圈前側 (粗實線) & 貼合導線之箭頭 */}
                 {[0, 1, 2, 3, 4].map((i) => {
                   const startX = 90 + i * 32;
                   const endX = 120 + i * 32;
-
-                  // 導線上 (X=92 + i*32, Y=110) 的極精準貼合座標
                   const wireX = startX + 2; 
                   const wireY = 110;
 
@@ -783,11 +781,9 @@ export default function ElectromagnetismLab() {
                         strokeWidth="4.5"
                       />
 
-                      {/* 在紫色實線導線上繪製向上/向下感應電流箭頭 */}
                       {lenzRes.isMoving && (
                         <g>
                           {lenzRes.frontIUp ? (
-                            /* 由下往上 ▲ 箭頭 */
                             <polygon
                               points={`${wireX},${wireY - 6} ${wireX - 5},${wireY + 5} ${wireX + 5},${wireY + 5}`}
                               fill="#f59e0b"
@@ -795,7 +791,6 @@ export default function ElectromagnetismLab() {
                               strokeWidth="0.8"
                             />
                           ) : (
-                            /* 由上往下 ▼ 箭頭 */
                             <polygon
                               points={`${wireX},${wireY + 6} ${wireX - 5},${wireY - 5} ${wireX + 5},${wireY - 5}`}
                               fill="#f59e0b"
@@ -817,29 +812,21 @@ export default function ElectromagnetismLab() {
                   strokeWidth="2.5"
                 />
 
-                {/* 【檢流計左右及迴路上的感應電流箭頭】 */}
+                {/* 檢流計迴路感應電流箭頭 */}
                 {lenzRes.isMoving && (
                   <g>
                     {lenzRes.frontIUp ? (
                       <>
-                        {/* 左側垂直線 (向上) */}
                         <polygon points="90,158 85,168 95,168" fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
-                        {/* 左側水平線 (向左) */}
                         <polygon points="110,200 120,195 120,205" fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
-                        {/* 右側水平線 (向左) */}
                         <polygon points="210,200 220,195 220,205" fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
-                        {/* 右側垂直線 (向下) */}
                         <polygon points="248,172 243,162 253,162" fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
                       </>
                     ) : (
                       <>
-                        {/* 左側垂直線 (向下) */}
                         <polygon points="90,172 85,162 95,162" fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
-                        {/* 左側水平線 (向右) */}
                         <polygon points="122,200 112,195 112,205" fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
-                        {/* 右側水平線 (向右) */}
                         <polygon points="222,200 212,195 212,205" fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
-                        {/* 右側垂直線 (向上) */}
                         <polygon points="248,158 243,168 253,168" fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
                       </>
                     )}
@@ -871,7 +858,7 @@ export default function ElectromagnetismLab() {
                   </g>
                 )}
 
-                {/* 4. 動態感應電流黃色粒子 (巡航) */}
+                {/* 4. 動態感應電流黃色粒子 */}
                 {isRunning && lenzRes.isMoving && [0, 1, 2, 3, 4].map((i) => {
                   const dir = lenzRes.frontIUp ? 1 : -1;
                   const t = (animOffset * 5 + i * 72) * Math.PI / 180;
@@ -934,7 +921,7 @@ export default function ElectromagnetismLab() {
                   )}
                 </g>
               ) : (
-                /* 修復後之正確比例「載流主線圈」模組 */
+                /* 載流主線圈：包含下方直流電源與電流箭頭 */
                 <g>
                   <text x="430" y="22" textAnchor="middle" fill="#f59e0b" fontSize="12" fontWeight="bold">
                     主線圈 (載流螺線管)
@@ -978,16 +965,43 @@ export default function ElectromagnetismLab() {
                     </g>
                   )}
 
-                  {/* 2. 主線圈前側 (修復貝茲曲線參數) */}
-                  {[0, 1, 2, 3, 4].map((i) => (
-                    <path
-                      key={`primary-front-${i}`}
-                      d={`M ${355 + i * 28} 70 C ${355 + i * 28} 170, ${380 + i * 28} 170, ${380 + i * 28} 150`}
-                      fill="none"
-                      stroke="#f59e0b"
-                      strokeWidth={Math.min(Math.abs(primaryCurrent) / 20 + 2, 5)}
-                    />
-                  ))}
+                  {/* 2. 主線圈前側 (粗實線) 與貼合電流箭頭 */}
+                  {[0, 1, 2, 3, 4].map((i) => {
+                    const wireX = 357 + i * 28;
+                    const wireY = 110;
+
+                    return (
+                      <g key={`primary-front-${i}`}>
+                        <path
+                          d={`M ${355 + i * 28} 70 C ${355 + i * 28} 170, ${380 + i * 28} 170, ${380 + i * 28} 150`}
+                          fill="none"
+                          stroke="#f59e0b"
+                          strokeWidth={Math.min(Math.abs(primaryCurrent) / 20 + 2, 5)}
+                        />
+
+                        {/* 主線圈導線上之電流箭頭 */}
+                        {primaryCurrent !== 0 && (
+                          <g>
+                            {primaryCurrent > 0 ? (
+                              <polygon
+                                points={`${wireX},${wireY - 6} ${wireX - 5},${wireY + 5} ${wireX + 5},${wireY + 5}`}
+                                fill="#eab308"
+                                stroke="#ffffff"
+                                strokeWidth="0.8"
+                              />
+                            ) : (
+                              <polygon
+                                points={`${wireX},${wireY + 6} ${wireX - 5},${wireY - 5} ${wireX + 5},${wireY - 5}`}
+                                fill="#eab308"
+                                stroke="#ffffff"
+                                strokeWidth="0.8"
+                              />
+                            )}
+                          </g>
+                        )}
+                      </g>
+                    );
+                  })}
 
                   <text x="325" y="115" textAnchor="middle" fill={primaryCurrent >= 0 ? '#ef4444' : '#3b82f6'} fontSize="16" fontWeight="bold">
                     {primaryCurrent >= 0 ? 'S' : 'N'}
@@ -996,7 +1010,73 @@ export default function ElectromagnetismLab() {
                     {primaryCurrent >= 0 ? 'N' : 'S'}
                   </text>
 
-                  {/* 主線圈粒子 */}
+                  {/* 3. 下方直流電源（電池）迴路與電流箭頭 */}
+                  <g transform="translate(0, 5)">
+                    {/* 迴路導線 */}
+                    <path
+                      d="M 355 135 L 355 210 L 400 210 M 460 210 L 508 210 L 508 135"
+                      fill="none"
+                      stroke="#f59e0b"
+                      strokeWidth="2"
+                    />
+
+                    {/* 直流電源 (長極為正極、短極為負極) */}
+                    <g transform="translate(430, 210)">
+                      {primaryCurrent >= 0 ? (
+                        <>
+                          {/* 正極 (左端長線) */}
+                          <line x1="-12" y1="-14" x2="-12" y2="14" stroke="#ef4444" strokeWidth="3" />
+                          <text x="-20" y="-16" fill="#ef4444" fontSize="11" fontWeight="bold">+</text>
+
+                          {/* 負極 (右端短粗線) */}
+                          <line x1="-2" y1="-8" x2="-2" y2="8" stroke="#3b82f6" strokeWidth="4.5" />
+                          <text x="4" y="-16" fill="#3b82f6" fontSize="11" fontWeight="bold">-</text>
+
+                          {/* 電池開關/變阻符號 */}
+                          <line x1="8" y1="-12" x2="8" y2="12" stroke="#64748b" strokeWidth="2" />
+                          <line x1="16" y1="-12" x2="16" y2="12" stroke="#64748b" strokeWidth="2" />
+                        </>
+                      ) : (
+                        <>
+                          {/* 反向極性：負極在左，正極在右 */}
+                          <line x1="-12" y1="-8" x2="-12" y2="8" stroke="#3b82f6" strokeWidth="4.5" />
+                          <text x="-20" y="-16" fill="#3b82f6" fontSize="11" fontWeight="bold">-</text>
+
+                          <line x1="-2" y1="-14" x2="-2" y2="14" stroke="#ef4444" strokeWidth="3" />
+                          <text x="4" y="-16" fill="#ef4444" fontSize="11" fontWeight="bold">+</text>
+
+                          <line x1="8" y1="-12" x2="8" y2="12" stroke="#64748b" strokeWidth="2" />
+                          <line x1="16" y1="-12" x2="16" y2="12" stroke="#64748b" strokeWidth="2" />
+                        </>
+                      )}
+                      <text x="2" y="26" textAnchor="middle" fill="#f59e0b" fontSize="10" fontWeight="bold">DC 電源</text>
+                    </g>
+
+                    {/* 電源迴路上之動態電流箭頭 */}
+                    {primaryCurrent !== 0 && (
+                      <g>
+                        {primaryCurrent > 0 ? (
+                          <>
+                            {/* 電流由正極(左)出發：左垂直向上、左水平向左、右水平向左、右垂直向下 */}
+                            <polygon points="355,160 350,170 360,170" fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
+                            <polygon points="375,210 385,205 385,215" fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
+                            <polygon points="485,210 495,205 495,215" fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
+                            <polygon points="508,180 503,170 513,170" fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
+                          </>
+                        ) : (
+                          <>
+                            {/* 電流反向出發 */}
+                            <polygon points="355,180 350,170 360,170" fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
+                            <polygon points="385,210 375,205 375,215" fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
+                            <polygon points="495,210 485,205 485,215" fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
+                            <polygon points="508,160 503,170 513,170" fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
+                          </>
+                        )}
+                      </g>
+                    )}
+                  </g>
+
+                  {/* 4. 主線圈動態粒子 */}
                   {isRunning && primaryCurrent !== 0 && [0, 1, 2, 3, 4].map((i) => {
                     const dir = primaryCurrent > 0 ? 1 : -1;
                     const t = (animOffset * (Math.abs(primaryCurrent) / 15) + i * 72) * Math.PI / 180;
