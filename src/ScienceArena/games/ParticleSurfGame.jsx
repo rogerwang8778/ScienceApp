@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy, RefreshCw, ArrowRight, ArrowLeft, ArrowUp, ArrowDown, Waves, Play } from 'lucide-react';
+import { Trophy, RefreshCw, ArrowRight, ArrowLeft, ArrowUp, ArrowDown, Waves } from 'lucide-react';
 
 export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
-  // 單人模式狀態 (以進度 Progress 代替原本扣血，滿 10 次達終點)
+  // 單人模式狀態
   const [progress, setProgress] = useState(0); // 0 ~ 10
   const [timeLeft, setTimeLeft] = useState(60);
   const [score, setScore] = useState(0);
-  const [level, setLevel] = useState(1);
+  const [questionCount, setQuestionCount] = useState(1); // 記錄答題題號 (1~3 題為方向題)
 
   // 雙人 PK 模式獨立進度
-  const [p1Progress, setP1Progress] = useState(0); // 0 ~ 10
-  const [p2Progress, setP2Progress] = useState(0); // 0 ~ 10
+  const [p1Progress, setP1Progress] = useState(0);
+  const [p2Progress, setP2Progress] = useState(0);
   const [p1Round, setP1Round] = useState(null);
   const [p2Round, setP2Round] = useState(null);
 
@@ -21,62 +21,105 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
   const [isFinished, setIsFinished] = useState(false);
 
   // ==========================================
-  // 1. 波動題目生成器 (微移法邏輯)
+  // 1. 精準物理邏輯與題型遞增生成器
   // ==========================================
-  const generateParticleQuestion = (currentLvl) => {
-    // 波傳播方向：'right' (向右) 或 'left' (向左)
+  const generateParticleQuestion = (qIndex) => {
     const waveDirection = Math.random() > 0.5 ? 'right' : 'left';
-    
-    // 質點位置選定 (以正弦波相位 X 軸刻度 0 ~ 360 度表示)
-    // 0: 平衡點(升) | 90: 波峰 | 180: 平衡點(降) | 270: 波谷
-    // 入門 (Lvl 1-2): 剛好選在 0, 90, 180, 270 四個特殊位置
-    // 進階 (Lvl 3+): 選在 45, 135, 225, 315 等斜率點，專門考上下運動方向
-    const easyPhases = [0, 90, 180, 270];
-    const hardPhases = [45, 135, 225, 315];
-    
-    const phaseList = currentLvl <= 2 ? easyPhases : (Math.random() > 0.4 ? hardPhases : easyPhases);
-    const particlePhase = phaseList[Math.floor(Math.random() * phaseList.length)];
 
-    // 提問類型：'direction' (瞬間運動方向：向上/向下/靜止) 或 'position' (隨後位置：波峰/波谷/平衡)
-    const qType = particlePhase % 90 === 0 ? 'position' : 'direction';
+    if (qIndex <= 3) {
+      // === 前 3 題：瞬間運動方向判斷 ===
+      // 選定介面斜率點：45° (上升段), 135° (下降段), 225° (下降段), 315° (上升段)
+      const phases = [45, 135, 225, 315];
+      const particlePhase = phases[Math.floor(Math.random() * phases.length)];
 
-    // 理化「微移法」判斷質點瞬間運動方向：
-    // 若波向右傳 (sin(x - dx))：
-    //   x 在 (0, 90) 或 (270, 360) 時，微移後波形較高 ➔ 質點【向上】
-    //   x 在 (90, 270) 時，微移後波形較低 ➔ 質點【向下】
-    // 若波向左傳 (sin(x + dx))，方向剛好相反
-    let correctAns = '';
-
-    if (qType === 'position') {
-      if (particlePhase === 90) correctAns = '波峰';
-      else if (particlePhase === 270) correctAns = '波谷';
-      else correctAns = '平衡位置';
-    } else {
-      // 運動方向判斷
+      let correctAns = '';
       if (waveDirection === 'right') {
-        if (particlePhase === 45 || particlePhase === 315) correctAns = '向上移動';
-        else correctAns = '向下移動';
+        // 波向右傳：45° 與 315° 向上，135° 與 225° 向下
+        correctAns = (particlePhase === 45 || particlePhase === 315) ? '向上移動' : '向下移動';
       } else {
-        if (particlePhase === 45 || particlePhase === 315) correctAns = '向下移動';
-        else correctAns = '向上移動';
+        // 波向左傳：45° 與 315° 向下，135° 與 225° 向上
+        correctAns = (particlePhase === 45 || particlePhase === 315) ? '向下移動' : '向上移動';
+      }
+
+      return {
+        qCategory: 'direction',
+        waveDirection,
+        particlePhase,
+        title: `第 ${qIndex} 題：瞬間運動方向`,
+        desc: `波向${waveDirection === 'right' ? '右' : '左'}傳播，請判斷質點 P 此刻的瞬間運動方向？`,
+        options: ['向上移動', '向下移動'],
+        correctAns,
+        particleName: '介面質點 P'
+      };
+    } else {
+      // === 第 3 題後：週期位移題型 (1/4T, 2/4T, 3/4T, 4/4T) ===
+      const isTypeA = Math.random() > 0.5; // Type A: 算隨後位置 ｜ Type B: 算最快週期
+
+      if (isTypeA) {
+        // 題型 A：經過 Δt 後，衝浪手在什麼位置？
+        const startPhases = [0, 90, 180, 270]; // 0:平衡(升), 90:波峰, 180:平衡(降), 270:波谷
+        const startPhase = startPhases[Math.floor(Math.random() * startPhases.length)];
+        const deltaQuarters = [1, 2, 3, 4][Math.floor(Math.random() * 4)]; // 1/4T ~ 4/4T
+
+        // 質點隨著時間推移，相位增加 (質點振動一週期 = 360°)
+        // 注意：微移法中，若波向右傳，介面質點隨時間發展的相位變化是按時間前進 (+90° * deltaQuarters)
+        const finalPhase = (startPhase + deltaQuarters * 90) % 360;
+
+        let correctAns = '';
+        if (finalPhase === 90) correctAns = '波峰';
+        else if (finalPhase === 270) correctAns = '波谷';
+        else correctAns = '平衡位置';
+
+        const phaseName = startPhase === 90 ? '波峰' : startPhase === 270 ? '波谷' : '平衡位置';
+
+        return {
+          qCategory: 'period_position',
+          waveDirection,
+          particlePhase: startPhase,
+          title: `第 ${qIndex} 題：週期隨後位置`,
+          desc: `衝浪手原本位於【${phaseName}】，經過 ${deltaQuarters}/4 個週期 (T) 後，會位於什麼位置？`,
+          options: ['波峰', '波谷', '平衡位置'],
+          correctAns,
+          particleName: '衝浪手'
+        };
+      } else {
+        // 題型 B：到達目標位置，最快要幾個週期？
+        const startPhases = [0, 90, 270]; // 0:平衡, 90:波峰, 270:波谷
+        const startPhase = startPhases[Math.floor(Math.random() * startPhases.length)];
+        
+        let targetPhase = 90;
+        if (startPhase === 90) targetPhase = 270; // 波峰 ➔ 波谷
+        else if (startPhase === 270) targetPhase = 90; // 波谷 ➔ 波峰
+        else targetPhase = Math.random() > 0.5 ? 90 : 270; // 平衡 ➔ 波峰或波谷
+
+        // 計算所需 1/4T 個數
+        let diff = (targetPhase - startPhase + 360) % 360;
+        const requiredQuarters = diff / 90;
+        const correctAns = `${requiredQuarters}/4 個週期`;
+
+        const startName = startPhase === 90 ? '波峰' : startPhase === 270 ? '波谷' : '平衡位置';
+        const targetName = targetPhase === 90 ? '波峰' : '波谷';
+
+        return {
+          qCategory: 'period_time',
+          waveDirection,
+          particlePhase: startPhase,
+          title: `第 ${qIndex} 題：最快週期推算`,
+          desc: `衝浪手原本位於【${startName}】，最快需要經過多少個週期才能到達【${targetName}】？`,
+          options: ['1/4 個週期', '2/4 個週期', '3/4 個週期', '4/4 個週期'],
+          correctAns,
+          particleName: '衝浪手'
+        };
       }
     }
-
-    return {
-      waveDirection,
-      particlePhase, // 質點 X 軸相位
-      qType,
-      correctAns,
-      particleName: particlePhase === 90 ? '波峰衝浪手' : particlePhase === 270 ? '波谷衝浪手' : '介面質點 P'
-    };
   };
 
-  const generateNextRounds = (lvl) => {
+  const generateNextRounds = (qIdx) => {
     if (mode === 'single') {
-      setSingleRound(generateParticleQuestion(lvl));
+      setSingleRound(generateParticleQuestion(qIdx));
     } else {
-      setP1Round(generateParticleQuestion(lvl));
-      setP2Round(generateParticleQuestion(lvl));
+      setP1Round(generateParticleQuestion(qIdx));
+      setP2Round(generateParticleQuestion(qIdx));
     }
     setShowAnalysis(false);
   };
@@ -85,7 +128,7 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
     generateNextRounds(1);
   }, [mode]);
 
-  // 單人模式倒數計時器
+  // 單人倒數計時器
   useEffect(() => {
     let timer = null;
     if (mode === 'single' && !isFinished && timeLeft > 0) {
@@ -97,20 +140,20 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
   }, [timeLeft, isFinished, mode]);
 
   // ==========================================
-  // 2. 作答處理與落水 / 推進動畫
+  // 2. 單人與 PK 模式作答邏輯
   // ==========================================
   const handleSingleAnswer = (userAns) => {
     if (actionState !== 'idle' || isFinished) return;
 
     const isCorrect = userAns === singleRound.correctAns;
+    const nextQIdx = questionCount + 1;
 
     if (isCorrect) {
       setActionState('success');
       setShowAnalysis(true);
       const nextProg = progress + 1;
-      const nextLvl = level + 1;
       setProgress(nextProg);
-      setLevel(nextLvl);
+      setQuestionCount(nextQIdx);
       setScore((prev) => prev + 30);
 
       if (nextProg >= 10) {
@@ -118,47 +161,48 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
       } else {
         setTimeout(() => {
           setActionState('idle');
-          generateNextRounds(nextLvl);
-        }, 1400);
+          generateNextRounds(nextQIdx);
+        }, 1200);
       }
     } else {
       setActionState('fall');
       setShowAnalysis(true);
-      setProgress((prev) => Math.max(0, prev - 1)); // 答錯被浪退後
+      setProgress((prev) => Math.max(0, prev - 1)); // 答錯被浪往後衝
 
       setTimeout(() => {
         setActionState('idle');
-        generateNextRounds(level);
-      }, 1600);
+        generateNextRounds(questionCount);
+      }, 1500);
     }
   };
 
-  // 雙人 PK 答題處理
   const handlePvpAnswer = (player, userAns) => {
     if (isFinished) return;
 
     const round = player === 'p1' ? p1Round : p2Round;
     const isCorrect = userAns === round.correctAns;
+    const nextQIdx = questionCount + 1;
+    setQuestionCount(nextQIdx);
 
     if (player === 'p1') {
       if (isCorrect) {
         const next = p1Progress + 1;
         setP1Progress(next);
         if (next >= 10) setIsFinished(true);
-        else setP1Round(generateParticleQuestion(level));
+        else setP1Round(generateParticleQuestion(nextQIdx));
       } else {
         setP1Progress((prev) => Math.max(0, prev - 1));
-        setP1Round(generateParticleQuestion(level));
+        setP1Round(generateParticleQuestion(nextQIdx));
       }
     } else {
       if (isCorrect) {
         const next = p2Progress + 1;
         setP2Progress(next);
         if (next >= 10) setIsFinished(true);
-        else setP2Round(generateParticleQuestion(level));
+        else setP2Round(generateParticleQuestion(nextQIdx));
       } else {
         setP2Progress((prev) => Math.max(0, prev - 1));
-        setP2Round(generateParticleQuestion(level));
+        setP2Round(generateParticleQuestion(nextQIdx));
       }
     }
   };
@@ -169,35 +213,27 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
   };
 
   // ==========================================
-  // 3. SVG 波形與質點與「微移軌跡」渲染元件
+  // 3. SVG 微移法與正弦波畫布
   // ==========================================
   const renderWaveCanvas = (roundData, isFallAnimation = false) => {
     if (!roundData) return null;
 
-    // 波形繪製參數
     const width = 340;
     const height = 120;
     const centerY = 60;
     const amplitude = 35;
 
-    // 計算質點 X, Y 座標
     const particleX = (roundData.particlePhase / 360) * width;
     const particleY = centerY - Math.sin((roundData.particlePhase * Math.PI) / 180) * amplitude;
 
-    // 微移法虛線波形 X 軸偏移量 (向右移 +15px，向左移 -15px)
     const shiftDx = roundData.waveDirection === 'right' ? 15 : -15;
-
-    // 微移後的質點 Y 座標
-    const shiftedPhase = roundData.particlePhase - (roundData.waveDirection === 'right' ? 15 : -15);
-    const shiftedParticleY = centerY - Math.sin((shiftedPhase * Math.PI) / 180) * amplitude;
 
     return (
       <div className="relative w-full flex justify-center items-center py-2">
         <svg width={width} height={height} className="overflow-visible">
-          {/* 1. 平衡位置基準線 */}
           <line x1="0" y1={centerY} x2={width} y2={centerY} stroke="#475569" strokeDasharray="4 4" strokeWidth="1" />
 
-          {/* 2. 原始主波形 (藍色實線) */}
+          {/* 1. 原始正弦波 */}
           <path
             d={`M 0 ${centerY - Math.sin(0) * amplitude} 
                Q ${width * 0.25} ${centerY - amplitude * 1.4}, ${width * 0.5} ${centerY} 
@@ -207,7 +243,7 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
             strokeWidth="4"
           />
 
-          {/* 3. 「微移法」解析虛線波形 (顯示解析或答對動態時印出) */}
+          {/* 2. 微移法解析虛線波 */}
           {showAnalysis && (
             <path
               d={`M ${shiftDx} ${centerY - Math.sin(0) * amplitude} 
@@ -221,29 +257,16 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
             />
           )}
 
-          {/* 4. 微移垂直指示箭頭 (顯示質點真正移動軌跡) */}
-          {showAnalysis && (
-            <line
-              x1={particleX}
-              y1={particleY}
-              x2={particleX}
-              y2={shiftedParticleY}
-              stroke="#ef4444"
-              strokeWidth="3"
-              markerEnd="url(#arrow)"
-            />
-          )}
-
-          {/* 5. 衝浪手質點 (若落水則往下掉) */}
+          {/* 3. 衝浪手質點 */}
           <g
             transform={`translate(${particleX}, ${
-              isFallAnimation ? particleY + 40 : particleY
+              isFallAnimation ? particleY + 35 : particleY
             })`}
-            className="transition-all duration-500"
+            className="transition-all duration-300"
           >
-            <circle r="9" fill={isFallAnimation ? '#ef4444' : '#f59e0b'} className="animate-ping opacity-75" />
-            <circle r="7" fill={isFallAnimation ? '#ef4444' : '#fbbf24'} stroke="#ffffff" strokeWidth="2" />
-            <text x="0" y="-12" textAnchor="middle" fill="#ffffff" fontSize="14" className="select-none">
+            <circle r="8" fill={isFallAnimation ? '#ef4444' : '#f59e0b'} className="animate-ping opacity-75" />
+            <circle r="6" fill={isFallAnimation ? '#ef4444' : '#fbbf24'} stroke="#ffffff" strokeWidth="2" />
+            <text x="0" y="-12" textAnchor="middle" fill="#ffffff" fontSize="14">
               {isFallAnimation ? '🏊‍♂️' : '🏄‍♂️'}
             </text>
           </g>
@@ -259,10 +282,10 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
         <div>
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-black bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 px-2.5 py-1 rounded-lg uppercase tracking-wider">
-              Heaven's Arena • Floor 20F ({mode === 'pvp' ? '雙人 PK 競速' : '單人闖關'})
+              Heaven's Arena • Floor 20F ({mode === 'pvp' ? '雙人 PK' : '單人闖關'})
             </span>
             <span className="text-[10px] font-bold text-amber-300 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-md">
-              難度 Lvl.{level}
+              關卡 {questionCount} / 10
             </span>
           </div>
           <h2 className="text-xl md:text-2xl font-black text-white mt-1 flex items-center gap-2">
@@ -289,14 +312,14 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
         </div>
       </div>
 
-      {/* 單人模式專屬：衝浪推進軌道 (進度條 0 ~ 10 次) */}
+      {/* 單人模式專屬：進度條 */}
       {mode === 'single' && !isFinished && (
         <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-2">
           <div className="flex justify-between items-center text-xs font-bold">
             <span className="text-cyan-300 flex items-center gap-1">
               <Waves className="w-4 h-4" /> 衝浪推進距離：
             </span>
-            <span className="text-amber-400 font-mono">{progress} / 10 站 (抵達終點獲勝)</span>
+            <span className="text-amber-400 font-mono">{progress} / 10 站 (往前10次抵達終點)</span>
           </div>
           <div className="w-full bg-slate-950 h-3 rounded-full border border-slate-800 p-0.5 relative overflow-hidden">
             <div
@@ -307,15 +330,13 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
         </div>
       )}
 
-      {/* 核心舞台：單人與 PK 模式分流 */}
+      {/* 主對戰與答題區 */}
       {!isFinished && (
         <>
           {mode === 'single' ? (
-            /* === 單人模式戰場 === */
             <div className="space-y-4">
-              <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 text-center relative">
-                {/* 波傳播方向箭頭動態提示 */}
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-950 border border-slate-700 text-xs font-bold text-cyan-300 mb-2">
+              <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 text-center relative space-y-2">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-950 border border-slate-700 text-xs font-bold text-cyan-300">
                   波傳播方向：
                   {singleRound?.waveDirection === 'right' ? (
                     <span className="text-amber-400 flex items-center gap-1 font-black">
@@ -328,58 +349,47 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
                   )}
                 </div>
 
-                {/* SVG 波形畫布 */}
                 {renderWaveCanvas(singleRound, actionState === 'fall')}
 
-                <p className="text-sm font-bold text-white mt-2">
-                  🎯 提示指令：請預測衝浪手（質點 P）此刻的
-                  <span className="text-amber-300 underline underline-offset-4 ml-1">
-                    {singleRound?.qType === 'position' ? '下一個位置' : '瞬間運動方向'}
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
+                    {singleRound?.title}
                   </span>
-                  ！
-                </p>
+                  <h3 className="text-base font-bold text-white mt-1">
+                    {singleRound?.desc}
+                  </h3>
+                </div>
               </div>
 
-              {/* 單人模式：大按鈕回答區 */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {singleRound?.qType === 'position' ? (
-                  ['波峰', '波谷', '平衡位置'].map((ans) => (
-                    <button
-                      key={ans}
-                      onClick={() => handleSingleAnswer(ans)}
-                      disabled={actionState !== 'idle'}
-                      className="p-4 rounded-2xl bg-slate-900 hover:bg-cyan-600/20 border border-slate-800 hover:border-cyan-500 text-white font-black text-base transition-all cursor-pointer disabled:opacity-50"
-                    >
-                      {ans}
-                    </button>
-                  ))
-                ) : (
-                  ['向上移動', '向下移動'].map((ans) => (
-                    <button
-                      key={ans}
-                      onClick={() => handleSingleAnswer(ans)}
-                      disabled={actionState !== 'idle'}
-                      className="p-5 rounded-2xl bg-slate-900 hover:bg-amber-600/20 border border-slate-800 hover:border-amber-500 text-white font-black text-base transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
-                    >
-                      {ans === '向上移動' ? <ArrowUp className="w-5 h-5 text-emerald-400" /> : <ArrowDown className="w-5 h-5 text-rose-400" />}
-                      {ans}
-                    </button>
-                  ))
-                )}
+              {/* 答題按鈕區 */}
+              <div className={`grid gap-3 ${singleRound?.options.length > 2 ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-2'}`}>
+                {singleRound?.options.map((ans) => (
+                  <button
+                    key={ans}
+                    onClick={() => handleSingleAnswer(ans)}
+                    disabled={actionState !== 'idle'}
+                    className="p-4 rounded-2xl bg-slate-900 hover:bg-cyan-600/20 border border-slate-800 hover:border-cyan-500 text-white font-black text-sm transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {ans === '向上移動' && <ArrowUp className="w-4 h-4 text-emerald-400" />}
+                    {ans === '向下移動' && <ArrowDown className="w-4 h-4 text-rose-400" />}
+                    {ans}
+                  </button>
+                ))}
               </div>
             </div>
           ) : (
-            /* === 雙人 PK 模式戰場 (左右獨立區域搶答) === */
+            /* 雙人 PK 模式 */
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Left: Player 1 */}
               <div className="bg-slate-900/90 border border-indigo-500/40 p-4 rounded-3xl space-y-3">
                 <div className="flex justify-between items-center text-xs font-bold text-indigo-300 border-b border-slate-800 pb-2">
                   <span>🔵 Player 1</span>
-                  <span>衝浪進度: {p1Progress} / 10</span>
+                  <span>進度: {p1Progress} / 10</span>
                 </div>
                 {renderWaveCanvas(p1Round)}
-                <div className="grid grid-cols-2 gap-2">
-                  {['向上移動', '向下移動'].map((ans) => (
+                <p className="text-xs font-bold text-white text-center">{p1Round?.desc}</p>
+                <div className={`grid gap-2 ${p1Round?.options.length > 2 ? 'grid-cols-2' : 'grid-cols-2'}`}>
+                  {p1Round?.options.map((ans) => (
                     <button
                       key={ans}
                       onClick={() => handlePvpAnswer('p1', ans)}
@@ -395,11 +405,12 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
               <div className="bg-slate-900/90 border border-rose-500/40 p-4 rounded-3xl space-y-3">
                 <div className="flex justify-between items-center text-xs font-bold text-rose-300 border-b border-slate-800 pb-2">
                   <span>🔴 Player 2</span>
-                  <span>衝浪進度: {p2Progress} / 10</span>
+                  <span>進度: {p2Progress} / 10</span>
                 </div>
                 {renderWaveCanvas(p2Round)}
-                <div className="grid grid-cols-2 gap-2">
-                  {['向上移動', '向下移動'].map((ans) => (
+                <p className="text-xs font-bold text-white text-center">{p2Round?.desc}</p>
+                <div className={`grid gap-2 ${p2Round?.options.length > 2 ? 'grid-cols-2' : 'grid-cols-2'}`}>
+                  {p2Round?.options.map((ans) => (
                     <button
                       key={ans}
                       onClick={() => handlePvpAnswer('p2', ans)}
@@ -427,7 +438,7 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
               }
             </h3>
             <p className="text-xs text-slate-400 mt-1">
-              {progress >= 10 ? '精通「微移法」繪製，輕鬆掌握波形與質點振動方向！' : '記住：波前進時，介面質點只會在原地上下介面振動！'}
+              {progress >= 10 ? '精通「微移法」與週期規律，輕鬆掌控介面質點振動！' : '熟記一週期 = 4/4T 振動一次，微移法能精準推算瞬間移動方向！'}
             </p>
           </div>
 
