@@ -255,43 +255,46 @@ export default function ElectromagnetismLab() {
   const lenzRes = getLenzLogic();
 
   // ==========================================
-  // 4. 馬達原理 3D 運算 (物理與力矩對齊校正)
+  // 4. 馬達原理 3D 運算 (旋轉軸對齊中心虛線 + 正確右手定則電流)
   // ==========================================
   const motorAngle = (animOffset * 3.6) % 360; 
   const rad = (motorAngle * Math.PI) / 180;
 
+  // 正確對齊畫面中心虛線 (X=280, Y=115) 的 3D 透視投影
   const projMotor3D = (x, y, z) => {
-    const originX = 280;
-    const originY = 125;
-    const px = originX + x * 0.9 - z * 0.45;
-    const py = originY - y * 0.9 + z * 0.45;
+    const originX = 280; // 中心虛線 X
+    const originY = 115; // 磁場中心 Y
+    const px = originX + x * 1.1 - z * 0.4;
+    const py = originY - y * 1.1 + z * 0.3;
     return { x: px, y: py };
   };
 
-  const coilW = 60; 
-  const coilL = 75; 
+  const coilW = 65; // 線圈半寬
+  const coilL = 60; // 線圈半長
 
+  // Y-Z 平面內的旋轉 (圍繞 Z 軸方向的旋轉軸)
   const yRot = Math.sin(rad) * coilW;
   const xRot = Math.cos(rad) * coilW;
 
-  const ptA = projMotor3D(-xRot, yRot, coilL);
-  const ptB = projMotor3D(-xRot, yRot, -coilL);
-  const ptC = projMotor3D(xRot, -yRot, -coilL);
-  const ptD = projMotor3D(xRot, -yRot, coilL);
+  const ptA = projMotor3D(xRot, -yRot, coilL);
+  const ptB = projMotor3D(xRot, -yRot, -coilL);
+  const ptC = projMotor3D(-xRot, yRot, -coilL);
+  const ptD = projMotor3D(-xRot, yRot, coilL);
 
+  // 半環換向點 (每旋轉半圈 90°~270° 切換電流方向)
   const isCommutated = motorAngle > 90 && motorAngle < 270;
 
   const ringCenter = { x: 280, y: 220 };
   const connS1 = {
-    x: ringCenter.x - 12 * Math.cos(rad),
+    x: ringCenter.x + 12 * Math.cos(rad),
     y: ringCenter.y - 12 * Math.sin(rad)
   };
   const connS2 = {
-    x: ringCenter.x + 12 * Math.cos(rad),
+    x: ringCenter.x - 12 * Math.cos(rad),
     y: ringCenter.y + 12 * Math.sin(rad)
   };
 
-  // 高顯顯度切線電流箭頭渲染組件
+  // 繪製切線電流箭頭
   const renderCurrentArrow = (pStart, pEnd, reverse = false, label = 'I') => {
     const p1 = reverse ? pEnd : pStart;
     const p2 = reverse ? pStart : pEnd;
@@ -320,9 +323,9 @@ export default function ElectromagnetismLab() {
     );
   };
 
-  // 即時判定 3D 空間中靠近 N 極（畫面左側）與靠近 S 極（畫面右側）的導線邊緣點
-  const leftSidePoint = ptA.x < ptD.x ? ptA : ptD;
-  const rightSidePoint = ptA.x < ptD.x ? ptD : ptA;
+  // 即時計算畫面左右側導線點位
+  const leftSidePoint = ptD.x < ptA.x ? ptD : ptA;
+  const rightSidePoint = ptD.x < ptA.x ? ptA : ptD;
 
   return (
     <div 
@@ -1137,7 +1140,7 @@ export default function ElectromagnetismLab() {
         </div>
       )}
 
-      {/* 4. 馬達原理 (嚴謹物理與順時針旋轉力矩對齊) */}
+      {/* 4. 馬達原理 (旋轉軸嚴格對齊中心虛線，電流 D->C->B->A 正確匹配受力與順時針旋轉) */}
       {activeTab === 'motor' && (
         <div className="space-y-6">
           <div className="bg-slate-900 border border-slate-700 p-4 rounded-2xl flex flex-wrap items-center justify-between gap-4">
@@ -1146,7 +1149,7 @@ export default function ElectromagnetismLab() {
               直流馬達原理：通電線圈在場磁鐵中受磁力作用（右手開掌定則）產生力矩旋轉
             </div>
             <div className="text-xs font-mono text-amber-300 font-bold bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700">
-              線圈旋轉角度：{Math.round(motorAngle)}° ({isCommutated ? '半環換向中 (D→C→B→A)' : '正向通電中 (A→B→C→D)'})
+              線圈旋轉角度：{Math.round(motorAngle)}° ({isCommutated ? '半環換向中 (A→B→C→D)' : '正向通電中 (D→C→B→A)'})
             </div>
           </div>
 
@@ -1193,7 +1196,8 @@ export default function ElectromagnetismLab() {
 
               {/* 線圈 ABCD */}
               <g>
-                <line x1="280" y1="20" x2="280" y2="240" stroke="#64748b" strokeWidth="1" strokeDasharray="3 3" />
+                {/* 畫面正中央旋轉軸虛線 */}
+                <line x1="280" y1="15" x2="280" y2="245" stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="4 3" />
 
                 <path
                   d={`M ${ptA.x} ${ptA.y} L ${ptB.x} ${ptB.y} L ${ptC.x} ${ptC.y} L ${ptD.x} ${ptD.y}`}
@@ -1207,27 +1211,27 @@ export default function ElectromagnetismLab() {
                 <text x={ptC.x + 10} y={ptC.y - 5} fill="#fbbf24" fontSize="12" fontWeight="bold">C</text>
                 <text x={ptD.x + 10} y={ptD.y + 5} fill="#fbbf24" fontSize="12" fontWeight="bold">D</text>
 
-                {/* 切線電流箭頭 */}
+                {/* 切線電流箭頭 (正向：D -> C -> B -> A, 穿出紙面向上受力) */}
                 {isRunning && (
                   <g>
-                    {/* A -> B 段 */}
-                    {renderCurrentArrow(ptA, ptB, isCommutated, 'I')}
-                    {/* B -> C 段 */}
-                    {renderCurrentArrow(ptB, ptC, isCommutated, 'I')}
-                    {/* C -> D 段 */}
-                    {renderCurrentArrow(ptC, ptD, isCommutated, 'I')}
+                    {/* D -> C 段 (左側穿出) */}
+                    {renderCurrentArrow(ptD, ptC, isCommutated, 'I')}
+                    {/* C -> B 段 */}
+                    {renderCurrentArrow(ptC, ptB, isCommutated, 'I')}
+                    {/* B -> A 段 (右側穿入) */}
+                    {renderCurrentArrow(ptB, ptA, isCommutated, 'I')}
                   </g>
                 )}
 
-                {/* 導線受力 F：左側導線受力向上（▲），右側導線受力向下（▼）帶動順時針旋轉 */}
+                {/* 導線受力 F：左側導線受力向上（▲），右側導線受力向下（▼）合力形成順時針旋轉 */}
                 {Math.abs(Math.sin(rad)) > 0.15 && (
                   <g>
-                    {/* 左側導線（靠近 N 極）：受力向上 ▲ */}
+                    {/* 左側導線（靠近 N 極）：電流向外，受力向上 ▲ */}
                     <line x1={leftSidePoint.x} y1={leftSidePoint.y} x2={leftSidePoint.x} y2={leftSidePoint.y - 35} stroke="#10b981" strokeWidth="3" />
                     <polygon points={`${leftSidePoint.x - 4},${leftSidePoint.y - 35} ${leftSidePoint.x},${leftSidePoint.y - 43} ${leftSidePoint.x + 4},${leftSidePoint.y - 35}`} fill="#10b981" />
                     <text x={leftSidePoint.x - 24} y={leftSidePoint.y - 25} fill="#10b981" fontSize="11" fontWeight="bold">F (向上)</text>
 
-                    {/* 右側導線（靠近 S 極）：受力向下 ▼ */}
+                    {/* 右側導線（靠近 S 極）：電流向內，受力向下 ▼ */}
                     <line x1={rightSidePoint.x} y1={rightSidePoint.y} x2={rightSidePoint.x} y2={rightSidePoint.y + 35} stroke="#10b981" strokeWidth="3" />
                     <polygon points={`${rightSidePoint.x - 4},${rightSidePoint.y + 35} ${rightSidePoint.x},${rightSidePoint.y + 43} ${rightSidePoint.x + 4},${rightSidePoint.y + 35}`} fill="#10b981" />
                     <text x={rightSidePoint.x + 10} y={rightSidePoint.y + 25} fill="#10b981" fontSize="11" fontWeight="bold">F (向下)</text>
@@ -1280,8 +1284,8 @@ export default function ElectromagnetismLab() {
               </p>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-slate-300 pt-1">
                 <p>• 磁場方向 B：<strong className="text-cyan-300">由 N 極向右指向 S 極</strong></p>
-                <p>• 電流換向：<strong className="text-amber-300">集電環 (S1/S2) 每半圈切換一次</strong></p>
-                <p>• 電樞受力：<strong className="text-purple-300">左側受力向上，右側受力向下（帶動順時針旋轉）</strong></p>
+                <p>• 電流流向：<strong className="text-amber-300">D → C → B → A (左側導線向外流)</strong></p>
+                <p>• 電樞受力：<strong className="text-purple-300">左側受力向上，右側受力向下 (帶動順時針旋轉)</strong></p>
               </div>
             </div>
           </div>
