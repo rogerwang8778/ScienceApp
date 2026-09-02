@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Swords, ArrowLeft } from 'lucide-react';
 import ArenaMenu from './ArenaMenu';
 import DensityFloorGame from './games/DensityFloorGame'; // 1. 引入 1F 小遊戲
+import ConcentrationFloorGame from './games/ConcentrationFloorGame';
 
 export default function ScienceArena({ onAddExp }) {
   const [currentGame, setCurrentGame] = useState(null);
@@ -43,6 +44,9 @@ export default function ScienceArena({ onAddExp }) {
       {/* 2. 當選擇 1F 時，渲染 DensityFloorGame */}
       {currentGame === 'density1F' && (
         <DensityFloorGame mode={gameMode} onGameOver={handleGameOver} />
+      )}
+      {currentGame === 'concentration10F' && (
+        <ConcentrationFloorGame mode={gameMode} onGameOver={handleGameOver} />
       )}
     </div>
   );
