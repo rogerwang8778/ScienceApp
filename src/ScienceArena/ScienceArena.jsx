@@ -5,6 +5,7 @@ import { Swords, User, Users, Flame, Layers, Play, ArrowLeft } from 'lucide-reac
 import DensityFloorGame from './games/DensityFloorGame';
 import ConcentrationFloorGame from './games/ConcentrationFloorGame';
 import ParticleSurfGame from './games/ParticleSurfGame';
+import LensFocalGame from './games/LensFocalGame';
 
 export default function ScienceArena({ onAddExp }) {
   // currentGame: null (選單大廳) | 'density1F' | 'concentration10F' | ...
@@ -42,6 +43,16 @@ export default function ScienceArena({ onAddExp }) {
       color: 'from-blue-500/20 to-cyan-500/20',
       borderColor: 'border-blue-500/40 hover:border-blue-400',
       badgeColor: 'bg-blue-500/20 text-blue-300'
+    },
+    {
+      id: 'optics30F',
+      unit: '天空競技場 30F',
+      title: '30F 光學擂台：透鏡焦點戰',
+      desc: '破解死背痛點！秒殺「物距 vs. 像距 & 成像性質」反應對決！',
+      icon: '🔍',
+      color: 'from-purple-500/20 to-indigo-500/20',
+      borderColor: 'border-purple-500/40 hover:border-purple-400',
+      badgeColor: 'bg-purple-500/20 text-purple-300'
     },
     {
       id: 'waves50F',
@@ -185,6 +196,9 @@ export default function ScienceArena({ onAddExp }) {
       )}
       {currentGame === 'waves20F' && (
         <ParticleSurfGame mode={gameMode} onGameOver={handleGameOver} />
+      )}
+      {currentGame === 'optics30F' && (
+        <LensFocalGame mode={gameMode} onGameOver={handleGameOver} />
       )}
     </div>
   );
