@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Zap, Play, Pause, Compass, RotateCw, Activity, Layers, MoveHorizontal, Sliders } from 'lucide-react';
 
 export default function ElectromagnetismLab() {
-  const [activeTab, setActiveTab] = useState('motor');
+  const [activeTab, setActiveTab] = useState('generator');
   const [isRunning, setIsRunning] = useState(true);
   const [animOffset, setAnimOffset] = useState(0);
 
@@ -255,7 +255,7 @@ export default function ElectromagnetismLab() {
   const lenzRes = getLenzLogic();
 
   // ==========================================
-  // 4. 馬達原理 (微調旋轉軸至 295，電流修正為 D->C->B->A，電源反接)
+  // 4. 馬達原理
   // ==========================================
   const motorAngle = (animOffset * 3.6) % 360; 
   const rad = (motorAngle * Math.PI) / 180;
@@ -291,7 +291,6 @@ export default function ElectromagnetismLab() {
     y: ringCenter.y + 12 * Math.sin(rad)
   };
 
-  // 高顯顯度切線電流箭頭渲染組件
   const renderCurrentArrow = (pStart, pEnd, reverse = false, label = 'I') => {
     const p1 = reverse ? pEnd : pStart;
     const p2 = reverse ? pStart : pEnd;
@@ -320,16 +319,73 @@ export default function ElectromagnetismLab() {
     );
   };
 
-  // 即時判定 3D 空間中靠近 N 極與 S 極的導線邊緣點
   const leftSidePoint = ptA.x < ptD.x ? ptA : ptD;
   const rightSidePoint = ptA.x < ptD.x ? ptD : ptA;
+
+  // ==========================================
+  // 5. 互動式直流發電機 (含半圓形集電環與手動旋轉)
+  // ==========================================
+  const [genAngle, setGenAngle] = useState(0);
+  const [isGenDragging, setIsGenDragging] = useState(false);
+  const genDragRef = useRef({ startX: 0, initialAngle: 0 });
+
+  // 自動旋轉同步
+  useEffect(() => {
+    if (isRunning && !isGenDragging) {
+      setGenAngle((animOffset * 3.6) % 360);
+    }
+  }, [animOffset, isRunning, isGenDragging]);
+
+  const handleGenPointerDown = (e) => {
+    setIsGenDragging(true);
+    const clientX = e.clientX || (e.touches && e.touches[0].clientX) || 0;
+    genDragRef.current = { startX: clientX, initialAngle: genAngle };
+  };
+
+  const handleGenPointerMove = (e) => {
+    if (!isGenDragging) return;
+    const clientX = e.clientX || (e.touches && e.touches[0].clientX) || 0;
+    const deltaX = clientX - genDragRef.current.startX;
+    const newAngle = (genDragRef.current.initialAngle + deltaX * 1.5) % 360;
+    setGenAngle(newAngle < 0 ? newAngle + 360 : newAngle);
+  };
+
+  const handleGenPointerUp = () => {
+    setIsGenDragging(false);
+  };
+
+  // 發電機物理運算
+  const genRad = (genAngle * Math.PI) / 180;
+  const genAxisX = 295;
+  const projGen3D = (x, y, z) => {
+    const originY = 110;
+    const px = genAxisX + x * 0.9 - z * 0.45;
+    const py = originY - y * 0.9 + z * 0.45;
+    return { x: px, y: py };
+  };
+
+  const gYRot = Math.sin(genRad) * 60;
+  const gXRot = Math.cos(genRad) * 60;
+
+  const gPtA = projGen3D(-gXRot, gYRot, 70);
+  const gPtB = projGen3D(-gXRot, gYRot, -70);
+  const gPtC = projGen3D(gXRot, -gYRot, -70);
+  const gPtD = projGen3D(gXRot, -gYRot, 70);
+
+  // 計算切割磁力線之感應電動勢 (磁通量變化率 dPhi/dt 正比於 sin(rad))
+  // 當角度為 0/180/360 度時切割速度最快；90/270 度時平行不切割
+  const rawInducedI = Math.cos(genRad); // 內部線圈感應電流
+  
+  // 半圓形集電環整流：外電路電流始終維持單向（直流發電機）
+  const externalInducedI = Math.abs(rawInducedI); 
+  const needleAngle = Math.sin(genRad) * 42; // 檢流計偏轉角度
 
   return (
     <div 
       className="bg-slate-800 border border-slate-700 rounded-2xl p-4 md:p-6 shadow-xl space-y-6 select-none"
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerLeave={handlePointerUp}
+      onPointerMove={(e) => { handlePointerMove(e); handleGenPointerMove(e); }}
+      onPointerUp={() => { handlePointerUp(); handleGenPointerUp(); }}
+      onPointerLeave={() => { handlePointerUp(); handleGenPointerUp(); }}
     >
       {/* 標頭 */}
       <div className="border-b border-slate-700 pb-4 flex justify-between items-center flex-wrap gap-3">
@@ -394,7 +450,7 @@ export default function ElectromagnetismLab() {
             activeTab === 'generator' ? 'bg-emerald-600 text-white shadow-lg' : 'bg-slate-700 text-slate-300 hover:bg-slate-650'
           }`}
         >
-          <Zap className="w-3.5 h-3.5 text-emerald-300"/> 5. 發電機原理
+          <Zap className="w-3.5 h-3.5 text-emerald-300"/> 5. 發電機原理 (互動式)
         </button>
       </div>
 
@@ -1137,7 +1193,7 @@ export default function ElectromagnetismLab() {
         </div>
       )}
 
-      {/* 4. 馬達原理 (電流 D->C->B->A，直流電源右極為正、極性反接修正) */}
+      {/* 4. 馬達原理 */}
       {activeTab === 'motor' && (
         <div className="space-y-6">
           <div className="bg-slate-900 border border-slate-700 p-4 rounded-2xl flex flex-wrap items-center justify-between gap-4">
@@ -1193,7 +1249,6 @@ export default function ElectromagnetismLab() {
 
               {/* 線圈 ABCD */}
               <g>
-                {/* 旋轉軸虛線：精確對齊至標註的紅圈交會中心 (axisX = 295) */}
                 <line x1={axisX} y1="15" x2={axisX} y2="245" stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="4 3" />
 
                 <path
@@ -1211,24 +1266,19 @@ export default function ElectromagnetismLab() {
                 {/* 切線電流箭頭：D -> C -> B -> A */}
                 {isRunning && (
                   <g>
-                    {/* D -> C 段 */}
                     {renderCurrentArrow(ptD, ptC, isCommutated, 'I')}
-                    {/* C -> B 段 */}
                     {renderCurrentArrow(ptC, ptB, isCommutated, 'I')}
-                    {/* B -> A 段 (左側電流向外流) */}
                     {renderCurrentArrow(ptB, ptA, isCommutated, 'I')}
                   </g>
                 )}
 
-                {/* 導線受力 F：左側受力向上（▲），右側受力向下（▼）合力推動順時針旋轉 */}
+                {/* 導線受力 F */}
                 {Math.abs(Math.sin(rad)) > 0.15 && (
                   <g>
-                    {/* 左側導線 (靠近 N 極)：受力向上 ▲ */}
                     <line x1={leftSidePoint.x} y1={leftSidePoint.y} x2={leftSidePoint.x} y2={leftSidePoint.y - 35} stroke="#10b981" strokeWidth="3" />
                     <polygon points={`${leftSidePoint.x - 4},${leftSidePoint.y - 35} ${leftSidePoint.x},${leftSidePoint.y - 43} ${leftSidePoint.x + 4},${leftSidePoint.y - 35}`} fill="#10b981" />
                     <text x={leftSidePoint.x - 24} y={leftSidePoint.y - 25} fill="#10b981" fontSize="11" fontWeight="bold">F (向上)</text>
 
-                    {/* 右側導線 (靠近 S 極)：受力向下 ▼ */}
                     <line x1={rightSidePoint.x} y1={rightSidePoint.y} x2={rightSidePoint.x} y2={rightSidePoint.y + 35} stroke="#10b981" strokeWidth="3" />
                     <polygon points={`${rightSidePoint.x - 4},${rightSidePoint.y + 35} ${rightSidePoint.x},${rightSidePoint.y + 43} ${rightSidePoint.x + 4},${rightSidePoint.y + 35}`} fill="#10b981" />
                     <text x={rightSidePoint.x + 10} y={rightSidePoint.y + 25} fill="#10b981" fontSize="11" fontWeight="bold">F (向下)</text>
@@ -1240,7 +1290,7 @@ export default function ElectromagnetismLab() {
                 <text x={axisX} y="15" textAnchor="middle" fill="#c084fc" fontSize="10" fontWeight="bold">旋轉方向 (順時針)</text>
               </g>
 
-              {/* 集電環 S1, S2 與電刷 B1, B2 (電源反接：B2 為正極 +，B1 為負極 -) */}
+              {/* 集電環 S1, S2 與電刷 B1, B2 */}
               <g transform={`translate(${axisX}, 220)`}>
                 <circle cx="0" cy="0" r="14" fill="#1e293b" stroke="#64748b" strokeWidth="1.5" />
 
@@ -1251,17 +1301,14 @@ export default function ElectromagnetismLab() {
                   <text x="12" y="12" fill="#d97706" fontSize="9" fontWeight="bold">S2</text>
                 </g>
 
-                {/* 左側 B1 反接為 (-) */}
                 <rect x="-20" y="-5" width="6" height="10" fill="#94a3b8" rx="1" />
                 <text x="-32" y="3" fill="#3b82f6" fontSize="10" fontWeight="bold">B1 (-)</text>
 
-                {/* 右側 B2 反接為 (+) */}
                 <rect x="14" y="-5" width="6" height="10" fill="#94a3b8" rx="1" />
                 <text x="23" y="3" fill="#ef4444" fontSize="10" fontWeight="bold">B2 (+)</text>
 
                 <path d="M -17 5 L -17 38 L -8 38 M 17 5 L 17 38 L 8 38" fill="none" stroke="#64748b" strokeWidth="1.5" />
                 
-                {/* 反接電源示意圖：右長 (+) 左短 (-) */}
                 <line x1="-8" y1="35" x2="-8" y2="41" stroke="#3b82f6" strokeWidth="3.5" />
                 <text x="-14" y="28" fill="#3b82f6" fontSize="10" fontWeight="bold">-</text>
 
@@ -1292,33 +1339,140 @@ export default function ElectromagnetismLab() {
         </div>
       )}
 
-      {/* 5. 發電機原理 */}
+      {/* 5. 互動式發電機原理 (含半圓形集電環與檢流計) */}
       {activeTab === 'generator' && (
         <div className="space-y-6">
-          <div className="bg-slate-900 border border-slate-700 p-4 rounded-2xl flex justify-between items-center">
-            <span className="text-xs text-emerald-300 font-bold">
-              發電機原理：機械能 ➔ 電能（外力轉動線圈切割磁力線產生感應電流）
-            </span>
+          <div className="bg-slate-900 border border-slate-700 p-4 rounded-2xl flex flex-wrap items-center justify-between gap-4">
+            <div className="text-xs text-emerald-300 font-bold flex items-center gap-2">
+              <Zap className="w-4 h-4 animate-pulse text-emerald-400"/>
+              直流發電機原理：外力旋轉電樞線圈切割磁力線（法拉第電磁感應）產生感應電流
+            </div>
+            <div className="text-xs font-mono text-amber-300 font-bold bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700">
+              手動/自動旋轉角度：{Math.round(genAngle)}° 
+            </div>
           </div>
 
-          <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 flex flex-col items-center justify-center min-h-[280px]">
-            <svg width="460" height="220" className="select-none font-mono text-[11px]">
-              <path
-                d="M 50 110 Q 100 30 150 110 T 250 110 T 350 110 T 450 110"
-                fill="none"
-                stroke="#10b981"
-                strokeWidth="3"
-              />
+          <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 flex flex-col items-center justify-center min-h-[380px] overflow-x-auto">
+            <svg 
+              width="600" 
+              height="340" 
+              className="select-none font-mono text-[11px] cursor-grab active:cursor-grabbing"
+              onPointerDown={handleGenPointerDown}
+            >
+              {/* N 極場磁鐵 */}
+              <path d="M 70 50 L 160 50 L 160 170 L 70 170 Z" fill="#2563eb" stroke="#60a5fa" strokeWidth="1.5" />
+              <path d="M 160 50 L 190 70 L 190 150 L 160 170 Z" fill="#1d4ed8" />
+              <text x="115" y="115" fill="#ffffff" fontSize="22" fontWeight="bold" textAnchor="middle">N</text>
 
-              {isRunning && (
-                <circle
-                  cx={50 + (animOffset * 4) % 400}
-                  cy={110 - 50 * Math.sin((((animOffset * 4) % 400) * Math.PI) / 100)}
-                  r="6"
-                  fill="#f59e0b"
+              {/* S 極場磁鐵 */}
+              <path d="M 400 50 L 490 50 L 490 170 L 400 170 Z" fill="#dc2626" stroke="#f87171" strokeWidth="1.5" />
+              <path d="M 370 70 L 400 50 L 400 170 L 370 150 Z" fill="#b91c1c" />
+              <text x="445" y="115" fill="#ffffff" fontSize="22" fontWeight="bold" textAnchor="middle">S</text>
+
+              {/* 磁力線虛線 */}
+              {[70, 110, 150].map((yVal, idx) => (
+                <line key={`g-b-${idx}`} x1="195" y1={yVal} x2="365" y2={yVal} stroke="#38bdf8" strokeWidth="1.5" strokeDasharray="4 3" opacity="0.5" />
+              ))}
+
+              {/* 線圈 ABCD 與旋轉軸 */}
+              <g>
+                <line x1={genAxisX} y1="15" x2={genAxisX} y2="220" stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="4 3" />
+
+                {/* 轉動提示文字 */}
+                <g transform={`translate(${genAxisX}, 32)`}>
+                  <rect x="-42" y="-10" width="84" height="20" rx="10" fill="#0284c7" opacity="0.8" />
+                  <text x="0" y="4" textAnchor="middle" fill="#ffffff" fontSize="10" fontWeight="bold">拖曳旋轉電樞</text>
+                </g>
+
+                <path
+                  d={`M ${gPtA.x} ${gPtA.y} L ${gPtB.x} ${gPtB.y} L ${gPtC.x} ${gPtC.y} L ${gPtD.x} ${gPtD.y}`}
+                  fill="none"
+                  stroke="#22c55e"
+                  strokeWidth="4"
                 />
-              )}
+
+                <text x={gPtA.x - 12} y={gPtA.y + 5} fill="#4ade80" fontSize="12" fontWeight="bold">A</text>
+                <text x={gPtB.x - 12} y={gPtB.y - 5} fill="#4ade80" fontSize="12" fontWeight="bold">B</text>
+                <text x={gPtC.x + 10} y={gPtC.y - 5} fill="#4ade80" fontSize="12" fontWeight="bold">C</text>
+                <text x={gPtD.x + 10} y={gPtD.y + 5} fill="#4ade80" fontSize="12" fontWeight="bold">D</text>
+
+                {/* 切線感應電流動態箭頭 */}
+                {externalInducedI > 0.15 && (
+                  <g>
+                    {rawInducedI > 0 ? (
+                      <>
+                        {renderCurrentArrow(gPtA, gPtB, false, 'I感')}
+                        {renderCurrentArrow(gPtC, gPtD, false, 'I感')}
+                      </>
+                    ) : (
+                      <>
+                        {renderCurrentArrow(gPtB, gPtA, false, 'I感')}
+                        {renderCurrentArrow(gPtD, gPtC, false, 'I感')}
+                      </>
+                    )}
+                  </g>
+                )}
+              </g>
+
+              {/* 兩個半圓形集電環（換向器）與電刷 */}
+              <g transform={`translate(${genAxisX}, 205)`}>
+                <circle cx="0" cy="0" r="14" fill="#0f172a" stroke="#64748b" strokeWidth="1.5" />
+
+                {/* 隨線圈旋轉的半圓形集電環 (紅色/橘色) */}
+                <g transform={`rotate(${genAngle})`}>
+                  <path d="M -12 -3 A 12 12 0 0 1 12 -3 L 10 -3 A 10 10 0 0 0 -10 -3 Z" fill="#ef4444" />
+                  <path d="M 12 3 A 12 12 0 0 1 -12 3 L -10 3 A 10 10 0 0 0 10 3 Z" fill="#f97316" />
+                </g>
+
+                {/* 固定兩側電刷 (藍色) */}
+                <rect x="-20" y="-5" width="6" height="10" fill="#0284c7" rx="1" />
+                <rect x="14" y="-5" width="6" height="10" fill="#0284c7" rx="1" />
+
+                {/* 外電路導線 */}
+                <path d="M -17 5 L -17 50 L -40 50 L -40 85 M 17 5 L 17 50 L 40 50 L 40 85" fill="none" stroke="#22c55e" strokeWidth="2.5" />
+
+                {/* 外電路感應電流箭頭 (單向直流流向檢流計) */}
+                {externalInducedI > 0.15 && (
+                  <g>
+                    <polygon points="-17,30 -22,20 -12,20" fill="#22c55e" />
+                    <polygon points="40,65 35,55 45,55" fill="#22c55e" />
+                  </g>
+                )}
+
+                {/* 檢流計 G (代替燈泡) */}
+                <g transform="translate(0, 85)">
+                  <circle cx="0" cy="0" r="22" fill="#0f172a" stroke="#22c55e" strokeWidth="2.5" />
+                  <text x="0" y="-8" textAnchor="middle" fill="#22c55e" fontSize="12" fontWeight="bold">G</text>
+                  <text x="-12" y="14" textAnchor="middle" fill="#94a3b8" fontSize="8">-</text>
+                  <text x="12" y="14" textAnchor="middle" fill="#94a3b8" fontSize="8">+</text>
+
+                  {/* 動態偏轉指針 */}
+                  <line
+                    x1="0"
+                    y1="0"
+                    x2={16 * Math.sin((needleAngle * Math.PI) / 180)}
+                    y2={-16 * Math.cos((needleAngle * Math.PI) / 180)}
+                    stroke="#ef4444"
+                    strokeWidth="3"
+                  />
+                  <circle cx="0" cy="0" r="3" fill="#ef4444" />
+                </g>
+              </g>
             </svg>
+
+            <div className="bg-slate-900 p-3.5 rounded-xl border border-slate-800 text-xs space-y-1.5 w-full mt-3 font-sans">
+              <p className="text-emerald-300 font-bold flex items-center justify-between">
+                <span>🎯 直流發電機原理（法拉第電磁感應定律）：</span>
+                <span className="text-amber-400 font-mono">
+                  {Math.abs(Math.cos(genRad)) < 0.2 ? '【線圈垂直：磁通量最大，切割速度 0，I=0】' : '【線圈水平：切割磁力線最快，感應電流最大】'}
+                </span>
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-slate-300 pt-1">
+                <p>• 半圓形集電環：<strong className="text-cyan-300">每旋轉半圈整流一次，維持單向直流</strong></p>
+                <p>• 檢流計偏轉：<strong className="text-amber-300">偏轉幅度正比於切割磁力線速率</strong></p>
+                <p>• 能量轉換：<strong className="text-purple-300">手動轉動（機械能）➔ 感應電流（電能）</strong></p>
+              </div>
+            </div>
           </div>
         </div>
       )}
