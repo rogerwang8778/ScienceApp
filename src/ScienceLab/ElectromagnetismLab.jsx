@@ -255,7 +255,7 @@ export default function ElectromagnetismLab() {
   const lenzRes = getLenzLogic();
 
   // ==========================================
-  // 4. 馬達原理 3D 運算 (嚴謹校正物理受力與電流方向)
+  // 4. 馬達原理 3D 運算 (物理與力矩對齊校正)
   // ==========================================
   const motorAngle = (animOffset * 3.6) % 360; 
   const rad = (motorAngle * Math.PI) / 180;
@@ -320,9 +320,9 @@ export default function ElectromagnetismLab() {
     );
   };
 
-  // 判定目前在左側與右側的電樞導線
-  const leftPoint = ptA.x < ptD.x ? ptA : ptD;
-  const rightPoint = ptA.x < ptD.x ? ptD : ptA;
+  // 即時判定 3D 空間中靠近 N 極（畫面左側）與靠近 S 極（畫面右側）的導線邊緣點
+  const leftSidePoint = ptA.x < ptD.x ? ptA : ptD;
+  const rightSidePoint = ptA.x < ptD.x ? ptD : ptA;
 
   return (
     <div 
@@ -1137,7 +1137,7 @@ export default function ElectromagnetismLab() {
         </div>
       )}
 
-      {/* 4. 馬達原理 (嚴謹物理邏輯：左側電樞受力向下、右側受力向上) */}
+      {/* 4. 馬達原理 (嚴謹物理與順時針旋轉力矩對齊) */}
       {activeTab === 'motor' && (
         <div className="space-y-6">
           <div className="bg-slate-900 border border-slate-700 p-4 rounded-2xl flex flex-wrap items-center justify-between gap-4">
@@ -1207,7 +1207,7 @@ export default function ElectromagnetismLab() {
                 <text x={ptC.x + 10} y={ptC.y - 5} fill="#fbbf24" fontSize="12" fontWeight="bold">C</text>
                 <text x={ptD.x + 10} y={ptD.y + 5} fill="#fbbf24" fontSize="12" fontWeight="bold">D</text>
 
-                {/* 切線電流箭頭 (正向：A->B->C->D, 換向：D->C->B->A) */}
+                {/* 切線電流箭頭 */}
                 {isRunning && (
                   <g>
                     {/* A -> B 段 */}
@@ -1219,18 +1219,18 @@ export default function ElectromagnetismLab() {
                   </g>
                 )}
 
-                {/* 導線受力 F (嚴謹右手開掌定則：左側受力向下 ▼，右側受力向上 ▲) */}
+                {/* 導線受力 F：左側導線受力向上（▲），右側導線受力向下（▼）帶動順時針旋轉 */}
                 {Math.abs(Math.sin(rad)) > 0.15 && (
                   <g>
-                    {/* 左側導線受力 F (向下 ▼) */}
-                    <line x1={leftPoint.x} y1={leftPoint.y} x2={leftPoint.x} y2={leftPoint.y + 35} stroke="#10b981" strokeWidth="3" />
-                    <polygon points={`${leftPoint.x - 4},${leftPoint.y + 35} ${leftPoint.x},${leftPoint.y + 43} ${leftPoint.x + 4},${leftPoint.y + 35}`} fill="#10b981" />
-                    <text x={leftPoint.x - 24} y={leftPoint.y + 25} fill="#10b981" fontSize="11" fontWeight="bold">F (向下)</text>
+                    {/* 左側導線（靠近 N 極）：受力向上 ▲ */}
+                    <line x1={leftSidePoint.x} y1={leftSidePoint.y} x2={leftSidePoint.x} y2={leftSidePoint.y - 35} stroke="#10b981" strokeWidth="3" />
+                    <polygon points={`${leftSidePoint.x - 4},${leftSidePoint.y - 35} ${leftSidePoint.x},${leftSidePoint.y - 43} ${leftSidePoint.x + 4},${leftSidePoint.y - 35}`} fill="#10b981" />
+                    <text x={leftSidePoint.x - 24} y={leftSidePoint.y - 25} fill="#10b981" fontSize="11" fontWeight="bold">F (向上)</text>
 
-                    {/* 右側導線受力 F (向上 ▲) */}
-                    <line x1={rightPoint.x} y1={rightPoint.y} x2={rightPoint.x} y2={rightPoint.y - 35} stroke="#10b981" strokeWidth="3" />
-                    <polygon points={`${rightPoint.x - 4},${rightPoint.y - 35} ${rightPoint.x},${rightPoint.y - 43} ${rightPoint.x + 4},${rightPoint.y - 35}`} fill="#10b981" />
-                    <text x={rightPoint.x + 10} y={rightPoint.y - 25} fill="#10b981" fontSize="11" fontWeight="bold">F (向上)</text>
+                    {/* 右側導線（靠近 S 極）：受力向下 ▼ */}
+                    <line x1={rightSidePoint.x} y1={rightSidePoint.y} x2={rightSidePoint.x} y2={rightSidePoint.y + 35} stroke="#10b981" strokeWidth="3" />
+                    <polygon points={`${rightSidePoint.x - 4},${rightSidePoint.y + 35} ${rightSidePoint.x},${rightSidePoint.y + 43} ${rightSidePoint.x + 4},${rightSidePoint.y + 35}`} fill="#10b981" />
+                    <text x={rightSidePoint.x + 10} y={rightSidePoint.y + 25} fill="#10b981" fontSize="11" fontWeight="bold">F (向下)</text>
                   </g>
                 )}
 
@@ -1281,7 +1281,7 @@ export default function ElectromagnetismLab() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-slate-300 pt-1">
                 <p>• 磁場方向 B：<strong className="text-cyan-300">由 N 極向右指向 S 極</strong></p>
                 <p>• 電流換向：<strong className="text-amber-300">集電環 (S1/S2) 每半圈切換一次</strong></p>
-                <p>• 電樞受力：<strong className="text-purple-300">左側導線受力向下，右側導線受力向上</strong></p>
+                <p>• 電樞受力：<strong className="text-purple-300">左側受力向上，右側受力向下（帶動順時針旋轉）</strong></p>
               </div>
             </div>
           </div>
