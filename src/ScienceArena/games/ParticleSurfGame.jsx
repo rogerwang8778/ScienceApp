@@ -8,9 +8,11 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
   const [score, setScore] = useState(0);
   const [questionCount, setQuestionCount] = useState(1);
 
-  // 雙人 PK 模式獨立進度
+  // 雙人 PK 模式獨立狀態 (加入各自的題號計數，確保 1~3 題過後出週期題)
   const [p1Progress, setP1Progress] = useState(0);
   const [p2Progress, setP2Progress] = useState(0);
+  const [p1QIndex, setP1QIndex] = useState(1);
+  const [p2QIndex, setP2QIndex] = useState(1);
   const [p1Round, setP1Round] = useState(null);
   const [p2Round, setP2Round] = useState(null);
 
@@ -142,8 +144,10 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
       setAnimOffsetSingle(0);
       setShowFinalSingle(false);
     } else {
-      setP1Round(generateParticleQuestion(qIdx));
-      setP2Round(generateParticleQuestion(qIdx));
+      setP1Round(generateParticleQuestion(1));
+      setP2Round(generateParticleQuestion(1));
+      setP1QIndex(1);
+      setP2QIndex(1);
       setAnimOffsetP1(0);
       setShowFinalP1(false);
       setAnimOffsetP2(0);
@@ -239,11 +243,12 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
 
     const round = player === 'p1' ? p1Round : p2Round;
     const isCorrect = userAns === round.correctAns;
-    const nextQIdx = questionCount + 1;
 
-    // 啟動 P1 或 P2 獨立畫布動畫
     triggerWaveAnimation(player, round.waveDirection, round.deltaQuarters || 0.25, () => {
       if (player === 'p1') {
+        const nextQIdx = p1QIndex + 1;
+        setP1QIndex(nextQIdx);
+
         if (isCorrect) {
           const next = p1Progress + 1;
           setP1Progress(next);
@@ -260,6 +265,9 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
           setShowFinalP1(false);
         }
       } else {
+        const nextQIdx = p2QIndex + 1;
+        setP2QIndex(nextQIdx);
+
         if (isCorrect) {
           const next = p2Progress + 1;
           setP2Progress(next);
@@ -374,7 +382,7 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
               Heaven's Arena • Floor 20F ({mode === 'pvp' ? '雙人 PK' : '單人闖關'})
             </span>
             <span className="text-[10px] font-bold text-amber-300 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-md">
-              關卡 {questionCount} / 10
+              {mode === 'single' ? `關卡 ${questionCount} / 10` : '雙人競速對決'}
             </span>
           </div>
           <h2 className="text-xl md:text-2xl font-black text-white mt-1 flex items-center gap-2">
@@ -467,19 +475,19 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
               </div>
             </div>
           ) : (
-            /* 雙人 PK 模式（含獨立波傳播方向、獨立平移動畫與終點視覺定格） */
+            /* 雙人 PK 模式 */
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Player 1 */}
               <div className="bg-slate-900/90 border border-indigo-500/40 p-4 rounded-3xl space-y-3">
                 <div className="flex justify-between items-center text-xs font-bold text-indigo-300 border-b border-slate-800 pb-2">
-                  <span>🔵 Player 1</span>
+                  <span>🔵 Player 1 (第 {p1QIndex} 題)</span>
                   <span className="text-amber-400">
                     {p1Round?.waveDirection === 'right' ? '👉 向右傳播' : '👈 向左傳播'}
                   </span>
                   <span>進度: {p1Progress} / 10</span>
                 </div>
                 {renderWaveCanvas(p1Round, animOffsetP1, showFinalP1)}
-                <p className="text-xs font-bold text-white text-center">{p1Round?.desc}</p>
+                <p className="text-xs font-bold text-white text-center min-h-[36px] flex items-center justify-center">{p1Round?.desc}</p>
                 <div className={`grid gap-2 ${p1Round?.options.length > 2 ? 'grid-cols-2' : 'grid-cols-2'}`}>
                   {p1Round?.options.map((ans) => (
                     <button
@@ -496,14 +504,14 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
               {/* Player 2 */}
               <div className="bg-slate-900/90 border border-rose-500/40 p-4 rounded-3xl space-y-3">
                 <div className="flex justify-between items-center text-xs font-bold text-rose-300 border-b border-slate-800 pb-2">
-                  <span>🔴 Player 2</span>
+                  <span>🔴 Player 2 (第 {p2QIndex} 題)</span>
                   <span className="text-amber-400">
                     {p2Round?.waveDirection === 'right' ? '👉 向右傳播' : '👈 向左傳播'}
                   </span>
                   <span>進度: {p2Progress} / 10</span>
                 </div>
                 {renderWaveCanvas(p2Round, animOffsetP2, showFinalP2)}
-                <p className="text-xs font-bold text-white text-center">{p2Round?.desc}</p>
+                <p className="text-xs font-bold text-white text-center min-h-[36px] flex items-center justify-center">{p2Round?.desc}</p>
                 <div className={`grid gap-2 ${p2Round?.options.length > 2 ? 'grid-cols-2' : 'grid-cols-2'}`}>
                   {p2Round?.options.map((ans) => (
                     <button
