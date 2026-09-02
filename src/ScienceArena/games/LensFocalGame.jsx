@@ -11,13 +11,13 @@ export default function LensFocalGame({ mode = 'single', onGameOver }) {
   const [timeLeft, setTimeLeft] = useState(60);
   const [questionCount, setQuestionCount] = useState(1);
 
-  // 雙人 PK 輪流控制與 3 秒倒數計時
+  // 雙人 PK 輪流控制與 5 秒倒數計時
   const [currentPlayer, setCurrentPlayer] = useState('p1');
   const [actionState, setActionState] = useState('idle');
   const [currentRound, setCurrentRound] = useState(null);
   const [isFinished, setIsFinished] = useState(false);
   const [roundStartTime, setRoundStartTime] = useState(Date.now()); 
-  const [critTimerLeft, setCritTimerLeft] = useState(3.0); // 3 秒雙倍暴擊倒數
+  const [critTimerLeft, setCritTimerLeft] = useState(5.0); // 5 秒雙倍暴擊倒數
   const [isCritical, setIsCritical] = useState(false);               
 
   // 答題反饋視覺狀態
@@ -42,16 +42,16 @@ export default function LensFocalGame({ mode = 'single', onGameOver }) {
     setShowFeedback(false);
     setIsCritical(false);
     setRoundStartTime(Date.now());
-    setCritTimerLeft(3.0);
+    setCritTimerLeft(5.0);
   };
 
-  // 3 秒暴擊倒數計時器
+  // 5 秒暴擊倒數計時器
   useEffect(() => {
     let interval = null;
     if (!isFinished && actionState === 'idle' && currentRound) {
       interval = setInterval(() => {
         const elapsed = (Date.now() - roundStartTime) / 1000;
-        const remaining = Math.max(0, 3.0 - elapsed);
+        const remaining = Math.max(0, 5.0 - elapsed);
         setCritTimerLeft(remaining);
       }, 50);
     }
@@ -186,13 +186,13 @@ export default function LensFocalGame({ mode = 'single', onGameOver }) {
   }, [timeLeft, isFinished, mode]);
 
   // ==========================================
-  // 驗證作答與 3 秒雙倍爆擊
+  // 驗證作答與 5 秒雙倍爆擊
   // ==========================================
   const handleSubmitAnswer = () => {
     if (!currentRound || isFinished || actionState !== 'idle') return;
 
     const answerTime = (Date.now() - roundStartTime) / 1000; 
-    const criticalHit = answerTime <= 3.0; // 3秒速答判定
+    const criticalHit = answerTime <= 5.0; // 5 秒速答判定
 
     let isCorrect = false;
     if (currentRound.qType === 'text_choice') {
@@ -495,7 +495,7 @@ export default function LensFocalGame({ mode = 'single', onGameOver }) {
           {/* 暴擊結果浮貼標籤 */}
           {isCritical && (
             <div className="absolute top-2 left-1/2 -translate-x-12 z-30 bg-amber-500 text-slate-950 font-black text-xs px-3 py-1 rounded-full shadow-xl border-2 border-amber-300 animate-bounce flex items-center gap-1">
-              <Flame className="w-4 h-4 fill-current text-rose-600" /> ⚡ CRITICAL! 3秒速答雙倍傷害 (-20 HP)
+              <Flame className="w-4 h-4 fill-current text-rose-600" /> ⚡ CRITICAL! 5秒速答雙倍傷害 (-20 HP)
             </div>
           )}
 
@@ -557,12 +557,12 @@ export default function LensFocalGame({ mode = 'single', onGameOver }) {
       {/* 答題介面區 */}
       {!isFinished && currentRound && (
         <div className="space-y-4">
-          {/* 超明顯 3 秒速答動態倒數提示條 */}
+          {/* 超明顯 5 秒速答動態倒數提示條 */}
           <div className="bg-slate-900 border border-slate-800 p-3 rounded-2xl space-y-1.5 relative overflow-hidden">
             <div className="flex justify-between items-center text-xs font-bold px-1">
               <span className="flex items-center gap-1.5 text-amber-300">
                 <Timer className="w-4 h-4 text-amber-400 animate-spin" />
-                {critTimerLeft > 0 ? '⚡ 3秒速答倒數 (雙倍 20HP 傷害暴擊區)：' : '⏱️ 3秒爆擊超時：'}
+                {critTimerLeft > 0 ? '⚡ 5秒速答倒數 (雙倍 20HP 傷害暴擊區)：' : '⏱️ 5秒爆擊超時：'}
               </span>
               <span className={`font-mono text-sm font-black ${critTimerLeft > 0 ? 'text-amber-400 animate-pulse' : 'text-slate-500'}`}>
                 {critTimerLeft > 0 ? `${critTimerLeft.toFixed(1)}s` : '普攻模式 (10 HP)'}
@@ -577,7 +577,7 @@ export default function LensFocalGame({ mode = 'single', onGameOver }) {
                     ? 'bg-gradient-to-r from-amber-500 via-yellow-400 to-cyan-400 shadow-[0_0_12px_rgba(251,191,36,0.8)]' 
                     : 'bg-slate-700 opacity-40'
                 }`}
-                style={{ width: `${(critTimerLeft / 3.0) * 100}%` }}
+                style={{ width: `${(critTimerLeft / 5.0) * 100}%` }}
               />
             </div>
           </div>
@@ -738,7 +738,7 @@ export default function LensFocalGame({ mode = 'single', onGameOver }) {
               }
             </h3>
             <p className="text-xs text-slate-400 mt-1">
-              {enemyHp === 0 ? '掌握透鏡成像與動態移動規律，順利通過 30F 擂台！' : '記得：3 秒內速答可觸發 2 倍雙倍傷害！'}
+              {enemyHp === 0 ? '掌握透鏡成像與動態移動規律，順利通過 30F 擂台！' : '記得：5 秒內速答可觸發 2 倍雙倍傷害！'}
             </p>
           </div>
 
