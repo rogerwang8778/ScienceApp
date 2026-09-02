@@ -114,7 +114,6 @@ export default function ElectromagnetismLab() {
 
   // 子分頁 2：主線圈電流控制
   const [primaryCurrent, setPrimaryCurrent] = useState(50); // 主線圈電流 (-100 ~ 100)
-  const [prevCurrent, setPrevCurrent] = useState(50);
   const [currentChangeRate, setCurrentChangeRate] = useState(0); // 電流變化率 (dI/dt)
 
   const handlePrimaryCurrentChange = (val) => {
@@ -219,7 +218,6 @@ export default function ElectromagnetismLab() {
         };
       }
 
-      // 假設主線圈電流 > 0 時，主磁場向右
       const isIncreasing = currentChangeRate > 0;
       let bDir = 'right';
       let leftIndPole = 'S';
@@ -228,13 +226,11 @@ export default function ElectromagnetismLab() {
 
       if (primaryCurrent >= 0) {
         if (isIncreasing) {
-          // 主磁場向右增加 -> 感應磁場向左抵抗
           bDir = 'left';
           leftIndPole = 'N';
           rightIndPole = 'S';
           frontIUp = true;
         } else {
-          // 主磁場向右減少 -> 感應磁場向右補充
           bDir = 'right';
           leftIndPole = 'S';
           rightIndPole = 'N';
@@ -242,13 +238,11 @@ export default function ElectromagnetismLab() {
         }
       } else {
         if (isIncreasing) {
-          // 主磁場向左減少 -> 感應磁場向左補充
           bDir = 'left';
           leftIndPole = 'N';
           rightIndPole = 'S';
           frontIUp = true;
         } else {
-          // 主磁場向左增加 -> 感應磁場向右抵抗
           bDir = 'right';
           leftIndPole = 'S';
           rightIndPole = 'N';
@@ -655,7 +649,7 @@ export default function ElectromagnetismLab() {
       )}
 
       {/* ==========================================
-          3. 冷次定律（雙子分頁 + 感應螺線管導線電流箭頭）
+          3. 冷次定律（雙子分頁 + 導線貼合箭頭與檢流計電流箭頭）
       ========================================== */}
       {activeTab === 'lenz' && (
         <div className="space-y-6">
@@ -750,9 +744,9 @@ export default function ElectromagnetismLab() {
                 {lenzRes.isMoving && (
                   <g>
                     <line
-                      x1={lenzRes.bDir === 'right' ? '80' : '250'}
+                      x1={lenzRes.bDir === 'right' ? '70' : '260'}
                       y1="110"
-                      x2={lenzRes.bDir === 'right' ? '250' : '80'}
+                      x2={lenzRes.bDir === 'right' ? '260' : '70'}
                       y2="110"
                       stroke="#06b6d4"
                       strokeWidth="3.5"
@@ -760,21 +754,25 @@ export default function ElectromagnetismLab() {
                     <polygon
                       points={
                         lenzRes.bDir === 'right'
-                          ? '250,105 260,110 250,115'
-                          : '80,105 70,110 80,115'
+                          ? '260,105 272,110 260,115'
+                          : '70,105 58,110 70,115'
                       }
                       fill="#06b6d4"
                     />
-                    <text x="165" y="100" textAnchor="middle" fill="#06b6d4" fontSize="11" fontWeight="bold">
+                    <text x="165" y="98" textAnchor="middle" fill="#06b6d4" fontSize="11" fontWeight="bold">
                       B感應 ({lenzRes.bDir === 'right' ? '向右 →' : '向左 ←'})
                     </text>
                   </g>
                 )}
 
-                {/* 2. 感應線圈前側 (粗實線) & 【感應電流箭頭方向標示】 */}
+                {/* 2. 感應線圈前側 (粗實線) & 【直接貼合在導線上的箭頭】 */}
                 {[0, 1, 2, 3, 4].map((i) => {
                   const startX = 90 + i * 32;
                   const endX = 120 + i * 32;
+
+                  // 導線上 (X=92 + i*32, Y=110) 的極精準貼合座標
+                  const wireX = startX + 2; 
+                  const wireY = 110;
 
                   return (
                     <g key={`coil-front-${i}`}>
@@ -785,20 +783,24 @@ export default function ElectromagnetismLab() {
                         strokeWidth="4.5"
                       />
 
-                      {/* 在前方導線上精準繪製感應電流方向箭頭 */}
+                      {/* 在紫色實線導線上繪製向上/向下感應電流箭頭 */}
                       {lenzRes.isMoving && (
                         <g>
                           {lenzRes.frontIUp ? (
-                            /* 由下往上 ▲ 箭頭標示 */
+                            /* 由下往上 ▲ 箭頭 */
                             <polygon
-                              points={`${startX + 10},100 ${startX + 15},112 ${startX + 5},112`}
+                              points={`${wireX},${wireY - 6} ${wireX - 5},${wireY + 5} ${wireX + 5},${wireY + 5}`}
                               fill="#f59e0b"
+                              stroke="#ffffff"
+                              strokeWidth="0.8"
                             />
                           ) : (
-                            /* 由上往下 ▼ 箭頭標示 */
+                            /* 由上往下 ▼ 箭頭 */
                             <polygon
-                              points={`${startX + 18},120 ${startX + 13},108 ${startX + 23},108`}
+                              points={`${wireX},${wireY + 6} ${wireX - 5},${wireY - 5} ${wireX + 5},${wireY - 5}`}
                               fill="#f59e0b"
+                              stroke="#ffffff"
+                              strokeWidth="0.8"
                             />
                           )}
                         </g>
@@ -814,6 +816,35 @@ export default function ElectromagnetismLab() {
                   stroke="#a855f7"
                   strokeWidth="2.5"
                 />
+
+                {/* 【檢流計左右及迴路上的感應電流箭頭】 */}
+                {lenzRes.isMoving && (
+                  <g>
+                    {lenzRes.frontIUp ? (
+                      <>
+                        {/* 左側垂直線 (向上) */}
+                        <polygon points="90,158 85,168 95,168" fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
+                        {/* 左側水平線 (向左) */}
+                        <polygon points="110,200 120,195 120,205" fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
+                        {/* 右側水平線 (向左) */}
+                        <polygon points="210,200 220,195 220,205" fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
+                        {/* 右側垂直線 (向下) */}
+                        <polygon points="248,172 243,162 253,162" fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
+                      </>
+                    ) : (
+                      <>
+                        {/* 左側垂直線 (向下) */}
+                        <polygon points="90,172 85,162 95,162" fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
+                        {/* 左側水平線 (向右) */}
+                        <polygon points="122,200 112,195 112,205" fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
+                        {/* 右側水平線 (向右) */}
+                        <polygon points="222,200 212,195 212,205" fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
+                        {/* 右側垂直線 (向上) */}
+                        <polygon points="248,158 243,168 253,168" fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
+                      </>
+                    )}
+                  </g>
+                )}
 
                 {/* 下方檢流計 (G) */}
                 <circle cx="165" cy="200" r="16" fill="#0f172a" stroke="#a855f7" strokeWidth="2" />
@@ -831,10 +862,10 @@ export default function ElectromagnetismLab() {
                 {/* 線圈兩端極性 */}
                 {lenzRes.isMoving && (
                   <g>
-                    <text x="50" y="115" textAnchor="middle" fill={lenzRes.leftIndPole === 'N' ? '#3b82f6' : '#ef4444'} fontSize="18" fontWeight="bold">
+                    <text x="45" y="115" textAnchor="middle" fill={lenzRes.leftIndPole === 'N' ? '#3b82f6' : '#ef4444'} fontSize="18" fontWeight="bold">
                       {lenzRes.leftIndPole}
                     </text>
-                    <text x="270" y="115" textAnchor="middle" fill={lenzRes.rightIndPole === 'N' ? '#3b82f6' : '#ef4444'} fontSize="18" fontWeight="bold">
+                    <text x="275" y="115" textAnchor="middle" fill={lenzRes.rightIndPole === 'N' ? '#3b82f6' : '#ef4444'} fontSize="18" fontWeight="bold">
                       {lenzRes.rightIndPole}
                     </text>
                   </g>
@@ -903,12 +934,13 @@ export default function ElectromagnetismLab() {
                   )}
                 </g>
               ) : (
-                /* 載流主線圈模組 */
+                /* 修復後之正確比例「載流主線圈」模組 */
                 <g>
                   <text x="430" y="22" textAnchor="middle" fill="#f59e0b" fontSize="12" fontWeight="bold">
                     主線圈 (載流螺線管)
                   </text>
 
+                  {/* 1. 主線圈後側 (細虛線) */}
                   {[0, 1, 2, 3, 4].map((i) => (
                     <path
                       key={`primary-back-${i}`}
@@ -921,13 +953,13 @@ export default function ElectromagnetismLab() {
                     />
                   ))}
 
-                  {/* 主磁場向量標示 */}
+                  {/* 內部主磁場向量標示 */}
                   {primaryCurrent !== 0 && (
                     <g>
                       <line
-                        x1={primaryCurrent > 0 ? '340' : '480'}
+                        x1={primaryCurrent > 0 ? '330' : '510'}
                         y1="110"
-                        x2={primaryCurrent > 0 ? '480' : '340'}
+                        x2={primaryCurrent > 0 ? '510' : '330'}
                         y2="110"
                         stroke="#f59e0b"
                         strokeWidth={Math.min(Math.abs(primaryCurrent) / 20 + 1.5, 5)}
@@ -935,8 +967,8 @@ export default function ElectromagnetismLab() {
                       <polygon
                         points={
                           primaryCurrent > 0
-                            ? '480,105 492,110 480,115'
-                            : '340,105 328,110 340,115'
+                            ? '510,105 522,110 510,115'
+                            : '330,105 318,110 330,115'
                         }
                         fill="#f59e0b"
                       />
@@ -946,10 +978,11 @@ export default function ElectromagnetismLab() {
                     </g>
                   )}
 
+                  {/* 2. 主線圈前側 (修復貝茲曲線參數) */}
                   {[0, 1, 2, 3, 4].map((i) => (
                     <path
                       key={`primary-front-${i}`}
-                      d={`M ${355 + i * 28} 70 C ${355 + i * 355 + i * 28} 170, ${380 + i * 28} 170, ${380 + i * 28} 150`}
+                      d={`M ${355 + i * 28} 70 C ${355 + i * 28} 170, ${380 + i * 28} 170, ${380 + i * 28} 150`}
                       fill="none"
                       stroke="#f59e0b"
                       strokeWidth={Math.min(Math.abs(primaryCurrent) / 20 + 2, 5)}
@@ -959,7 +992,7 @@ export default function ElectromagnetismLab() {
                   <text x="325" y="115" textAnchor="middle" fill={primaryCurrent >= 0 ? '#ef4444' : '#3b82f6'} fontSize="16" fontWeight="bold">
                     {primaryCurrent >= 0 ? 'S' : 'N'}
                   </text>
-                  <text x="508" y="115" textAnchor="middle" fill={primaryCurrent >= 0 ? '#3b82f6' : '#ef4444'} fontSize="16" fontWeight="bold">
+                  <text x="515" y="115" textAnchor="middle" fill={primaryCurrent >= 0 ? '#3b82f6' : '#ef4444'} fontSize="16" fontWeight="bold">
                     {primaryCurrent >= 0 ? 'N' : 'S'}
                   </text>
 
