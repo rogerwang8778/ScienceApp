@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy, RefreshCw, Sparkles, Check, Flame, Zap } from 'lucide-react';
+import { Trophy, RefreshCw, Zap } from 'lucide-react';
 
 export default function LensFocalGame({ mode = 'single', onGameOver }) {
   // 血條與遊戲狀態
@@ -9,94 +9,145 @@ export default function LensFocalGame({ mode = 'single', onGameOver }) {
   const [combo, setCombo] = useState(0);
   const [level, setLevel] = useState(1);
   const [timeLeft, setTimeLeft] = useState(60);
+  const [questionCount, setQuestionCount] = useState(1);
 
   // 雙人 PK 輪流控制
   const [currentPlayer, setCurrentPlayer] = useState('p1');
-  const [actionState, setActionState] = useState('idle'); // 'idle' | 'player_attack' | 'enemy_attack' | 'player_hit' | 'enemy_hit'
+  const [actionState, setActionState] = useState('idle');
   const [currentRound, setCurrentRound] = useState(null);
   const [isFinished, setIsFinished] = useState(false);
 
-  // 玩家當前點選的四類方塊狀態
-  const [selectedOrientation, setSelectedOrientation] = useState(null); // '正立' | '倒立'
-  const [selectedType, setSelectedType] = useState(null);               // '實像' | '虛像'
-  const [selectedSize, setSelectedSize] = useState(null);               // '放大' | '縮小' | '相等'
-  const [selectedPos, setSelectedPos] = useState(null);                 // 'f與2f之間' | '2f外' | '2f上' | '透鏡同側'
-  const [isNoImage, setIsNoImage] = useState(false);                    // 特例：不成像
+  // 10 題固定題型佇列生成 (確保 10 題中精準包含所要求題型比例)
+  const [questionQueue, setQuestionQueue] = useState([]);
 
-  // 重置方塊選擇
+  // 玩家點選的狀態
+  const [selectedOrientation, setSelectedOrientation] = useState(null); 
+  const [selectedType, setSelectedType] = useState(null);               
+  const [selectedSize, setSelectedSize] = useState(null);               
+  const [selectedPos, setSelectedPos] = useState(null);                 
+  const [selectedTextOpt, setSelectedTextOpt] = useState(null);          // 趨勢/選擇題答案
+  const [isNoImage, setIsNoImage] = useState(false);                    
+
   const resetSelections = () => {
     setSelectedOrientation(null);
     setSelectedType(null);
     setSelectedSize(null);
     setSelectedPos(null);
+    setSelectedTextOpt(null);
     setIsNoImage(false);
   };
 
   // ==========================================
-  // 1. 動態題庫生成器 (Lvl 1 ~ Lvl 3 遞進)
+  // 1. 生成 10 題標準配比題庫佇列
   // ==========================================
-  const generateRound = (currentLevel = 1) => {
-    resetSelections();
+  const generateTenQuestionQueue = () => {
+    const queue = [];
 
-    const isConcave = currentLevel >= 3 && Math.random() > 0.6;
-    const lensType = isConcave ? 'concave' : 'convex';
-
-    const positions = ['2f_out', '2f_on', 'f_2f', 'f_on', 'f_in'];
-    const selectedObjPos = positions[Math.floor(Math.random() * positions.length)];
-
-    let roundData = {
-      lensType,
-      objPos: selectedObjPos,
-      prompt: '',
-      targetAns: {} // { orientation, type, size, pos, noImage }
-    };
-
-    if (lensType === 'concave') {
-      // 凹透鏡必為：正立、虛像、縮小、透鏡同側
-      roundData.prompt = '【凹透鏡】蠟燭置於透鏡前方，請點選正確的成像性質與位置組合：';
-      roundData.targetAns = {
-        orientation: '正立',
-        type: '虛像',
-        size: '縮小',
-        pos: '透鏡同側',
-        noImage: false
-      };
-    } else {
-      // 凸透鏡五大區塊
-      switch (selectedObjPos) {
-        case '2f_out':
-          roundData.prompt = '【凸透鏡】當蠟燭擺放在【2f 外】時，請點選正確的成像性質與位置：';
-          roundData.targetAns = { orientation: '倒立', type: '實像', size: '縮小', pos: 'f與2f之間', noImage: false };
-          break;
-        case '2f_on':
-          roundData.prompt = '【凸透鏡】當蠟燭擺放在【2f 上】時，請點選正確的成像性質與位置：';
-          roundData.targetAns = { orientation: '倒立', type: '實像', size: '相等', pos: '2f上', noImage: false };
-          break;
-        case 'f_2f':
-          roundData.prompt = '【凸透鏡】當蠟燭擺放在【f ~ 2f 之間】時，請點選正確的成像性質與位置：';
-          roundData.targetAns = { orientation: '倒立', type: '實像', size: '放大', pos: '2f外', noImage: false };
-          break;
-        case 'f_on':
-          roundData.prompt = '【凸透鏡】當蠟燭擺放在【f 上 (焦點)】時，請點選正確的成像性質與位置：';
-          roundData.targetAns = { noImage: true };
-          break;
-        case 'f_in':
-          roundData.prompt = '【凸透鏡】當蠟燭擺放在【f 內 (焦點內)】時，請點選正確的成像性質與位置：';
-          roundData.targetAns = { orientation: '正立', type: '虛像', size: '放大', pos: '透鏡同側', noImage: false };
-          break;
-        default:
-          break;
+    // [類型 1] 2 題凹透鏡題型
+    queue.push(
+      {
+        qType: 'concave',
+        lensType: 'concave',
+        objPos: 'f_2f',
+        prompt: '【凹透鏡】蠟燭置於透鏡前方，請點選正確的成像性質與位置：',
+        targetAns: { orientation: '正立', type: '虛像', size: '縮小', pos: '透鏡同側', noImage: false }
+      },
+      {
+        qType: 'concave',
+        lensType: 'concave',
+        objPos: '2f_out',
+        prompt: '【凹透鏡】蠟燭置於 2f 外時，請點選正確的成像性質與位置：',
+        targetAns: { orientation: '正立', type: '虛像', size: '縮小', pos: '透鏡同側', noImage: false }
       }
-    }
+    );
 
-    setCurrentRound(roundData);
+    // [類型 2] 1 題：給像位置 ➔ 反問物體位置
+    queue.push({
+      qType: 'text_choice',
+      lensType: 'convex',
+      objPos: 'f_2f',
+      prompt: '【凸透鏡】紙屏上的像出現在「2f 外」，則蠟燭（物體）擺放在何處？',
+      options: ['f ~ 2f 之間', '2f 外', '2f 上', 'f 內'],
+      correctAns: 'f ~ 2f 之間'
+    });
+
+    // [類型 3] 1 題：給像性質 ➔ 反問物體位置
+    queue.push({
+      qType: 'text_choice',
+      lensType: 'convex',
+      objPos: 'f_2f',
+      prompt: '【凸透鏡】若希望在紙屏上得到一個「放大倒立實像」，蠟燭應擺在何處？',
+      options: ['f ~ 2f 之間', '2f 外', '2f 上', 'f 內'],
+      correctAns: 'f ~ 2f 之間'
+    });
+
+    // [類型 4] 2 題：像的大小控制趨勢 (焦點外 1 題, 焦點內 1 題)
+    // 焦點外實像 (要更大像 ➔ 物體向右/靠近 f)
+    queue.push({
+      qType: 'text_choice',
+      lensType: 'convex',
+      objPos: '2f_out',
+      prompt: '【凸透鏡】蠟燭原本在 2f 外（實像），若希望得到「比現在更大」的像，蠟燭要向哪裡移動？',
+      options: ['向右移動 (靠近焦點 f)', '向左移動 (遠離透鏡)', '保持不動', '上下垂直移動'],
+      correctAns: '向右移動 (靠近焦點 f)'
+    });
+
+    // 焦點內虛像 (要更大像 ➔ 物體向左/遠離透鏡/靠近 f)
+    queue.push({
+      qType: 'text_choice',
+      lensType: 'convex',
+      objPos: 'f_in',
+      prompt: '【凸透鏡】蠟燭原本在 f 內（虛像），若希望得到「比現在更大」的虛像，蠟燭要向哪裡移動？',
+      options: ['向左移動 (靠近焦點 f)', '向右移動 (靠近透鏡)', '保持不動', '向下移動'],
+      correctAns: '向左移動 (靠近焦點 f)'
+    });
+
+    // [類型 5] 1 題：物與像的移動方向趨勢 (物右像右, 物左像左)
+    queue.push({
+      qType: 'text_choice',
+      lensType: 'convex',
+      objPos: 'f_2f',
+      prompt: '【凸透鏡】當蠟燭（物體）向「右」移動時，紙屏上的實像會向哪裡移動？',
+      options: ['向右移動', '向左移動', '保持不動', '向上移動'],
+      correctAns: '向右移動'
+    });
+
+    // [類型 6] 3 題：基礎 5 大區塊矩陣題
+    queue.push(
+      {
+        qType: 'matrix',
+        lensType: 'convex',
+        objPos: '2f_out',
+        prompt: '【凸透鏡】蠟燭擺在【2f 外】時，請點選正確的成像性質與位置：',
+        targetAns: { orientation: '倒立', type: '實像', size: '縮小', pos: 'f與2f之間', noImage: false }
+      },
+      {
+        qType: 'matrix',
+        lensType: 'convex',
+        objPos: '2f_on',
+        prompt: '【凸透鏡】蠟燭擺在【2f 上】時，請點選正確的成像性質與位置：',
+        targetAns: { orientation: '倒立', type: '實像', size: '相等', pos: '2f上', noImage: false }
+      },
+      {
+        qType: 'matrix',
+        lensType: 'convex',
+        objPos: 'f_on',
+        prompt: '【凸透鏡】蠟燭擺在【f 上 (焦點)】時，請點選正確的成像性質與位置：',
+        targetAns: { noImage: true }
+      }
+    );
+
+    // 打亂題目順序
+    return queue.sort(() => 0.5 - Math.random());
   };
 
   useEffect(() => {
-    generateRound(1);
+    const queue = generateTenQuestionQueue();
+    setQuestionQueue(queue);
+    setCurrentRound(queue[0]);
   }, []);
 
-  // 計時器
+  // 單人倒數計時器
   useEffect(() => {
     let timer = null;
     if (mode === 'single' && !isFinished && timeLeft > 0) {
@@ -108,26 +159,31 @@ export default function LensFocalGame({ mode = 'single', onGameOver }) {
   }, [timeLeft, isFinished, mode]);
 
   // ==========================================
-  // 2. 多重方塊驗證作答邏輯
+  // 2. 驗證作答邏輯
   // ==========================================
   const handleSubmitAnswer = () => {
     if (!currentRound || isFinished || actionState !== 'idle') return;
 
-    const target = currentRound.targetAns;
     let isCorrect = false;
 
-    if (target.noImage) {
-      isCorrect = isNoImage;
+    if (currentRound.qType === 'text_choice') {
+      isCorrect = selectedTextOpt === currentRound.correctAns;
     } else {
-      isCorrect =
-        selectedOrientation === target.orientation &&
-        selectedType === target.type &&
-        selectedSize === target.size &&
-        selectedPos === target.pos &&
-        !isNoImage;
+      const target = currentRound.targetAns;
+      if (target.noImage) {
+        isCorrect = isNoImage;
+      } else {
+        isCorrect =
+          selectedOrientation === target.orientation &&
+          selectedType === target.type &&
+          selectedSize === target.size &&
+          selectedPos === target.pos &&
+          !isNoImage;
+      }
     }
 
     const nextLevel = level + 1;
+    const nextQIdx = questionCount + 1;
 
     if (mode === 'single') {
       if (isCorrect) {
@@ -137,17 +193,21 @@ export default function LensFocalGame({ mode = 'single', onGameOver }) {
         setTimeout(() => {
           setActionState('enemy_hit');
           setCombo((prev) => prev + 1);
-          setScore((prev) => prev + 30 + nextLevel * 5);
+          setScore((prev) => prev + 30);
           setEnemyHp((prev) => {
             const nextHp = Math.max(0, prev - 10);
-            if (nextHp === 0) setTimeout(() => setIsFinished(true), 600);
+            if (nextHp === 0 || nextQIdx > 10) setTimeout(() => setIsFinished(true), 600);
             return nextHp;
           });
         }, 250);
 
         setTimeout(() => {
           setActionState('idle');
-          if (enemyHp > 10 && playerHp > 0) generateRound(nextLevel);
+          if (enemyHp > 10 && playerHp > 0 && nextQIdx <= 10) {
+            resetSelections();
+            setQuestionCount(nextQIdx);
+            setCurrentRound(questionQueue[nextQIdx - 1]);
+          }
         }, 900);
       } else {
         setActionState('enemy_attack');
@@ -163,7 +223,11 @@ export default function LensFocalGame({ mode = 'single', onGameOver }) {
 
         setTimeout(() => {
           setActionState('idle');
-          if (playerHp > 20 && enemyHp > 0) generateRound(level);
+          if (playerHp > 20 && enemyHp > 0 && nextQIdx <= 10) {
+            resetSelections();
+            setQuestionCount(nextQIdx);
+            setCurrentRound(questionQueue[nextQIdx - 1]);
+          }
         }, 900);
       }
     } else {
@@ -179,13 +243,13 @@ export default function LensFocalGame({ mode = 'single', onGameOver }) {
           if (isP1) {
             setEnemyHp((prev) => {
               const nextHp = Math.max(0, prev - 10);
-              if (nextHp === 0) setTimeout(() => setIsFinished(true), 600);
+              if (nextHp === 0 || nextQIdx > 10) setTimeout(() => setIsFinished(true), 600);
               return nextHp;
             });
           } else {
             setPlayerHp((prev) => {
               const nextHp = Math.max(0, prev - 10);
-              if (nextHp === 0) setTimeout(() => setIsFinished(true), 600);
+              if (nextHp === 0 || nextQIdx > 10) setTimeout(() => setIsFinished(true), 600);
               return nextHp;
             });
           }
@@ -214,7 +278,11 @@ export default function LensFocalGame({ mode = 'single', onGameOver }) {
       setTimeout(() => {
         setActionState('idle');
         setCurrentPlayer(isP1 ? 'p2' : 'p1');
-        if (playerHp > 10 && enemyHp > 10) generateRound(nextLevel);
+        if (playerHp > 10 && enemyHp > 10 && nextQIdx <= 10) {
+          resetSelections();
+          setQuestionCount(nextQIdx);
+          setCurrentRound(questionQueue[nextQIdx - 1]);
+        }
       }, 900);
     }
   };
@@ -224,8 +292,9 @@ export default function LensFocalGame({ mode = 'single', onGameOver }) {
     if (onGameOver) onGameOver(gainedExp);
   };
 
-  // 檢查是否選擇完整
-  const isSubmitReady = isNoImage || (selectedOrientation && selectedType && selectedSize && selectedPos);
+  const isSubmitReady = currentRound?.qType === 'text_choice' 
+    ? !!selectedTextOpt 
+    : isNoImage || (selectedOrientation && selectedType && selectedSize && selectedPos);
 
   // ==========================================
   // 3. SVG 光學畫布
@@ -297,7 +366,7 @@ export default function LensFocalGame({ mode = 'single', onGameOver }) {
 
   return (
     <div className="bg-slate-950 border border-slate-800 rounded-3xl p-4 md:p-8 max-w-4xl mx-auto space-y-6 text-slate-100 select-none overflow-hidden">
-      {/* 頂部資訊標頭 */}
+      {/* 頂部標頭 */}
       <div className="flex justify-between items-center border-b border-slate-800 pb-4">
         <div>
           <div className="flex items-center gap-2">
@@ -305,7 +374,7 @@ export default function LensFocalGame({ mode = 'single', onGameOver }) {
               Heaven's Arena • Floor 30F ({mode === 'pvp' ? '雙人輪流 PK' : '單人闖關'})
             </span>
             <span className="text-[10px] font-bold text-amber-300 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-md">
-              難度 Lvl.{level}
+              關卡 {questionCount} / 10
             </span>
             {mode === 'pvp' && (
               <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-md border ${
@@ -393,147 +462,157 @@ export default function LensFocalGame({ mode = 'single', onGameOver }) {
         </div>
       )}
 
-      {/* 4 分類矩陣點選答題區 */}
+      {/* 答題介面區 */}
       {!isFinished && currentRound && (
         <div className="space-y-4">
           <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl text-center space-y-2">
             {renderOpticsCanvas()}
-            <h3 className="text-sm md:text-base font-black text-white">
+            <h3 className="text-sm md:text-base font-black text-white mt-1">
               {currentRound.prompt}
             </h3>
           </div>
 
-          {/* 色塊點選矩陣 */}
-          <div className="space-y-3 bg-slate-900/60 border border-slate-800 p-4 rounded-2xl">
-            {/* 特例按鈕：不成像 */}
-            <div className="flex justify-end">
-              <button
-                onClick={() => {
-                  setIsNoImage(!isNoImage);
-                  if (!isNoImage) {
-                    setSelectedOrientation(null);
-                    setSelectedType(null);
-                    setSelectedSize(null);
-                    setSelectedPos(null);
-                  }
-                }}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center gap-1 ${
-                  isNoImage ? 'bg-rose-500 text-white border-rose-400 ring-2 ring-rose-400/50' : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'
-                }`}
-              >
-                🚫 特例：無法成像
-              </button>
+          {currentRound.qType === 'text_choice' ? (
+            /* 文字選擇題型 (如：問物體擺放位置、趨勢移動) */
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-900/60 border border-slate-800 p-4 rounded-2xl">
+              {currentRound.options.map((opt) => (
+                <button
+                  key={opt}
+                  onClick={() => setSelectedTextOpt(opt)}
+                  className={`p-3.5 rounded-xl font-bold text-xs border transition-all cursor-pointer text-left ${
+                    selectedTextOpt === opt
+                      ? 'bg-indigo-600 text-white border-indigo-300 ring-2 ring-indigo-400/50 scale-[1.02]'
+                      : 'bg-slate-900 text-slate-300 border-slate-800 hover:border-indigo-500/50'
+                  }`}
+                >
+                  {opt}
+                </button>
+              ))}
             </div>
-
-            {!isNoImage ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* 1. 正倒立 (紫色系) */}
-                <div className="bg-purple-950/30 border border-purple-500/30 p-3 rounded-xl space-y-1.5">
-                  <span className="text-[11px] font-black text-purple-300 flex items-center gap-1">
-                    🟣 正倒立方向：
-                  </span>
-                  <div className="grid grid-cols-2 gap-2">
-                    {['正立', '倒立'].map((item) => (
-                      <button
-                        key={item}
-                        onClick={() => setSelectedOrientation(item)}
-                        className={`py-2 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
-                          selectedOrientation === item
-                            ? 'bg-purple-600 text-white border-purple-300 ring-2 ring-purple-400/50 scale-105'
-                            : 'bg-slate-900 text-slate-300 border-slate-800 hover:border-purple-500/50'
-                        }`}
-                      >
-                        {item}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* 2. 虛實像 (藍色系) */}
-                <div className="bg-blue-950/30 border border-blue-500/30 p-3 rounded-xl space-y-1.5">
-                  <span className="text-[11px] font-black text-blue-300 flex items-center gap-1">
-                    🔵 虛實像性質：
-                  </span>
-                  <div className="grid grid-cols-2 gap-2">
-                    {['實像', '虛像'].map((item) => (
-                      <button
-                        key={item}
-                        onClick={() => setSelectedType(item)}
-                        className={`py-2 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
-                          selectedType === item
-                            ? 'bg-blue-600 text-white border-blue-300 ring-2 ring-blue-400/50 scale-105'
-                            : 'bg-slate-900 text-slate-300 border-slate-800 hover:border-blue-500/50'
-                        }`}
-                      >
-                        {item}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* 3. 大小比例 (綠色系) */}
-                <div className="bg-emerald-950/30 border border-emerald-500/30 p-3 rounded-xl space-y-1.5">
-                  <span className="text-[11px] font-black text-emerald-300 flex items-center gap-1">
-                    🟢 大小比例：
-                  </span>
-                  <div className="grid grid-cols-3 gap-2">
-                    {['放大', '縮小', '相等'].map((item) => (
-                      <button
-                        key={item}
-                        onClick={() => setSelectedSize(item)}
-                        className={`py-2 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
-                          selectedSize === item
-                            ? 'bg-emerald-600 text-white border-emerald-300 ring-2 ring-emerald-400/50 scale-105'
-                            : 'bg-slate-900 text-slate-300 border-slate-800 hover:border-emerald-500/50'
-                        }`}
-                      >
-                        {item}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* 4. 成像位置 (黃橘色系) */}
-                <div className="bg-amber-950/30 border border-amber-500/30 p-3 rounded-xl space-y-1.5">
-                  <span className="text-[11px] font-black text-amber-300 flex items-center gap-1">
-                    🟡 成像位置：
-                  </span>
-                  <div className="grid grid-cols-2 gap-2">
-                    {['f與2f之間', '2f外', '2f上', '透鏡同側'].map((item) => (
-                      <button
-                        key={item}
-                        onClick={() => setSelectedPos(item)}
-                        className={`py-2 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
-                          selectedPos === item
-                            ? 'bg-amber-500 text-slate-950 border-amber-200 ring-2 ring-amber-400/50 scale-105'
-                            : 'bg-slate-900 text-slate-300 border-slate-800 hover:border-amber-500/50'
-                        }`}
-                      >
-                        {item}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+          ) : (
+            /* 4 分類矩陣點選答題區 (凹透鏡與凸透鏡 5 大區塊) */
+            <div className="space-y-3 bg-slate-900/60 border border-slate-800 p-4 rounded-2xl">
+              <div className="flex justify-end">
+                <button
+                  onClick={() => {
+                    setIsNoImage(!isNoImage);
+                    if (!isNoImage) {
+                      setSelectedOrientation(null);
+                      setSelectedType(null);
+                      setSelectedSize(null);
+                      setSelectedPos(null);
+                    }
+                  }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center gap-1 ${
+                    isNoImage ? 'bg-rose-500 text-white border-rose-400 ring-2 ring-rose-400/50' : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'
+                  }`}
+                >
+                  🚫 特例：無法成像
+                </button>
               </div>
-            ) : (
-              <div className="text-center py-6 bg-rose-500/10 border border-rose-500/30 rounded-xl">
-                <p className="text-sm font-bold text-rose-300">已選擇：焦點 f 上折射光線平行，【無法成像】</p>
-              </div>
-            )}
 
-            {/* 發射光束 / 驗證按鈕 */}
-            <button
-              onClick={handleSubmitAnswer}
-              disabled={!isSubmitReady || actionState !== 'idle'}
-              className={`w-full py-3.5 rounded-2xl font-black text-sm shadow-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                isSubmitReady && actionState === 'idle'
-                  ? 'bg-gradient-to-r from-amber-500 to-indigo-600 text-white hover:brightness-110 active:scale-95'
-                  : 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed'
-              }`}
-            >
-              <Zap className="w-5 h-5 fill-current" /> ⚔️ 發射光束（確認驗證）
-            </button>
-          </div>
+              {!isNoImage ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* 1. 正倒立 */}
+                  <div className="bg-purple-950/30 border border-purple-500/30 p-3 rounded-xl space-y-1.5">
+                    <span className="text-[11px] font-black text-purple-300">🟣 正倒立方向：</span>
+                    <div className="grid grid-cols-2 gap-2">
+                      {['正立', '倒立'].map((item) => (
+                        <button
+                          key={item}
+                          onClick={() => setSelectedOrientation(item)}
+                          className={`py-2 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                            selectedOrientation === item
+                              ? 'bg-purple-600 text-white border-purple-300 ring-2 ring-purple-400/50 scale-105'
+                              : 'bg-slate-900 text-slate-300 border-slate-800 hover:border-purple-500/50'
+                          }`}
+                        >
+                          {item}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 2. 虛實像 */}
+                  <div className="bg-blue-950/30 border border-blue-500/30 p-3 rounded-xl space-y-1.5">
+                    <span className="text-[11px] font-black text-blue-300">🔵 虛實像性質：</span>
+                    <div className="grid grid-cols-2 gap-2">
+                      {['實像', '虛像'].map((item) => (
+                        <button
+                          key={item}
+                          onClick={() => setSelectedType(item)}
+                          className={`py-2 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                            selectedType === item
+                              ? 'bg-blue-600 text-white border-blue-300 ring-2 ring-blue-400/50 scale-105'
+                              : 'bg-slate-900 text-slate-300 border-slate-800 hover:border-blue-500/50'
+                          }`}
+                        >
+                          {item}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 3. 大小比例 */}
+                  <div className="bg-emerald-950/30 border border-emerald-500/30 p-3 rounded-xl space-y-1.5">
+                    <span className="text-[11px] font-black text-emerald-300">🟢 大小比例：</span>
+                    <div className="grid grid-cols-3 gap-2">
+                      {['放大', '縮小', '相等'].map((item) => (
+                        <button
+                          key={item}
+                          onClick={() => setSelectedSize(item)}
+                          className={`py-2 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                            selectedSize === item
+                              ? 'bg-emerald-600 text-white border-emerald-300 ring-2 ring-emerald-400/50 scale-105'
+                              : 'bg-slate-900 text-slate-300 border-slate-800 hover:border-emerald-500/50'
+                          }`}
+                        >
+                          {item}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 4. 成像位置 */}
+                  <div className="bg-amber-950/30 border border-amber-500/30 p-3 rounded-xl space-y-1.5">
+                    <span className="text-[11px] font-black text-amber-300">🟡 成像位置：</span>
+                    <div className="grid grid-cols-2 gap-2">
+                      {['f與2f之間', '2f外', '2f上', '透鏡同側'].map((item) => (
+                        <button
+                          key={item}
+                          onClick={() => setSelectedPos(item)}
+                          className={`py-2 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
+                            selectedPos === item
+                              ? 'bg-amber-500 text-slate-950 border-amber-200 ring-2 ring-amber-400/50 scale-105'
+                              : 'bg-slate-900 text-slate-300 border-slate-800 hover:border-amber-500/50'
+                          }`}
+                        >
+                          {item}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-6 bg-rose-500/10 border border-rose-500/30 rounded-xl">
+                  <p className="text-sm font-bold text-rose-300">已選擇：焦點 f 上折射光線平行，【無法成像】</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 發射光束 / 驗證按鈕 */}
+          <button
+            onClick={handleSubmitAnswer}
+            disabled={!isSubmitReady || actionState !== 'idle'}
+            className={`w-full py-3.5 rounded-2xl font-black text-sm shadow-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              isSubmitReady && actionState === 'idle'
+                ? 'bg-gradient-to-r from-amber-500 to-indigo-600 text-white hover:brightness-110 active:scale-95'
+                : 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed'
+            }`}
+          >
+            <Zap className="w-5 h-5 fill-current" /> ⚔️ 發射光束（確認驗證）
+          </button>
         </div>
       )}
 
@@ -549,14 +628,14 @@ export default function LensFocalGame({ mode = 'single', onGameOver }) {
               }
             </h3>
             <p className="text-xs text-slate-400 mt-1">
-              {enemyHp === 0 ? '掌握四大成像屬性組合，輕鬆破譯凸透鏡與凹透鏡規律！' : '凹透鏡必成「正立、縮小、虛像，位於同側」！'}
+              {enemyHp === 0 ? '掌握透鏡成像與動態移動規律，順利通過 30F 擂台！' : '記得：凹透鏡永遠成「正立、縮小、虛像，同側」！'}
             </p>
           </div>
 
           <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-2 text-xs font-mono">
             <div className="flex justify-between py-1 border-b border-slate-800">
-              <span className="text-slate-400">最高突破難度：</span>
-              <span className="font-bold text-amber-400">Lvl.{level}</span>
+              <span className="text-slate-400">答題完成進度：</span>
+              <span className="font-bold text-amber-400">{questionCount - 1} / 10 題</span>
             </div>
             <div className="flex justify-between py-1 border-b border-slate-800">
               <span className="text-slate-400">最終得分 PTS：</span>
