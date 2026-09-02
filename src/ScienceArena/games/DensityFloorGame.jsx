@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Zap, Heart, Trophy, RefreshCw, Flame, ArrowUp, ArrowDown } from 'lucide-react';
+import { Shield, Heart, Trophy, RefreshCw, ArrowUp, ArrowDown, Sparkles, Swords } from 'lucide-react';
 
 export default function DensityFloorGame({ mode = 'single', onGameOver }) {
-  // 玩家與對手血條 (HP)
+  // 血條與遊戲狀態
   const [playerHp, setPlayerHp] = useState(100);
   const [enemyHp, setEnemyHp] = useState(100);
   const [score, setScore] = useState(0);
   const [combo, setCombo] = useState(0);
   const [timeLeft, setTimeLeft] = useState(30);
 
-  // 對戰回合狀態
+  // 動畫動作狀態：'idle' | 'player_attack' | 'enemy_attack' | 'player_hit' | 'enemy_hit'
+  const [actionState, setActionState] = useState('idle');
   const [currentRound, setCurrentRound] = useState(null);
-  const [hitFeedback, setHitFeedback] = useState(null); // 'hit_enemy' | 'hit_player'
   const [isFinished, setIsFinished] = useState(false);
 
   // 液體資料庫
@@ -22,7 +22,7 @@ export default function DensityFloorGame({ mode = 'single', onGameOver }) {
     { name: '水銀 (汞)', density: 13.6, color: 'from-slate-400/20 to-slate-600/30', border: 'border-slate-400', icon: '🪙' }
   ];
 
-  // 物質範例池 (M: 質量 g, V: 體積 cm³)
+  // 物質範例池
   const materialsPool = [
     { name: '保麗龍', M: 2, V: 10, density: 0.2 },
     { name: '松木塊', M: 12, V: 20, density: 0.6 },
@@ -34,13 +34,11 @@ export default function DensityFloorGame({ mode = 'single', onGameOver }) {
     { name: '金塊', M: 386, V: 20, density: 19.3 }
   ];
 
-  // 生成隨機回合題目
+  // 生成回合
   const generateRound = () => {
     const liquid = liquids[Math.floor(Math.random() * liquids.length)];
-    // 攻防目標：'float' (浮起來 D_物 < D_液) 或 'sink' (沉下去 D_物 > D_液)
     const actionGoal = Math.random() > 0.5 ? 'float' : 'sink';
 
-    // 篩選出符合答案與不符合答案的物體
     let correctCandidates = [];
     let wrongCandidates = [];
 
@@ -54,16 +52,12 @@ export default function DensityFloorGame({ mode = 'single', onGameOver }) {
       }
     });
 
-    // 若極端情況下候選不夠，預設退回純水題型
     if (correctCandidates.length === 0 || wrongCandidates.length < 3) {
       return generateRound();
     }
 
-    // 抽 1 個正確選項 + 3 個錯誤選項
     const correctMat = correctCandidates[Math.floor(Math.random() * correctCandidates.length)];
     const shuffledWrong = wrongCandidates.sort(() => 0.5 - Math.random()).slice(0, 3);
-
-    // 打亂四個選項
     const options = [correctMat, ...shuffledWrong].sort(() => 0.5 - Math.random());
 
     setCurrentRound({
@@ -74,59 +68,59 @@ export default function DensityFloorGame({ mode = 'single', onGameOver }) {
     });
   };
 
-  // 初始化與倒數計時器
   useEffect(() => {
     generateRound();
   }, []);
 
+  // 計時器
   useEffect(() => {
     let timer = null;
     if (!isFinished && timeLeft > 0) {
       timer = setInterval(() => setTimeLeft((prev) => prev - 1), 1000);
     } else if (timeLeft === 0 && !isFinished) {
-      handleFinish();
+      setIsFinished(true);
     }
     return () => clearInterval(timer);
   }, [timeLeft, isFinished]);
 
-  // 處理玩家選擇
+  // 作答並引發角色動作動畫
   const handleAnswer = (index) => {
-    if (!currentRound || isFinished) return;
+    if (!currentRound || isFinished || actionState !== 'idle') return;
 
     if (index === currentRound.correctAnswerIndex) {
-      // 答對：對手扣血 + 加分
-      setHitFeedback('hit_enemy');
-      setCombo((prev) => prev + 1);
-      const addPoints = 20 + combo * 5;
-      setScore((prev) => prev + addPoints);
-
-      setEnemyHp((prev) => {
-        const nextHp = Math.max(0, prev - 25);
-        if (nextHp === 0) setTimeout(handleFinish, 500);
-        return nextHp;
-      });
+      // 玩家發動攻擊 -> 敵人受擊
+      setActionState('player_attack');
+      setTimeout(() => {
+        setActionState('enemy_hit');
+        setCombo((prev) => prev + 1);
+        setScore((prev) => prev + 20 + combo * 5);
+        setEnemyHp((prev) => {
+          const nextHp = Math.max(0, prev - 25);
+          if (nextHp === 0) setTimeout(() => setIsFinished(true), 600);
+          return nextHp;
+        });
+      }, 250);
     } else {
-      // 答錯：玩家扣血 (防禦失敗)
-      setHitFeedback('hit_player');
-      setCombo(0);
-      setPlayerHp((prev) => {
-        const nextHp = Math.max(0, prev - 20);
-        if (nextHp === 0) setTimeout(handleFinish, 500);
-        return nextHp;
-      });
+      // 敵人發動攻擊 -> 玩家受擊
+      setActionState('enemy_attack');
+      setTimeout(() => {
+        setActionState('player_hit');
+        setCombo(0);
+        setPlayerHp((prev) => {
+          const nextHp = Math.max(0, prev - 20);
+          if (nextHp === 0) setTimeout(() => setIsFinished(true), 600);
+          return nextHp;
+        });
+      }, 250);
     }
 
+    // 重置動作並進下一題
     setTimeout(() => {
-      setHitFeedback(null);
+      setActionState('idle');
       if (enemyHp > 25 && playerHp > 20) {
         generateRound();
       }
-    }, 600);
-  };
-
-  // 遊戲結束
-  const handleFinish = () => {
-    setIsFinished(true);
+    }, 900);
   };
 
   const handleExit = () => {
@@ -135,8 +129,8 @@ export default function DensityFloorGame({ mode = 'single', onGameOver }) {
   };
 
   return (
-    <div className="bg-slate-950 border border-slate-800 rounded-3xl p-4 md:p-8 max-w-4xl mx-auto space-y-6 text-slate-100 select-none">
-      {/* 1. 天空競技場 1F 樓層標題列 */}
+    <div className="bg-slate-950 border border-slate-800 rounded-3xl p-4 md:p-8 max-w-4xl mx-auto space-y-6 text-slate-100 select-none overflow-hidden">
+      {/* 1. 天空競技場 頂部資訊 */}
       <div className="flex justify-between items-center border-b border-slate-800 pb-4">
         <div>
           <span className="text-[10px] font-black bg-rose-500/20 text-rose-400 border border-rose-500/40 px-2.5 py-1 rounded-lg uppercase tracking-wider">
@@ -161,45 +155,98 @@ export default function DensityFloorGame({ mode = 'single', onGameOver }) {
         </div>
       </div>
 
-      {/* 2. 對戰擂台對決區 (玩家 vs 1F 關主) */}
+      {/* 2. 對戰角色視覺擂台舞台 */}
       {!isFinished && currentRound && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 relative">
-          {/* 玩家血條與卡片 */}
-          <div className={`bg-slate-900/80 border p-4 rounded-2xl transition-all duration-300 ${hitFeedback === 'hit_player' ? 'border-rose-500 bg-rose-950/30 animate-bounce' : 'border-slate-800'}`}>
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-xs font-bold text-indigo-400 flex items-center gap-1">
-                <Shield className="w-4 h-4" /> 玩家挑戰者 (You)
+        <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 relative flex justify-between items-center min-h-[220px]">
+          {/* 雷射對決背景效果 */}
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 via-transparent to-rose-600/10 rounded-3xl pointer-events-none" />
+
+          {/* === 左側：玩家角色 (Player) === */}
+          <div className={`flex flex-col items-center gap-2 z-10 transition-all duration-300 ${
+            actionState === 'player_attack' ? 'translate-x-12 scale-110' : ''
+          } ${actionState === 'player_hit' ? '-translate-x-4 animate-shake text-rose-500' : ''}`}>
+            
+            {/* 受擊飄字 */}
+            {actionState === 'player_hit' && (
+              <span className="absolute -top-8 text-rose-500 font-black text-xl animate-bounce">
+                -20 HP!
               </span>
-              <span className="text-xs font-mono font-bold text-rose-400 flex items-center gap-1">
-                <Heart className="w-3.5 h-3.5 fill-rose-500 stroke-none" /> {playerHp} HP
+            )}
+
+            {/* 玩家 SVG 角色外觀 */}
+            <div className={`w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-indigo-600/20 border-2 border-indigo-400 flex items-center justify-center relative shadow-lg shadow-indigo-500/20 ${
+              actionState === 'player_hit' ? 'bg-rose-600/30 border-rose-500' : ''
+            }`}>
+              <div className="text-4xl md:text-5xl">🛡️</div>
+              <span className="absolute -bottom-2 bg-indigo-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                挑戰者
               </span>
             </div>
-            <div className="w-full bg-slate-950 h-3 rounded-full overflow-hidden border border-slate-800 p-0.5">
-              <div className="bg-gradient-to-r from-indigo-500 to-emerald-400 h-full rounded-full transition-all duration-300" style={{ width: `${playerHp}%` }} />
+
+            {/* 血條 */}
+            <div className="w-28 md:w-36 space-y-1">
+              <div className="flex justify-between text-[10px] font-mono font-bold">
+                <span className="text-indigo-300">YOU</span>
+                <span className="text-rose-400">{playerHp} HP</span>
+              </div>
+              <div className="w-full bg-slate-950 h-2.5 rounded-full border border-slate-800 p-0.5">
+                <div className="bg-gradient-to-r from-indigo-500 to-emerald-400 h-full rounded-full transition-all duration-300" style={{ width: `${playerHp}%` }} />
+              </div>
             </div>
           </div>
 
-          {/* 1F 關主血條與卡片 */}
-          <div className={`bg-slate-900/80 border p-4 rounded-2xl transition-all duration-300 ${hitFeedback === 'hit_enemy' ? 'border-amber-500 bg-amber-950/30 animate-bounce' : 'border-slate-800'}`}>
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-xs font-bold text-rose-400 flex items-center gap-1">
-                🥊 1F 密度關主 (Floor Master)
+          {/* 中央對決 VS 標誌 */}
+          <div className="z-10 text-center">
+            <span className="text-2xl md:text-3xl font-black italic text-slate-700 tracking-widest">
+              VS
+            </span>
+            {combo > 1 && (
+              <p className="text-xs font-bold text-amber-400 animate-pulse mt-1">
+                🔥 {combo} COMBO!
+              </p>
+            )}
+          </div>
+
+          {/* === 右側：1F 關主角色 (Floor Master) === */}
+          <div className={`flex flex-col items-center gap-2 z-10 transition-all duration-300 ${
+            actionState === 'enemy_attack' ? '-translate-x-12 scale-110' : ''
+          } ${actionState === 'enemy_hit' ? 'translate-x-4 animate-shake text-rose-500' : ''}`}>
+            
+            {/* 受擊飄字 */}
+            {actionState === 'enemy_hit' && (
+              <span className="absolute -top-8 text-amber-400 font-black text-xl animate-bounce">
+                -25 HP!
               </span>
-              <span className="text-xs font-mono font-bold text-rose-400 flex items-center gap-1">
-                <Heart className="w-3.5 h-3.5 fill-rose-500 stroke-none" /> {enemyHp} HP
+            )}
+
+            {/* 關主 SVG 角色外觀 */}
+            <div className={`w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-rose-600/20 border-2 border-rose-500 flex items-center justify-center relative shadow-lg shadow-rose-500/20 ${
+              actionState === 'enemy_hit' ? 'bg-amber-600/30 border-amber-500' : ''
+            }`}>
+              <div className="text-4xl md:text-5xl">🥊</div>
+              <span className="absolute -bottom-2 bg-rose-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                1F 關主
               </span>
             </div>
-            <div className="w-full bg-slate-950 h-3 rounded-full overflow-hidden border border-slate-800 p-0.5 dir-rtl">
-              <div className="bg-gradient-to-r from-rose-500 to-amber-400 h-full rounded-full transition-all duration-300" style={{ width: `${enemyHp}%` }} />
+
+            {/* 血條 */}
+            <div className="w-28 md:w-36 space-y-1">
+              <div className="flex justify-between text-[10px] font-mono font-bold">
+                <span className="text-rose-400">BOSS</span>
+                <span className="text-rose-400">{enemyHp} HP</span>
+              </div>
+              <div className="w-full bg-slate-950 h-2.5 rounded-full border border-slate-800 p-0.5 dir-rtl">
+                <div className="bg-gradient-to-r from-rose-500 to-amber-400 h-full rounded-full transition-all duration-300" style={{ width: `${enemyHp}%` }} />
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* 3. 液體陷阱題目卡片 */}
+      {/* 3. 液體陷阱攻防題幹 */}
       {!isFinished && currentRound && (
-        <div className="space-y-5">
-          <div className={`bg-gradient-to-r ${currentRound.liquid.color} border ${currentRound.liquid.border} p-6 rounded-2xl text-center space-y-3 relative overflow-hidden`}>
+        <div className="space-y-4">
+          <div className={`bg-gradient-to-r ${currentRound.liquid.color} border ${currentRound.liquid.border} p-5 rounded-2xl text-center space-y-2 relative overflow-hidden`}>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-950/60 border border-white/10 text-xs text-slate-300">
               <span className="text-lg">{currentRound.liquid.icon}</span>
               對手投擲液體陷阱：<strong className="text-white">{currentRound.liquid.name}</strong> 
@@ -207,16 +254,16 @@ export default function DensityFloorGame({ mode = 'single', onGameOver }) {
             </div>
 
             <div className="space-y-1">
-              <p className="text-xs text-slate-400">防禦攻防指令：</p>
-              <h3 className="text-lg md:text-xl font-black text-white flex items-center justify-center gap-2">
+              <p className="text-[11px] text-slate-400">防禦攻防指令：</p>
+              <h3 className="text-base md:text-lg font-black text-white flex items-center justify-center gap-2">
                 {currentRound.actionGoal === 'float' ? (
                   <>
-                    <ArrowUp className="w-6 h-6 text-emerald-400 animate-bounce" />
+                    <ArrowUp className="w-5 h-5 text-emerald-400 animate-bounce" />
                     選出能 <span className="text-emerald-400 underline decoration-wavy">浮在液面上</span> 的盾牌材質！
                   </>
                 ) : (
                   <>
-                    <ArrowDown className="w-6 h-6 text-amber-400 animate-bounce" />
+                    <ArrowDown className="w-5 h-5 text-amber-400 animate-bounce" />
                     選出能 <span className="text-amber-400 underline decoration-wavy">沉入液體底</span> 的砲彈材質！
                   </>
                 )}
@@ -224,13 +271,14 @@ export default function DensityFloorGame({ mode = 'single', onGameOver }) {
             </div>
           </div>
 
-          {/* 4. 四個物體選項 ($M$ 與 $V$ 算密度) */}
+          {/* 4. 四個物體選項 */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {currentRound.options.map((option, idx) => (
               <button
                 key={idx}
                 onClick={() => handleAnswer(idx)}
-                className="p-4 rounded-2xl bg-slate-900 hover:bg-indigo-600/20 border border-slate-800 hover:border-indigo-500 text-left transition-all flex items-center justify-between group cursor-pointer"
+                disabled={actionState !== 'idle'}
+                className="p-4 rounded-2xl bg-slate-900 hover:bg-indigo-600/20 border border-slate-800 hover:border-indigo-500 text-left transition-all flex items-center justify-between group cursor-pointer disabled:opacity-50"
               >
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
@@ -258,7 +306,7 @@ export default function DensityFloorGame({ mode = 'single', onGameOver }) {
         </div>
       )}
 
-      {/* 5. 擂台對戰結算頁 */}
+      {/* 5. 結算畫面 */}
       {isFinished && (
         <div className="text-center space-y-6 py-8 max-w-md mx-auto">
           <Trophy className="w-16 h-16 text-amber-400 mx-auto animate-bounce" />
