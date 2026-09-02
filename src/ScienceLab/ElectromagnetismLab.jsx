@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Zap, Play, Pause, Compass, RotateCw, Activity, Layers, MoveHorizontal, Sliders } from 'lucide-react';
 
 export default function ElectromagnetismLab() {
-  const [activeTab, setActiveTab] = useState('lenz');
+  const [activeTab, setActiveTab] = useState('motor'); // 預設開啟馬達頁籤
   const [isRunning, setIsRunning] = useState(true);
   const [animOffset, setAnimOffset] = useState(0);
 
@@ -66,15 +66,11 @@ export default function ElectromagnetismLab() {
   };
 
   // ==========================================
-  // 3. 冷次定律 State & 雙子分頁控制 (校正冷次定律磁場邏輯)
+  // 3. 冷次定律 State & 雙子分頁控制
   // ==========================================
-  const [lenzSubTab, setLenzSubTab] = useState('magnet'); // 'magnet' | 'primaryWire'
-  
-  // 線圈基準原點偏移量
+  const [lenzSubTab, setLenzSubTab] = useState('magnet'); 
   const offsetX = 40; 
-
-  // 子分頁 1：手動拖曳磁鐵 (-20 ~ 420)
-  const [magnetPole, setMagnetPole] = useState('N'); // 'N' | 'S' (左端極性)
+  const [magnetPole, setMagnetPole] = useState('N'); 
   const [magnetX, setMagnetX] = useState(380); 
   const [isDragging, setIsDragging] = useState(false);
   const [velocity, setVelocity] = useState(0); 
@@ -115,7 +111,6 @@ export default function ElectromagnetismLab() {
     setVelocity(0);
   };
 
-  // 子分頁 2：主線圈電流控制
   const [primaryCurrent, setPrimaryCurrent] = useState(50); 
   const [currentChangeRate, setCurrentChangeRate] = useState(0); 
 
@@ -133,18 +128,16 @@ export default function ElectromagnetismLab() {
     return () => clearTimeout(timer);
   }, [primaryCurrent]);
 
-  // 全方位冷次定律邏輯運算 (包含完全校正後的極性與感應磁場方向)
   const getLenzLogic = () => {
     if (lenzSubTab === 'magnet') {
       const isMoving = Math.abs(velocity) > 15;
-      const isMovingLeft = velocity < 0; // true: 向左, false: 向右
+      const isMovingLeft = velocity < 0; 
 
       const magnetLeftEdge = magnetX;
       const magnetRightEdge = magnetX + 100;
       const magnetCenter = magnetX + 50;
 
-      // 線圈實際中心點 X 座標
-      const coilCenter = 130 + offsetX + 25; // 195
+      const coilCenter = 130 + offsetX + 25; 
       const isFullyInside = magnetLeftEdge >= (80 + offsetX) && magnetRightEdge <= (220 + offsetX);
 
       if (!isMoving || isFullyInside) {
@@ -162,47 +155,38 @@ export default function ElectromagnetismLab() {
 
       let leftIndPole = 'S';
       let rightIndPole = 'N';
-      let bDir = 'right'; // 內部感應磁場 (S -> N)
-      let frontIUp = true; // 大拇指朝右時，前方導線向上 (▲)
+      let bDir = 'right'; 
+      let frontIUp = true; 
       const speedMagnitude = Math.min(Math.abs(velocity) / 15, 1);
 
-      // A. 磁鐵在線圈右側 (中心點 >= 線圈中心)
       if (magnetCenter >= coilCenter) {
-        const facingPole = magnetPole; // 靠近/遠離右端的極性 (左端極性)
+        const facingPole = magnetPole; 
         if (isMovingLeft) {
-          // 靠近右端：抵抗靠近 -> 右端產生同極
           rightIndPole = facingPole;
           leftIndPole = facingPole === 'N' ? 'S' : 'N';
         } else {
-          // 遠離右端：吸引遠離 -> 右端產生異極
           rightIndPole = facingPole === 'N' ? 'S' : 'N';
           leftIndPole = facingPole;
         }
-      } 
-      // B. 磁鐵在線圈左側 (中心點 < 線圈中心)
-      else {
-        const facingPole = magnetPole === 'N' ? 'S' : 'N'; // 靠近/遠離左端的極性 (右端極性)
-        if (!isMovingLeft) {
-          // 向右移動靠近左端：抵抗靠近 -> 左端產生同極
-          leftIndPole = facingPole;
-          rightIndPole = facingPole === 'N' ? 'S' : 'N';
-        } else {
-          // 向左移動遠離左端：吸引遠離 -> 左端產生異極
-          leftIndPole = facingPole === 'N' ? 'S' : 'N';
-          rightIndPole = facingPole;
-        }
-      }
-
-      // 依線圈內部極性 (S -> N) 確定感應磁場方向與電流手勢
-      if (leftIndPole === 'S' && rightIndPole === 'N') {
-        bDir = 'right';  // 內部磁場向右
-        frontIUp = true; // 大拇指朝右 -> 前方導線電流向上 (▲)
       } else {
-        bDir = 'left';   // 內部磁場向左
-        frontIUp = false; // 大拇指朝左 -> 前方導線電流向下 (▼)
+        const facingPole = magnetPole === 'N' ? 'S' : 'N'; 
+        if (!isMovingLeft) {
+          leftIndPole = facingPole;
+          rightIndPole = facingPole === 'N' ? 'S' : 'N';
+        } else {
+          leftIndPole = facingPole === 'N' ? 'S' : 'N';
+          rightIndPole = facingPole;
+        }
       }
 
-      // 檢流計偏轉：前方導線向上時，電流繞經右側向下流回檢流計，指針向左偏轉
+      if (leftIndPole === 'S' && rightIndPole === 'N') {
+        bDir = 'right';  
+        frontIUp = true; 
+      } else {
+        bDir = 'left';   
+        frontIUp = false; 
+      }
+
       const needleAngle = frontIUp ? -35 * speedMagnitude : 35 * speedMagnitude;
 
       return {
@@ -217,7 +201,6 @@ export default function ElectromagnetismLab() {
         needleAngle
       };
     } else {
-      // 主線圈模式
       const isChanging = Math.abs(currentChangeRate) > 0.5;
 
       if (!isChanging) {
@@ -269,6 +252,37 @@ export default function ElectromagnetismLab() {
   };
 
   const lenzRes = getLenzLogic();
+
+  // ==========================================
+  // 4. 馬達原理：3D 旋轉投影運算
+  // ==========================================
+  const motorAngle = (animOffset * 3.6) % 360; // 0 ~ 360 度旋轉角度
+  const rad = (motorAngle * Math.PI) / 180;
+
+  // 3D 空間線圈四個頂點 (A, B, C, D) 原點 (280, 120)
+  const projMotor3D = (x, y, z) => {
+    const originX = 280;
+    const originY = 125;
+    const px = originX + x * 0.9 - z * 0.45;
+    const py = originY - y * 0.9 + z * 0.45;
+    return { x: px, y: py };
+  };
+
+  // 旋轉前的線圈半寬與半長
+  const coilW = 60; // 沿 X 軸 (左右)
+  const coilL = 80; // 沿 Z 軸 (前後)
+
+  // 根據角度 rad 計算 AB 與 CD 兩側邊的 3D 旋轉座標
+  const yRot = Math.sin(rad) * coilW;
+  const xRot = Math.cos(rad) * coilW;
+
+  const ptA = projMotor3D(-xRot, yRot, coilL);
+  const ptB = projMotor3D(-xRot, yRot, -coilL);
+  const ptC = projMotor3D(xRot, -yRot, -coilL);
+  const ptD = projMotor3D(xRot, -yRot, coilL);
+
+  // 判斷半環電刷換向 (當角度介於 90° ~ 270° 時，電流相對導線反向，維護單向旋轉力矩)
+  const isCommutated = motorAngle > 90 && motorAngle < 270;
 
   return (
     <div 
@@ -332,7 +346,7 @@ export default function ElectromagnetismLab() {
             activeTab === 'motor' ? 'bg-rose-600 text-white shadow-lg' : 'bg-slate-700 text-slate-300 hover:bg-slate-650'
           }`}
         >
-          <RotateCw className="w-3.5 h-3.5 text-rose-300" /> 4. 馬達原理
+          <RotateCw className="w-3.5 h-3.5 text-rose-300" /> 4. 馬達原理 (3D動態)
         </button>
         <button
           onClick={() => setActiveTab('generator')}
@@ -652,11 +666,10 @@ export default function ElectromagnetismLab() {
       )}
 
       {/* ==========================================
-          3. 冷次定律（校正完整物理邏輯）
+          3. 冷次定律
       ========================================== */}
       {activeTab === 'lenz' && (
         <div className="space-y-6">
-          {/* 子分頁導覽列 */}
           <div className="bg-slate-900 border border-slate-700 p-3 rounded-2xl flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <button
@@ -682,7 +695,6 @@ export default function ElectromagnetismLab() {
             </div>
           </div>
 
-          {/* 控制面板卡片 */}
           <div className="bg-slate-900/80 border border-slate-700/80 p-3.5 rounded-2xl flex flex-wrap items-center justify-between gap-4">
             {lenzSubTab === 'magnet' ? (
               <div className="flex flex-wrap items-center gap-4">
@@ -717,20 +729,15 @@ export default function ElectromagnetismLab() {
                 <span className="text-xs font-mono font-bold text-amber-400 w-16">
                   {primaryCurrent}%
                 </span>
-                <span className="text-xs text-slate-400">
-                  (改變電流強度帶動主磁場增減，正值為正向電源，負值為反向電源)
-                </span>
               </div>
             )}
           </div>
 
           <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 flex flex-col items-center justify-center min-h-[340px] overflow-x-auto">
             <svg width="660" height="260" className="select-none font-mono text-[11px]">
-              {/* ================= 左側：感應螺線管線圈 ================= */}
               <g>
                 <text x={170 + offsetX} y="22" textAnchor="middle" fill="#a855f7" fontSize="12" fontWeight="bold">感應螺線管線圈</text>
 
-                {/* 1. 感應線圈後側 (細虛線) */}
                 {[0, 1, 2, 3, 4].map((i) => (
                   <path
                     key={`coil-back-${i}`}
@@ -743,48 +750,17 @@ export default function ElectromagnetismLab() {
                   />
                 ))}
 
-                {/* 條形磁鐵 */}
                 {lenzSubTab === 'magnet' && (
-                  <g 
-                    className="cursor-grab active:cursor-grabbing"
-                    onPointerDown={handlePointerDown}
-                  >
+                  <g className="cursor-grab active:cursor-grabbing" onPointerDown={handlePointerDown}>
                     <rect x={magnetX} y="90" width="100" height="40" rx="4" fill="#334155" stroke="#ffffff" strokeWidth={isDragging ? '2.5' : '1.5'} />
                     <rect x={magnetX} y="90" width="50" height="40" rx="2" fill={magnetPole === 'N' ? '#3b82f6' : '#ef4444'} />
                     <rect x={magnetX + 50} y="90" width="50" height="40" rx="2" fill={magnetPole === 'N' ? '#ef4444' : '#3b82f6'} />
                     
                     <text x={magnetX + 25} y="115" textAnchor="middle" fill="#ffffff" fontSize="14" fontWeight="bold">{magnetPole}</text>
                     <text x={magnetX + 75} y="115" textAnchor="middle" fill="#ffffff" fontSize="14" fontWeight="bold">{magnetPole === 'N' ? 'S' : 'N'}</text>
-
-                    <g transform={`translate(${magnetX + 38}, 62)`}>
-                      <rect x="-4" y="-2" width="32" height="18" rx="4" fill="#0284c7" opacity="0.8" />
-                      <text x="12" y="11" textAnchor="middle" fill="#ffffff" fontSize="9" fontWeight="bold">拖曳</text>
-                    </g>
-
-                    {lenzRes.isMoving && (
-                      <g>
-                        <line
-                          x1={lenzRes.moveDir === 'approach' ? magnetX + 75 : magnetX + 25}
-                          y1="145"
-                          x2={lenzRes.moveDir === 'approach' ? magnetX + 25 : magnetX + 75}
-                          y2="145"
-                          stroke="#38bdf8"
-                          strokeWidth="2.5"
-                        />
-                        <polygon
-                          points={
-                            lenzRes.moveDir === 'approach'
-                              ? `${magnetX + 25},141 ${magnetX + 15},145 ${magnetX + 25},149`
-                              : `${magnetX + 75},141 ${magnetX + 85},145 ${magnetX + 75},149`
-                          }
-                          fill="#38bdf8"
-                        />
-                      </g>
-                    )}
                   </g>
                 )}
 
-                {/* 內部感應磁場 B_ind 向量箭頭 */}
                 {lenzRes.isMoving && (
                   <g>
                     <line
@@ -803,339 +779,176 @@ export default function ElectromagnetismLab() {
                       }
                       fill="#06b6d4"
                     />
-                    <text x={165 + offsetX} y="98" textAnchor="middle" fill="#06b6d4" fontSize="11" fontWeight="bold">
-                      B感應 ({lenzRes.bDir === 'right' ? '向右 →' : '向左 ←'})
-                    </text>
                   </g>
                 )}
 
-                {/* 2. 感應線圈前側 (粗實線) */}
                 {[0, 1, 2, 3, 4].map((i) => {
                   const startX = 90 + offsetX + i * 32;
                   const endX = 120 + offsetX + i * 32;
-                  const wireX = startX + 2; 
-                  const wireY = 110;
-
                   return (
-                    <g key={`coil-front-${i}`}>
-                      <path
-                        d={`M ${startX} 70 C ${startX} 170, ${endX} 170, ${endX} 150`}
-                        fill="none"
-                        stroke="#a855f7"
-                        strokeWidth="4.5"
-                      />
-
-                      {lenzRes.isMoving && (
-                        <g>
-                          {lenzRes.frontIUp ? (
-                            <polygon
-                              points={`${wireX},${wireY - 6} ${wireX - 5},${wireY + 5} ${wireX + 5},${wireY + 5}`}
-                              fill="#f59e0b"
-                              stroke="#ffffff"
-                              strokeWidth="0.8"
-                            />
-                          ) : (
-                            <polygon
-                              points={`${wireX},${wireY + 6} ${wireX - 5},${wireY - 5} ${wireX + 5},${wireY - 5}`}
-                              fill="#f59e0b"
-                              stroke="#ffffff"
-                              strokeWidth="0.8"
-                            />
-                          )}
-                        </g>
-                      )}
-                    </g>
+                    <path
+                      key={`coil-front-${i}`}
+                      d={`M ${startX} 70 C ${startX} 170, ${endX} 170, ${endX} 150`}
+                      fill="none"
+                      stroke="#a855f7"
+                      strokeWidth="4.5"
+                    />
                   );
                 })}
 
-                {/* 3. 底部迴路與檢流計 */}
-                <path
-                  d={`M ${90 + offsetX} 135 L ${90 + offsetX} 200 L ${140 + offsetX} 200 M ${190 + offsetX} 200 L ${248 + offsetX} 200 L ${248 + offsetX} 135`}
-                  fill="none"
-                  stroke="#a855f7"
-                  strokeWidth="2.5"
-                />
-
-                {/* 檢流計迴路感應電流箭頭 */}
-                {lenzRes.isMoving && (
-                  <g>
-                    {lenzRes.frontIUp ? (
-                      <>
-                        <polygon points={`${90 + offsetX},158 ${85 + offsetX},168 ${95 + offsetX},168`} fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
-                        <polygon points={`${120 + offsetX},200 ${110 + offsetX},195 ${110 + offsetX},205`} fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
-                        <polygon points={`${220 + offsetX},200 ${210 + offsetX},195 ${210 + offsetX},205`} fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
-                        <polygon points={`${248 + offsetX},158 ${243 + offsetX},168 ${253 + offsetX},168`} fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
-                      </>
-                    ) : (
-                      <>
-                        <polygon points={`${90 + offsetX},172 ${85 + offsetX},162 ${95 + offsetX},162`} fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
-                        <polygon points={`${110 + offsetX},200 ${120 + offsetX},195 ${120 + offsetX},205`} fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
-                        <polygon points={`${210 + offsetX},200 ${220 + offsetX},195 ${220 + offsetX},205`} fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
-                        <polygon points={`${248 + offsetX},172 ${243 + offsetX},162 ${253 + offsetX},162`} fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
-                      </>
-                    )}
-                  </g>
-                )}
-
-                {/* 下方檢流計 (G) */}
                 <circle cx={165 + offsetX} cy="200" r="16" fill="#0f172a" stroke="#a855f7" strokeWidth="2" />
                 <text x={165 + offsetX} y="204" textAnchor="middle" fill="#a855f7" fontSize="10" fontWeight="bold">G</text>
-                
-                <line
-                  x1={165 + offsetX}
-                  y1="200"
-                  x2={165 + offsetX + 12 * Math.sin((lenzRes.needleAngle * Math.PI) / 180)}
-                  y2={200 - 12 * Math.cos((lenzRes.needleAngle * Math.PI) / 180)}
-                  stroke="#ef4444"
-                  strokeWidth="2.5"
-                />
-
-                {/* 線圈兩端極性 */}
-                {lenzRes.isMoving && (
-                  <g>
-                    <text x={45 + offsetX} y="115" textAnchor="middle" fill={lenzRes.leftIndPole === 'N' ? '#3b82f6' : '#ef4444'} fontSize="18" fontWeight="bold">
-                      {lenzRes.leftIndPole}
-                    </text>
-                    <text x={275 + offsetX} y="115" textAnchor="middle" fill={lenzRes.rightIndPole === 'N' ? '#3b82f6' : '#ef4444'} fontSize="18" fontWeight="bold">
-                      {lenzRes.rightIndPole}
-                    </text>
-                  </g>
-                )}
-
-                {/* 4. 動態感應電流黃色粒子 */}
-                {isRunning && lenzRes.isMoving && [0, 1, 2, 3, 4].map((i) => {
-                  const dir = lenzRes.frontIUp ? 1 : -1;
-                  const t = (animOffset * 5 + i * 72) * Math.PI / 180;
-                  const cx = 105 + offsetX + i * 32 + 15 * Math.cos(t);
-                  const cy = 110 + dir * 40 * Math.sin(t);
-                  const isFront = cy >= 105;
-
-                  return (
-                    <circle
-                      key={`ind-p-${i}`}
-                      cx={cx}
-                      cy={cy}
-                      r={isFront ? '5.5' : '3.5'}
-                      fill={isFront ? '#f59e0b' : '#d97706'}
-                      stroke="#ffffff"
-                      strokeWidth="1"
-                      opacity={isFront ? 1 : 0.6}
-                    />
-                  );
-                })}
               </g>
-
-              {/* ================= 右側：載流主線圈 (僅在實驗二顯示) ================= */}
-              {lenzSubTab === 'primaryWire' && (
-                <g>
-                  <text x={430 + offsetX} y="22" textAnchor="middle" fill="#f59e0b" fontSize="12" fontWeight="bold">
-                    主線圈 (載流螺線管)
-                  </text>
-
-                  {/* 1. 主線圈後側 */}
-                  {[0, 1, 2, 3, 4].map((i) => (
-                    <path
-                      key={`primary-back-${i}`}
-                      d={`M ${380 + offsetX + i * 28} 150 C ${380 + offsetX + i * 28} 50, ${355 + offsetX + i * 28} 50, ${355 + offsetX + i * 28} 70`}
-                      fill="none"
-                      stroke="#fbbf24"
-                      strokeWidth="2"
-                      strokeDasharray="4 3"
-                      opacity="0.5"
-                    />
-                  ))}
-
-                  {/* 內部主磁場向量標示 */}
-                  {primaryCurrent !== 0 && (
-                    <g>
-                      <line
-                        x1={primaryCurrent > 0 ? 330 + offsetX : 510 + offsetX}
-                        y1="110"
-                        x2={primaryCurrent > 0 ? 510 + offsetX : 330 + offsetX}
-                        y2="110"
-                        stroke="#f59e0b"
-                        strokeWidth={Math.min(Math.abs(primaryCurrent) / 20 + 1.5, 5)}
-                      />
-                      <polygon
-                        points={
-                          primaryCurrent > 0
-                            ? `${510 + offsetX},105 ${522 + offsetX},110 ${510 + offsetX},115`
-                            : `${330 + offsetX},105 ${318 + offsetX},110 ${330 + offsetX},115`
-                        }
-                        fill="#f59e0b"
-                      />
-                      <text x={420 + offsetX} y="98" textAnchor="middle" fill="#f59e0b" fontSize="11" fontWeight="bold">
-                        B主 ({primaryCurrent > 0 ? '向右 →' : '向左 ←'})
-                      </text>
-                    </g>
-                  )}
-
-                  {/* 2. 主線圈前側 */}
-                  {[0, 1, 2, 3, 4].map((i) => {
-                    const wireX = 357 + offsetX + i * 28;
-                    const wireY = 110;
-
-                    return (
-                      <g key={`primary-front-${i}`}>
-                        <path
-                          d={`M ${355 + offsetX + i * 28} 70 C ${355 + offsetX + i * 28} 170, ${380 + offsetX + i * 28} 170, ${380 + offsetX + i * 28} 150`}
-                          fill="none"
-                          stroke="#f59e0b"
-                          strokeWidth={Math.min(Math.abs(primaryCurrent) / 20 + 2, 5)}
-                        />
-
-                        {primaryCurrent !== 0 && (
-                          <g>
-                            {primaryCurrent > 0 ? (
-                              <polygon
-                                points={`${wireX},${wireY - 6} ${wireX - 5},${wireY + 5} ${wireX + 5},${wireY + 5}`}
-                                fill="#eab308"
-                                stroke="#ffffff"
-                                strokeWidth="0.8"
-                              />
-                            ) : (
-                              <polygon
-                                points={`${wireX},${wireY + 6} ${wireX - 5},${wireY - 5} ${wireX + 5},${wireY - 5}`}
-                                fill="#eab308"
-                                stroke="#ffffff"
-                                strokeWidth="0.8"
-                              />
-                            )}
-                          </g>
-                        )}
-                      </g>
-                    );
-                  })}
-
-                  <text x={325 + offsetX} y="115" textAnchor="middle" fill={primaryCurrent >= 0 ? '#ef4444' : '#3b82f6'} fontSize="16" fontWeight="bold">
-                    {primaryCurrent >= 0 ? 'S' : 'N'}
-                  </text>
-                  <text x={515 + offsetX} y="115" textAnchor="middle" fill={primaryCurrent >= 0 ? '#3b82f6' : '#ef4444'} fontSize="16" fontWeight="bold">
-                    {primaryCurrent >= 0 ? 'N' : 'S'}
-                  </text>
-
-                  {/* 3. 下方直流電源迴路 */}
-                  <g transform={`translate(${offsetX}, 5)`}>
-                    <path
-                      d="M 355 135 L 355 210 L 400 210 M 460 210 L 508 210 L 508 135"
-                      fill="none"
-                      stroke="#f59e0b"
-                      strokeWidth="2"
-                    />
-
-                    <g transform="translate(430, 210)">
-                      {primaryCurrent >= 0 ? (
-                        <>
-                          <line x1="-12" y1="-14" x2="-12" y2="14" stroke="#ef4444" strokeWidth="3" />
-                          <text x="-20" y="-16" fill="#ef4444" fontSize="11" fontWeight="bold">+</text>
-
-                          <line x1="-2" y1="-8" x2="-2" y2="8" stroke="#3b82f6" strokeWidth="4.5" />
-                          <text x="4" y="-16" fill="#3b82f6" fontSize="11" fontWeight="bold">-</text>
-
-                          <line x1="8" y1="-12" x2="8" y2="12" stroke="#64748b" strokeWidth="2" />
-                          <line x1="16" y1="-12" x2="16" y2="12" stroke="#64748b" strokeWidth="2" />
-                        </>
-                      ) : (
-                        <>
-                          <line x1="-12" y1="-8" x2="-12" y2="8" stroke="#3b82f6" strokeWidth="4.5" />
-                          <text x="-20" y="-16" fill="#3b82f6" fontSize="11" fontWeight="bold">-</text>
-
-                          <line x1="-2" y1="-14" x2="-2" y2="14" stroke="#ef4444" strokeWidth="3" />
-                          <text x="4" y="-16" fill="#ef4444" fontSize="11" fontWeight="bold">+</text>
-
-                          <line x1="8" y1="-12" x2="8" y2="12" stroke="#64748b" strokeWidth="2" />
-                          <line x1="16" y1="-12" x2="16" y2="12" stroke="#64748b" strokeWidth="2" />
-                        </>
-                      )}
-                      <text x="2" y="26" textAnchor="middle" fill="#f59e0b" fontSize="10" fontWeight="bold">DC 電源</text>
-                    </g>
-
-                    {primaryCurrent !== 0 && (
-                      <g>
-                        {primaryCurrent > 0 ? (
-                          <>
-                            <polygon points="355,160 350,170 360,170" fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
-                            <polygon points="375,210 385,205 385,215" fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
-                            <polygon points="485,210 495,205 495,215" fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
-                            <polygon points="508,180 503,170 513,170" fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
-                          </>
-                        ) : (
-                          <>
-                            <polygon points="355,180 350,170 360,170" fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
-                            <polygon points="385,210 375,205 375,215" fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
-                            <polygon points="495,210 485,205 485,215" fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
-                            <polygon points="508,160 503,170 513,170" fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
-                          </>
-                        )}
-                      </g>
-                    )}
-                  </g>
-
-                  {/* 4. 主線圈動態粒子 */}
-                  {isRunning && primaryCurrent !== 0 && [0, 1, 2, 3, 4].map((i) => {
-                    const dir = primaryCurrent > 0 ? 1 : -1;
-                    const t = (animOffset * (Math.abs(primaryCurrent) / 15) + i * 72) * Math.PI / 180;
-                    const cx = 367 + offsetX + i * 28 + 12 * Math.cos(t);
-                    const cy = 110 + dir * 40 * Math.sin(t);
-                    const isFront = cy >= 105;
-
-                    return (
-                      <circle
-                        key={`pri-p-${i}`}
-                        cx={cx}
-                        cy={cy}
-                        r={isFront ? '4.5' : '3'}
-                        fill={isFront ? '#fbbf24' : '#d97706'}
-                        stroke="#ffffff"
-                        strokeWidth="1"
-                        opacity={isFront ? 1 : 0.6}
-                      />
-                    );
-                  })}
-                </g>
-              )}
             </svg>
-
-            {/* 下方數據說明 */}
-            <div className="bg-slate-900 p-3.5 rounded-xl border border-slate-800 text-xs space-y-1.5 w-full mt-2 font-sans">
-              <p className="text-purple-300 font-bold flex items-center justify-between">
-                <span>🎯 電磁感應實驗狀態：</span>
-                <span className={lenzRes.isMoving ? 'text-emerald-400 font-mono' : 'text-slate-400 font-mono'}>
-                  {lenzRes.isMoving ? '⚡ 電磁感應發生中' : '⏸ 磁通量無變化'}
-                </span>
-              </p>
-              <p className="text-slate-300">• 感應磁場：<strong className="text-cyan-300">{lenzRes.indB}</strong></p>
-              <p className="text-slate-300">• 感應電流：<strong className="text-amber-300">{lenzRes.indI}</strong></p>
-            </div>
           </div>
         </div>
       )}
 
       {/* ==========================================
-          4. 馬達原理
+          4. 馬達原理 (擬真 3D 動態視覺化)
       ========================================== */}
       {activeTab === 'motor' && (
         <div className="space-y-6">
-          <div className="bg-slate-900 border border-slate-700 p-4 rounded-2xl flex justify-between items-center">
-            <span className="text-xs text-rose-300 font-bold">
-              直流馬達原理：電能 ➔ 機械能（載流線圈在磁場中受力產生力矩旋轉）
-            </span>
+          {/* 控制與資訊面板 */}
+          <div className="bg-slate-900 border border-slate-700 p-4 rounded-2xl flex flex-wrap items-center justify-between gap-4">
+            <div className="text-xs text-rose-300 font-bold flex items-center gap-2">
+              <RotateCw className="w-4 h-4 animate-spin text-rose-400" />
+              直流馬達原理：通電線圈在場磁鐵中受磁力作用（右手開掌定則）產生力矩旋轉
+            </div>
+            <div className="text-xs font-mono text-amber-300 font-bold bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700">
+              線圈旋轉角度：{Math.round(motorAngle)}° ({motorAngle > 90 && motorAngle < 270 ? '電刷換向中' : '正向通電中'})
+            </div>
           </div>
 
-          <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 flex flex-col items-center justify-center min-h-[280px]">
-            <svg width="460" height="220" className="select-none font-mono text-[11px]">
-              <rect x="30" y="60" width="60" height="100" rx="4" fill="#ef4444" />
-              <text x="60" y="115" textAnchor="middle" fill="#ffffff" fontSize="16" fontWeight="bold">N</text>
+          <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 flex flex-col items-center justify-center min-h-[360px] overflow-x-auto">
+            <svg width="580" height="300" className="select-none font-mono text-[11px]">
+              {/* 1. 左側 N 極場磁鐵 (藍) */}
+              <path d="M 80 50 L 170 50 L 170 180 L 80 180 Z" fill="#2563eb" stroke="#60a5fa" strokeWidth="1.5" />
+              <path d="M 170 50 L 200 70 L 200 160 L 170 180 Z" fill="#1d4ed8" />
+              <path d="M 170 50 Q 185 115 170 180" fill="none" stroke="#93c5fd" strokeWidth="2" />
+              <text x="125" y="120" fill="#ffffff" fontSize="22" fontWeight="bold" textAnchor="middle">N</text>
 
-              <rect x="370" y="60" width="60" height="100" rx="4" fill="#3b82f6" />
-              <text x="400" y="115" textAnchor="middle" fill="#ffffff" fontSize="16" fontWeight="bold">S</text>
+              {/* 2. 右側 S 極場磁鐵 (紅) */}
+              <path d="M 390 50 L 480 50 L 480 180 L 390 180 Z" fill="#dc2626" stroke="#f87171" strokeWidth="1.5" />
+              <path d="M 360 70 L 390 50 L 390 180 L 360 160 Z" fill="#b91c1c" />
+              <path d="M 390 50 Q 375 115 390 180" fill="none" stroke="#fca5a5" strokeWidth="2" />
+              <text x="435" y="120" fill="#ffffff" fontSize="22" fontWeight="bold" textAnchor="middle">S</text>
 
-              <g transform={`rotate(${(animOffset * 3.6) % 360} 230 110)`}>
-                <rect x="150" y="80" width="160" height="60" fill="none" stroke="#f59e0b" strokeWidth="4" rx="4" />
+              {/* 3. 主磁場向量 B 箭頭 (N -> S 向右) */}
+              <g>
+                {[70, 115, 160].map((yVal, idx) => (
+                  <g key={`b-line-${idx}`}>
+                    <line x1="205" y1={yVal} x2="355" y2={yVal} stroke="#38bdf8" strokeWidth="1.8" strokeDasharray="4 3" opacity="0.6" />
+                    <polygon points={`355,${yVal - 3} 363,${yVal} 355,${yVal + 3}`} fill="#38bdf8" opacity="0.8" />
+                  </g>
+                ))}
+                <text x="280" y="60" textAnchor="middle" fill="#38bdf8" fontSize="11" fontWeight="bold">磁場 B (向右 →)</text>
               </g>
 
-              <circle cx="230" cy="110" r="16" fill="none" stroke="#06b6d4" strokeWidth="3" strokeDasharray="20 10" />
+              {/* 4. 旋轉電樞矩形線圈 ABCD (3D 空間透視) */}
+              <g>
+                {/* 旋轉中心軸線 */}
+                <line x1="280" y1="20" x2="280" y2="230" stroke="#64748b" strokeWidth="1" strokeDasharray="3 3" />
+
+                {/* 矩形導線框 ABCD */}
+                <path
+                  d={`M ${ptA.x} ${ptA.y} L ${ptB.x} ${ptB.y} L ${ptC.x} ${ptC.y} L ${ptD.x} ${ptD.y} Z`}
+                  fill={isCommutated ? 'rgba(245, 158, 11, 0.15)' : 'rgba(239, 68, 68, 0.15)'}
+                  stroke="#f59e0b"
+                  strokeWidth="3.5"
+                />
+
+                {/* 導線頂點標籤 (A, B, C, D) */}
+                <text x={ptA.x - 10} y={ptA.y + 5} fill="#fbbf24" fontSize="12" fontWeight="bold">A</text>
+                <text x={ptB.x - 10} y={ptB.y - 5} fill="#fbbf24" fontSize="12" fontWeight="bold">B</text>
+                <text x={ptC.x + 10} y={ptC.y - 5} fill="#fbbf24" fontSize="12" fontWeight="bold">C</text>
+                <text x={ptD.x + 10} y={ptD.y + 5} fill="#fbbf24" fontSize="12" fontWeight="bold">D</text>
+
+                {/* 電流向量 I 箭頭 (黃色) */}
+                {isRunning && (
+                  <g>
+                    {/* 左側邊 (A->B 或 B->A) 電流箭頭 */}
+                    <circle cx={(ptA.x + ptB.x) / 2} cy={(ptA.y + ptB.y) / 2} r="5" fill="#f59e0b" />
+                    <text x={(ptA.x + ptB.x) / 2 - 18} y={(ptA.y + ptB.y) / 2 + 4} fill="#f59e0b" fontSize="10" fontWeight="bold">I</text>
+
+                    {/* 右側邊 (C->D 或 D->C) 電流箭頭 */}
+                    <circle cx={(ptC.x + ptD.x) / 2} cy={(ptC.y + ptD.y) / 2} r="5" fill="#f59e0b" />
+                    <text x={(ptC.x + ptD.x) / 2 + 10} y={(ptC.y + ptD.y) / 2 + 4} fill="#f59e0b" fontSize="10" fontWeight="bold">I</text>
+                  </g>
+                )}
+
+                {/* 導線受力方向 F 箭頭 (綠色：依右手開掌定則，左向上/右向下) */}
+                {Math.abs(Math.sin(rad)) > 0.15 && (
+                  <g>
+                    {/* 左側導線受力 F (向上 ▲) */}
+                    <line x1={ptA.x} y1={ptA.y} x2={ptA.x} y2={ptA.y - 35} stroke="#10b981" strokeWidth="3" />
+                    <polygon points={`${ptA.x - 4},${ptA.y - 35} ${ptA.x},${ptA.y - 43} ${ptA.x + 4},${ptA.y - 35}`} fill="#10b981" />
+                    <text x={ptA.x - 22} y={ptA.y - 25} fill="#10b981" fontSize="11" fontWeight="bold">F (向上)</text>
+
+                    {/* 右側導線受力 F (向下 ▼) */}
+                    <line x1={ptD.x} y1={ptD.y} x2={ptD.x} y2={ptD.y + 35} stroke="#10b981" strokeWidth="3" />
+                    <polygon points={`${ptD.x - 4},${ptD.y + 35} ${ptD.x},${ptD.y + 43} ${ptD.x + 4},${ptD.y + 35}`} fill="#10b981" />
+                    <text x={ptD.x + 10} y={ptD.y + 30} fill="#10b981" fontSize="11" fontWeight="bold">F (向下)</text>
+                  </g>
+                )}
+
+                {/* 旋轉方向力矩弧形箭頭 (頂部順時針旋轉標示) */}
+                <path d="M 260 30 A 25 10 0 0 1 300 30" fill="none" stroke="#c084fc" strokeWidth="2.5" />
+                <polygon points="300,26 307,30 300,34" fill="#c084fc" />
+                <text x="280" y="15" textAnchor="middle" fill="#c084fc" fontSize="10" fontWeight="bold">旋轉方向 (順時針)</text>
+              </g>
+
+              {/* 5. 換向器：兩個半圓形金屬環 S1, S2 與電刷 B1, B2 */}
+              <g transform="translate(280, 215)">
+                {/* 軸心 */}
+                <circle cx="0" cy="0" r="14" fill="#1e293b" stroke="#64748b" strokeWidth="1.5" />
+
+                {/* 半圓集電環 S1, S2 (隨角度旋轉) */}
+                <g transform={`rotate(${motorAngle})`}>
+                  <path d="M -12 -3 A 12 12 0 0 1 12 -3 L 10 -3 A 10 10 0 0 0 -10 -3 Z" fill="#f59e0b" />
+                  <path d="M 12 3 A 12 12 0 0 1 -12 3 L -10 3 A 10 10 0 0 0 10 3 Z" fill="#d97706" />
+                  <text x="-16" y="-5" fill="#f59e0b" fontSize="9" fontWeight="bold">S1</text>
+                  <text x="10" y="12" fill="#d97706" fontSize="9" fontWeight="bold">S2</text>
+                </g>
+
+                {/* 固定電刷 B1 (左 +極), B2 (右 -極) */}
+                <rect x="-20" y="-5" width="6" height="10" fill="#94a3b8" rx="1" />
+                <text x="-32" y="3" fill="#ef4444" fontSize="10" fontWeight="bold">B1 (+)</text>
+
+                <rect x="14" y="-5" width="6" height="10" fill="#94a3b8" rx="1" />
+                <text x="23" y="3" fill="#3b82f6" fontSize="10" fontWeight="bold">B2 (-)</text>
+
+                {/* 電池 DC 電源迴路 (底部) */}
+                <path d="M -17 5 L -17 35 L -8 35 M 17 5 L 17 35 L 8 35" fill="none" stroke="#64748b" strokeWidth="1.5" />
+                
+                {/* 直流電池符號 */}
+                <line x1="-8" y1="28" x2="-8" y2="42" stroke="#ef4444" strokeWidth="2.5" />
+                <text x="-14" y="25" fill="#ef4444" fontSize="10" fontWeight="bold">+</text>
+
+                <line x1="-2" y1="32" x2="-2" y2="38" stroke="#3b82f6" strokeWidth="3.5" />
+                
+                <line x1="4" y1="28" x2="4" y2="42" stroke="#ef4444" strokeWidth="2.5" />
+                <line x1="10" y1="32" x2="10" y2="38" stroke="#3b82f6" strokeWidth="3.5" />
+                <text x="12" y="25" fill="#3b82f6" fontSize="10" fontWeight="bold">-</text>
+
+                <text x="0" y="54" textAnchor="middle" fill="#f59e0b" fontSize="9" fontWeight="bold">直流電源 E</text>
+              </g>
             </svg>
+
+            {/* 物理邏輯講義對照數據卡 */}
+            <div className="bg-slate-900 p-3.5 rounded-xl border border-slate-800 text-xs space-y-1.5 w-full mt-3 font-sans">
+              <p className="text-rose-300 font-bold flex items-center justify-between">
+                <span>🎯 理化講義對照說明（馬達/電動機）：</span>
+                <span className="text-amber-400 font-mono">
+                  {motorAngle <= 45 || motorAngle >= 315 ? '【初始位置 (0°)】' : motorAngle >= 45 && motorAngle <= 135 ? '【旋轉 90° (垂直點)】' : '【旋轉 180°】'}
+                </span>
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-slate-300 pt-1">
+                <p>• 磁場方向 B：<strong className="text-cyan-300">由 N 極向右指向 S 極</strong></p>
+                <p>• 電流換向：<strong className="text-amber-300">半圓環 (S1/S2) 每半圈切換一次</strong></p>
+                <p>• 電樞旋轉：<strong className="text-purple-300">受磁力矩推動持續順時針旋轉</strong></p>
+              </div>
+            </div>
           </div>
         </div>
       )}
