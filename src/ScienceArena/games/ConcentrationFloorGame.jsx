@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Heart, Trophy, RefreshCw, Droplet, Users, User } from 'lucide-react';
+import { Heart, Trophy, RefreshCw, Droplet } from 'lucide-react';
 
 export default function ConcentrationFloorGame({ mode = 'single', onGameOver }) {
   // 血條與遊戲狀態
@@ -8,7 +8,7 @@ export default function ConcentrationFloorGame({ mode = 'single', onGameOver }) 
   const [score, setScore] = useState(0);
   const [combo, setCombo] = useState(0);
   const [level, setLevel] = useState(1);
-  const [timeLeft, setTimeLeft] = useState(60); // [修改1] 單人模式時間延長至 60 秒
+  const [timeLeft, setTimeLeft] = useState(60); 
 
   // 雙人模式：輪流回合控制 ('p1' | 'p2')
   const [currentPlayer, setCurrentPlayer] = useState('p1');
@@ -23,7 +23,7 @@ export default function ConcentrationFloorGame({ mode = 'single', onGameOver }) 
   const isPouringRef = useRef(false);
   const pourTimerRef = useRef(null);
 
-  // 題目生成邏輯
+  // 題庫生成邏輯 (支援等級難度動態遞增)
   const generateRound = (currentLevel) => {
     const type = Math.random() > 0.5 ? 'typeA' : 'typeB';
     let roundData = {};
@@ -113,15 +113,16 @@ export default function ConcentrationFloorGame({ mode = 'single', onGameOver }) 
     return () => clearInterval(timer);
   }, [timeLeft, isFinished, mode]);
 
-  // [修改1 & 2] 作答判定 (單人扣10HP ｜ 雙人輪流攻防)
+  // 作答判定：單人與 PK 模式皆為一次扣 10 滴血，難度同步遞增
   const handleAnswer = (isCorrect) => {
     if (actionState !== 'idle' || isFinished) return;
+
+    const nextLevel = level + 1;
 
     if (mode === 'single') {
       // === 單人闖關邏輯 ===
       if (isCorrect) {
         setActionState('player_attack');
-        const nextLevel = level + 1;
         setLevel(nextLevel);
 
         setTimeout(() => {
@@ -129,7 +130,7 @@ export default function ConcentrationFloorGame({ mode = 'single', onGameOver }) 
           setCombo((prev) => prev + 1);
           setScore((prev) => prev + 20 + nextLevel * 5);
           setEnemyHp((prev) => {
-            const nextHp = Math.max(0, prev - 10); // [修改1] 答對扣 10 滴血，答對 10 次通關
+            const nextHp = Math.max(0, prev - 10); // 答對扣 10 滴血
             if (nextHp === 0) setTimeout(() => setIsFinished(true), 600);
             return nextHp;
           });
@@ -157,30 +158,29 @@ export default function ConcentrationFloorGame({ mode = 'single', onGameOver }) 
         }, 900);
       }
     } else {
-      // === [修改2] 雙人 PK 輪流作答邏輯 ===
+      // === 雙人 PK 輪流作答邏輯 (一次扣 10 滴血，難度逐漸遞增) ===
       const isP1 = currentPlayer === 'p1';
 
       if (isCorrect) {
-        // 當前回合玩家成功攻擊對方
+        setLevel(nextLevel); // PK 模式答對難度提升
         setActionState(isP1 ? 'player_attack' : 'enemy_attack');
         setTimeout(() => {
           setActionState(isP1 ? 'enemy_hit' : 'player_hit');
           if (isP1) {
             setEnemyHp((prev) => {
-              const nextHp = Math.max(0, prev - 20);
+              const nextHp = Math.max(0, prev - 10); // PK 模式扣 10 滴血
               if (nextHp === 0) setTimeout(() => setIsFinished(true), 600);
               return nextHp;
             });
           } else {
             setPlayerHp((prev) => {
-              const nextHp = Math.max(0, prev - 20);
+              const nextHp = Math.max(0, prev - 10); // PK 模式扣 10 滴血
               if (nextHp === 0) setTimeout(() => setIsFinished(true), 600);
               return nextHp;
             });
           }
         }, 250);
       } else {
-        // 當前回合玩家答錯自扣血量
         setActionState(isP1 ? 'enemy_attack' : 'player_attack');
         setTimeout(() => {
           setActionState(isP1 ? 'player_hit' : 'enemy_hit');
@@ -200,21 +200,21 @@ export default function ConcentrationFloorGame({ mode = 'single', onGameOver }) 
         }, 250);
       }
 
-      // 換下一位玩家回合
+      // 換下一位玩家回合，帶入提升後的等級
       setTimeout(() => {
         setActionState('idle');
         setCurrentPlayer(isP1 ? 'p2' : 'p1');
-        if (playerHp > 20 && enemyHp > 20) generateRound(level + 1);
+        if (playerHp > 10 && enemyHp > 10) generateRound(nextLevel);
       }, 900);
     }
   };
 
-  // 放慢的注水速率控制
+  // 注水控制
   const startPouring = () => {
     if (isPouringRef.current || actionState !== 'idle') return;
     isPouringRef.current = true;
     
-    const increment = currentRound.maxGauge === 1000 ? 5 : 1; // 放慢流速 (5g / 1%)
+    const increment = currentRound.maxGauge === 1000 ? 5 : 1; 
 
     pourTimerRef.current = setInterval(() => {
       setP1PourValue((prev) => Math.min(currentRound.maxGauge, prev + increment));
@@ -239,18 +239,21 @@ export default function ConcentrationFloorGame({ mode = 'single', onGameOver }) 
 
   return (
     <div className="bg-slate-950 border border-slate-800 rounded-3xl p-4 md:p-8 max-w-4xl mx-auto space-y-6 text-slate-100 select-none overflow-hidden">
-      {/* 1. 頂部資訊列 */}
+      {/* 頂部資訊列 */}
       <div className="flex justify-between items-center border-b border-slate-800 pb-4">
         <div>
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-black bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 px-2.5 py-1 rounded-lg uppercase tracking-wider">
               Heaven's Arena • Floor 10F ({mode === 'pvp' ? '雙人輪流 PK' : '單人闖關'})
             </span>
+            <span className="text-[10px] font-bold text-amber-300 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-md">
+              難度 Lvl.{level}
+            </span>
             {mode === 'pvp' && (
               <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-md border ${
                 currentPlayer === 'p1' ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40' : 'bg-rose-500/20 text-rose-300 border-rose-500/40'
               }`}>
-                👉 當前回合：{currentPlayer === 'p1' ? 'Player 1' : 'Player 2'}
+                👉 當前攻擊：{currentPlayer === 'p1' ? 'Player 1' : 'Player 2'}
               </span>
             )}
           </div>
@@ -278,7 +281,7 @@ export default function ConcentrationFloorGame({ mode = 'single', onGameOver }) 
         </div>
       </div>
 
-      {/* 2. 對戰角色舞台 */}
+      {/* 對戰舞台 */}
       {!isFinished && currentRound && (
         <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 relative flex justify-between items-center min-h-[200px]">
           {/* P1 角色 */}
@@ -310,7 +313,7 @@ export default function ConcentrationFloorGame({ mode = 'single', onGameOver }) 
 
           {/* P2 / 關主 角色 */}
           <div className={`flex flex-col items-center gap-2 z-10 transition-all duration-300 ${actionState === 'enemy_attack' ? '-translate-x-12 scale-110' : ''} ${actionState === 'enemy_hit' ? 'translate-x-4 animate-shake text-rose-500' : ''}`}>
-            {actionState === 'enemy_hit' && <span className="absolute -top-8 text-amber-400 font-black text-xl animate-bounce">{mode === 'single' ? '-10 HP!' : '-20 HP!'}</span>}
+            {actionState === 'enemy_hit' && <span className="absolute -top-8 text-amber-400 font-black text-xl animate-bounce">-10 HP!</span>}
             <div className={`w-20 h-20 md:w-24 md:h-24 rounded-2xl border-2 flex items-center justify-center relative shadow-lg ${
               mode === 'pvp' && currentPlayer === 'p2' ? 'border-amber-400 bg-rose-600/30 ring-4 ring-amber-400/30' : 'border-rose-500 bg-rose-600/20'
             }`}>
@@ -332,7 +335,7 @@ export default function ConcentrationFloorGame({ mode = 'single', onGameOver }) 
         </div>
       )}
 
-      {/* 3. 題目面板 */}
+      {/* 題目卡片 */}
       {!isFinished && currentRound && (
         <div className="space-y-4">
           <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl space-y-2 text-center">
@@ -347,7 +350,7 @@ export default function ConcentrationFloorGame({ mode = 'single', onGameOver }) 
             </p>
           </div>
 
-          {/* 4. 單人：4選1 ｜ PK：帶有 0%~100% 比例刻度線之水龍頭量筒 */}
+          {/* 單人模式：4選1 ｜ PK 模式：水龍頭注水控制 */}
           {mode === 'single' ? (
             <div className="grid grid-cols-2 gap-3">
               {currentRound.options.map((opt, idx) => (
@@ -362,7 +365,6 @@ export default function ConcentrationFloorGame({ mode = 'single', onGameOver }) 
               ))}
             </div>
           ) : (
-            /* [還原與優化] 帶有比例刻度線與放慢注水速之水龍頭介面 */
             <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl text-center space-y-5">
               <div className="flex justify-between items-center text-xs font-mono">
                 <span className="text-slate-400">
@@ -373,16 +375,14 @@ export default function ConcentrationFloorGame({ mode = 'single', onGameOver }) 
                 </span>
               </div>
 
-              {/* 帶有 25%、50%、75%、100% 視覺刻度線的量筒 */}
+              {/* 量筒刻度線 */}
               <div className="space-y-1">
                 <div className="w-full bg-slate-950 h-12 rounded-2xl border border-slate-700 relative overflow-hidden flex items-center p-1 shadow-inner">
-                  {/* 注水流 */}
                   <div
                     className="bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 h-full rounded-xl transition-all duration-75"
                     style={{ width: `${(p1PourValue / currentRound.maxGauge) * 100}%` }}
                   />
 
-                  {/* 等比例刻度線 (25%, 50%, 75%) */}
                   <div className="absolute inset-0 flex justify-between px-2 pointer-events-none items-center">
                     <div className="w-0.5 h-full bg-slate-700/80" style={{ left: '25%' }} />
                     <div className="w-0.5 h-full bg-slate-500/80" style={{ left: '50%' }} />
@@ -390,7 +390,6 @@ export default function ConcentrationFloorGame({ mode = 'single', onGameOver }) 
                   </div>
                 </div>
 
-                {/* 刻度標籤數字 */}
                 <div className="flex justify-between text-[10px] font-mono text-slate-400 px-1">
                   <span>0{currentRound.unit}</span>
                   <span>{currentRound.maxGauge * 0.25}{currentRound.unit}</span>
@@ -420,7 +419,7 @@ export default function ConcentrationFloorGame({ mode = 'single', onGameOver }) 
         </div>
       )}
 
-      {/* 5. 結算畫面 */}
+      {/* 結算畫面 */}
       {isFinished && (
         <div className="text-center space-y-6 py-8 max-w-md mx-auto">
           <Trophy className="w-16 h-16 text-amber-400 mx-auto animate-bounce" />
@@ -432,11 +431,15 @@ export default function ConcentrationFloorGame({ mode = 'single', onGameOver }) 
               }
             </h3>
             <p className="text-xs text-slate-400 mt-1">
-              {enemyHp === 0 ? '成功擊敗關主通關！準許晉級更高樓層！' : '熟記 P% = 溶質 / 溶液，手算預估刻度就能輕鬆擊破！'}
+              {enemyHp === 0 ? '成功擊倒對手！準許晉級更高樓層！' : '熟記 P% = 溶質 / 溶液，手算預估刻度就能輕鬆擊破！'}
             </p>
           </div>
 
           <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-2 text-xs font-mono">
+            <div className="flex justify-between py-1 border-b border-slate-800">
+              <span className="text-slate-400">達到最高難度：</span>
+              <span className="font-bold text-amber-400">Lvl.{level}</span>
+            </div>
             <div className="flex justify-between py-1 border-b border-slate-800">
               <span className="text-slate-400">最終戰力積分：</span>
               <span className="font-bold text-indigo-400">{score} PTS</span>
