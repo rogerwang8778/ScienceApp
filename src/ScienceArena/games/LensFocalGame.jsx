@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy, RefreshCw, Zap } from 'lucide-react';
+import { Trophy, RefreshCw, Zap, CheckCircle2 } from 'lucide-react';
 
 export default function LensFocalGame({ mode = 'single', onGameOver }) {
   // 血條與遊戲狀態
@@ -17,7 +17,10 @@ export default function LensFocalGame({ mode = 'single', onGameOver }) {
   const [currentRound, setCurrentRound] = useState(null);
   const [isFinished, setIsFinished] = useState(false);
 
-  // 10 題固定題型佇列生成 (確保 10 題中精準包含所要求題型比例)
+  // 答題反饋視覺狀態 (用於作答後揭曉完整物體與像的圖示)
+  const [showFeedback, setShowFeedback] = useState(false);
+
+  // 10 題固定題型佇列生成
   const [questionQueue, setQuestionQueue] = useState([]);
 
   // 玩家點選的狀態
@@ -25,7 +28,7 @@ export default function LensFocalGame({ mode = 'single', onGameOver }) {
   const [selectedType, setSelectedType] = useState(null);               
   const [selectedSize, setSelectedSize] = useState(null);               
   const [selectedPos, setSelectedPos] = useState(null);                 
-  const [selectedTextOpt, setSelectedTextOpt] = useState(null);          // 趨勢/選擇題答案
+  const [selectedTextOpt, setSelectedTextOpt] = useState(null);          
   const [isNoImage, setIsNoImage] = useState(false);                    
 
   const resetSelections = () => {
@@ -35,6 +38,7 @@ export default function LensFocalGame({ mode = 'single', onGameOver }) {
     setSelectedPos(null);
     setSelectedTextOpt(null);
     setIsNoImage(false);
+    setShowFeedback(false);
   };
 
   // ==========================================
@@ -49,6 +53,7 @@ export default function LensFocalGame({ mode = 'single', onGameOver }) {
         qType: 'concave',
         lensType: 'concave',
         objPos: 'f_2f',
+        showMode: 'obj_only',
         prompt: '【凹透鏡】蠟燭置於透鏡前方，請點選正確的成像性質與位置：',
         targetAns: { orientation: '正立', type: '虛像', size: '縮小', pos: '透鏡同側', noImage: false }
       },
@@ -56,57 +61,63 @@ export default function LensFocalGame({ mode = 'single', onGameOver }) {
         qType: 'concave',
         lensType: 'concave',
         objPos: '2f_out',
+        showMode: 'obj_only',
         prompt: '【凹透鏡】蠟燭置於 2f 外時，請點選正確的成像性質與位置：',
         targetAns: { orientation: '正立', type: '虛像', size: '縮小', pos: '透鏡同側', noImage: false }
       }
     );
 
-    // [類型 2] 1 題：給像位置 ➔ 反問物體位置
+    // [類型 2] 1 題：給像位置 ➔ 反問物體位置 (圖示隱藏物體，只給像)
     queue.push({
       qType: 'text_choice',
       lensType: 'convex',
       objPos: 'f_2f',
+      imgPos: '2f_out',
+      showMode: 'img_only',
       prompt: '【凸透鏡】紙屏上的像出現在「2f 外」，則蠟燭（物體）擺放在何處？',
       options: ['f ~ 2f 之間', '2f 外', '2f 上', 'f 內'],
       correctAns: 'f ~ 2f 之間'
     });
 
-    // [類型 3] 1 題：給像性質 ➔ 反問物體位置
+    // [類型 3] 1 題：給像性質 ➔ 反問物體位置 (圖示隱藏物體，只給像)
     queue.push({
       qType: 'text_choice',
       lensType: 'convex',
       objPos: 'f_2f',
-      prompt: '【凸透鏡】若希望在紙屏上得到一個「放大倒立實像」，蠟燭應擺在何處？',
+      imgPos: '2f_out',
+      showMode: 'img_only',
+      prompt: '【凸透鏡】若要在紙屏上得到一個「放大倒立實像」，蠟燭應擺在何處？',
       options: ['f ~ 2f 之間', '2f 外', '2f 上', 'f 內'],
       correctAns: 'f ~ 2f 之間'
     });
 
-    // [類型 4] 2 題：像的大小控制趨勢 (焦點外 1 題, 焦點內 1 題)
-    // 焦點外實像 (要更大像 ➔ 物體向右/靠近 f)
+    // [類型 4] 2 題：像的大小控制趨勢
     queue.push({
       qType: 'text_choice',
       lensType: 'convex',
       objPos: '2f_out',
+      showMode: 'obj_only',
       prompt: '【凸透鏡】蠟燭原本在 2f 外（實像），若希望得到「比現在更大」的像，蠟燭要向哪裡移動？',
       options: ['向右移動 (靠近焦點 f)', '向左移動 (遠離透鏡)', '保持不動', '上下垂直移動'],
       correctAns: '向右移動 (靠近焦點 f)'
     });
 
-    // 焦點內虛像 (要更大像 ➔ 物體向左/遠離透鏡/靠近 f)
     queue.push({
       qType: 'text_choice',
       lensType: 'convex',
       objPos: 'f_in',
+      showMode: 'obj_only',
       prompt: '【凸透鏡】蠟燭原本在 f 內（虛像），若希望得到「比現在更大」的虛像，蠟燭要向哪裡移動？',
       options: ['向左移動 (靠近焦點 f)', '向右移動 (靠近透鏡)', '保持不動', '向下移動'],
       correctAns: '向左移動 (靠近焦點 f)'
     });
 
-    // [類型 5] 1 題：物與像的移動方向趨勢 (物右像右, 物左像左)
+    // [類型 5] 1 題：物與像的移動方向趨勢
     queue.push({
       qType: 'text_choice',
       lensType: 'convex',
       objPos: 'f_2f',
+      showMode: 'both',
       prompt: '【凸透鏡】當蠟燭（物體）向「右」移動時，紙屏上的實像會向哪裡移動？',
       options: ['向右移動', '向左移動', '保持不動', '向上移動'],
       correctAns: '向右移動'
@@ -118,6 +129,7 @@ export default function LensFocalGame({ mode = 'single', onGameOver }) {
         qType: 'matrix',
         lensType: 'convex',
         objPos: '2f_out',
+        showMode: 'obj_only',
         prompt: '【凸透鏡】蠟燭擺在【2f 外】時，請點選正確的成像性質與位置：',
         targetAns: { orientation: '倒立', type: '實像', size: '縮小', pos: 'f與2f之間', noImage: false }
       },
@@ -125,6 +137,7 @@ export default function LensFocalGame({ mode = 'single', onGameOver }) {
         qType: 'matrix',
         lensType: 'convex',
         objPos: '2f_on',
+        showMode: 'obj_only',
         prompt: '【凸透鏡】蠟燭擺在【2f 上】時，請點選正確的成像性質與位置：',
         targetAns: { orientation: '倒立', type: '實像', size: '相等', pos: '2f上', noImage: false }
       },
@@ -132,12 +145,12 @@ export default function LensFocalGame({ mode = 'single', onGameOver }) {
         qType: 'matrix',
         lensType: 'convex',
         objPos: 'f_on',
+        showMode: 'obj_only',
         prompt: '【凸透鏡】蠟燭擺在【f 上 (焦點)】時，請點選正確的成像性質與位置：',
         targetAns: { noImage: true }
       }
     );
 
-    // 打亂題目順序
     return queue.sort(() => 0.5 - Math.random());
   };
 
@@ -147,7 +160,7 @@ export default function LensFocalGame({ mode = 'single', onGameOver }) {
     setCurrentRound(queue[0]);
   }, []);
 
-  // 單人倒數計時器
+  // 單人計時器
   useEffect(() => {
     let timer = null;
     if (mode === 'single' && !isFinished && timeLeft > 0) {
@@ -185,6 +198,9 @@ export default function LensFocalGame({ mode = 'single', onGameOver }) {
     const nextLevel = level + 1;
     const nextQIdx = questionCount + 1;
 
+    // 開啟揭曉模式 (顯示全圖答案解析)
+    setShowFeedback(true);
+
     if (mode === 'single') {
       if (isCorrect) {
         setActionState('player_attack');
@@ -208,7 +224,7 @@ export default function LensFocalGame({ mode = 'single', onGameOver }) {
             setQuestionCount(nextQIdx);
             setCurrentRound(questionQueue[nextQIdx - 1]);
           }
-        }, 900);
+        }, 1200);
       } else {
         setActionState('enemy_attack');
         setTimeout(() => {
@@ -228,10 +244,10 @@ export default function LensFocalGame({ mode = 'single', onGameOver }) {
             setQuestionCount(nextQIdx);
             setCurrentRound(questionQueue[nextQIdx - 1]);
           }
-        }, 900);
+        }, 1200);
       }
     } else {
-      // 雙人 PK 輪流作答
+      // 雙人 PK
       const isP1 = currentPlayer === 'p1';
 
       if (isCorrect) {
@@ -283,7 +299,7 @@ export default function LensFocalGame({ mode = 'single', onGameOver }) {
           setQuestionCount(nextQIdx);
           setCurrentRound(questionQueue[nextQIdx - 1]);
         }
-      }, 900);
+      }, 1200);
     }
   };
 
@@ -297,14 +313,14 @@ export default function LensFocalGame({ mode = 'single', onGameOver }) {
     : isNoImage || (selectedOrientation && selectedType && selectedSize && selectedPos);
 
   // ==========================================
-  // 3. SVG 光學畫布
+  // 3. SVG 動態光學畫布 (可選擇隱藏/顯現 物體與像)
   // ==========================================
   const renderOpticsCanvas = () => {
     if (!currentRound) return null;
 
     const width = 360;
-    const height = 100;
-    const centerY = 50;
+    const height = 110;
+    const centerY = 55;
     const lensX = 180;
 
     const f1 = lensX - 50;
@@ -312,17 +328,40 @@ export default function LensFocalGame({ mode = 'single', onGameOver }) {
     const f1_right = lensX + 50;
     const f2_right = lensX + 100;
 
+    // 計算物體蠟燭 X 座標
     let candleX = f2 - 30;
     if (currentRound.objPos === '2f_on') candleX = f2;
     else if (currentRound.objPos === 'f_2f') candleX = (f1 + f2) / 2;
     else if (currentRound.objPos === 'f_on') candleX = f1;
     else if (currentRound.objPos === 'f_in') candleX = f1 + 25;
 
+    // 計算成像 X 座標與性質 (倒立/正立, 放大/縮小)
+    let imgX = f2_right + 30; // 預設 2f 外 (放大實像)
+    let isInverted = true;
+    let imgScale = 1.4;
+
+    if (currentRound.objPos === '2f_out') {
+      imgX = (f1_right + f2_right) / 2; // f~2f 之間
+      imgScale = 0.7;
+    } else if (currentRound.objPos === '2f_on') {
+      imgX = f2_right;
+      imgScale = 1.0;
+    } else if (currentRound.objPos === 'f_in') {
+      imgX = f2 - 20; // 虛像在同側
+      isInverted = false;
+      imgScale = 1.5;
+    }
+
+    // 是否隱藏物體 / 隱藏像
+    const shouldHideObject = currentRound.showMode === 'img_only' && !showFeedback;
+    const shouldShowImage = (currentRound.showMode === 'img_only' || currentRound.showMode === 'both' || showFeedback) && currentRound.objPos !== 'f_on';
+
     return (
       <div className="relative w-full flex justify-center items-center py-2 overflow-hidden bg-slate-950/80 rounded-2xl border border-slate-800">
         <svg width={width} height={height} className="overflow-visible">
           <line x1="10" y1={centerY} x2={width - 10} y2={centerY} stroke="#64748b" strokeWidth="2" strokeDasharray="4 4" />
 
+          {/* 刻度線 */}
           <g fill="#94a3b8" fontSize="10" textAnchor="middle" fontWeight="bold">
             <line x1={f2} y1={centerY - 6} x2={f2} y2={centerY + 6} stroke="#94a3b8" strokeWidth="2" />
             <text x={f2} y={centerY + 18}>2F</text>
@@ -337,6 +376,7 @@ export default function LensFocalGame({ mode = 'single', onGameOver }) {
             <text x={f2_right} y={centerY + 18}>2F</text>
           </g>
 
+          {/* 透鏡繪製 */}
           {currentRound.lensType === 'convex' ? (
             <path
               d={`M ${lensX} ${centerY - 40} Q ${lensX + 16} ${centerY}, ${lensX} ${centerY + 40} Q ${lensX - 16} ${centerY}, ${lensX} ${centerY - 40}`}
@@ -353,13 +393,38 @@ export default function LensFocalGame({ mode = 'single', onGameOver }) {
             />
           )}
 
-          <g transform={`translate(${candleX}, ${centerY})`}>
-            <circle cx="0" cy="-26" r="4" fill="#fbbf24" className="animate-ping opacity-75" />
-            <circle cx="0" cy="-26" r="3" fill="#f97316" />
-            <rect x="-3" y="-20" width="6" height="20" fill="#e2e8f0" rx="1" />
-            <text x="0" y="14" textAnchor="middle" fill="#fbbf24" fontSize="10" fontWeight="bold">🕯️ 物體</text>
-          </g>
+          {/* 物體 (蠟燭) - 當 showMode 為 img_only 且未解答時隱藏 */}
+          {!shouldHideObject && (
+            <g transform={`translate(${candleX}, ${centerY})`}>
+              <circle cx="0" cy="-26" r="4" fill="#fbbf24" className="animate-ping opacity-75" />
+              <circle cx="0" cy="-26" r="3" fill="#f97316" />
+              <rect x="-3" y="-20" width="6" height="20" fill="#e2e8f0" rx="1" />
+              <text x="0" y="14" textAnchor="middle" fill="#fbbf24" fontSize="10" fontWeight="bold">🕯️ 物體</text>
+            </g>
+          )}
+
+          {/* 成像 (虛像/實像 蠟燭) */}
+          {shouldShowImage && (
+            <g
+              transform={`translate(${imgX}, ${centerY}) scale(${imgScale}, ${isInverted ? -imgScale : imgScale})`}
+              opacity={currentRound.objPos === 'f_in' ? 0.6 : 0.9}
+            >
+              <circle cx="0" cy="-26" r="4" fill="#38bdf8" className="animate-ping opacity-75" />
+              <circle cx="0" cy="-26" r="3" fill="#0284c7" />
+              <rect x="-3" y="-20" width="6" height="20" fill="#94a3b8" rx="1" />
+              <text x="0" y={isInverted ? -8 : 14} transform={isInverted ? "scale(1, -1)" : ""} textAnchor="middle" fill="#38bdf8" fontSize="8" fontWeight="bold">
+                🖼️ 成像
+              </text>
+            </g>
+          )}
         </svg>
+
+        {/* 答題完成後的定格解析貼紙 */}
+        {showFeedback && (
+          <div className="absolute bottom-1 bg-emerald-500/90 text-white font-black text-xs px-3 py-0.5 rounded-full shadow-lg border border-emerald-300 animate-bounce flex items-center gap-1">
+            <CheckCircle2 className="w-3.5 h-3.5" /> 正確解答圖示揭曉
+          </div>
+        )}
       </div>
     );
   };
