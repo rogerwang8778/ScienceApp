@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy, RefreshCw, Zap, CheckCircle2, Flame } from 'lucide-react';
+import { Trophy, RefreshCw, Zap, CheckCircle2, Flame, Timer } from 'lucide-react';
 
 export default function LensFocalGame({ mode = 'single', onGameOver }) {
   // 血條與遊戲狀態
@@ -11,13 +11,14 @@ export default function LensFocalGame({ mode = 'single', onGameOver }) {
   const [timeLeft, setTimeLeft] = useState(60);
   const [questionCount, setQuestionCount] = useState(1);
 
-  // 雙人 PK 輪流控制與計時
+  // 雙人 PK 輪流控制與 3 秒倒數計時
   const [currentPlayer, setCurrentPlayer] = useState('p1');
   const [actionState, setActionState] = useState('idle');
   const [currentRound, setCurrentRound] = useState(null);
   const [isFinished, setIsFinished] = useState(false);
-  const [roundStartTime, setRoundStartTime] = useState(Date.now()); // 紀錄開局時間
-  const [isCritical, setIsCritical] = useState(false);               // 是否觸發 3 秒爆擊
+  const [roundStartTime, setRoundStartTime] = useState(Date.now()); 
+  const [critTimerLeft, setCritTimerLeft] = useState(3.0); // 3 秒雙倍暴擊倒數
+  const [isCritical, setIsCritical] = useState(false);               
 
   // 答題反饋視覺狀態
   const [showFeedback, setShowFeedback] = useState(false);
@@ -40,8 +41,22 @@ export default function LensFocalGame({ mode = 'single', onGameOver }) {
     setIsNoImage(false);
     setShowFeedback(false);
     setIsCritical(false);
-    setRoundStartTime(Date.now()); // 重置題目計時器
+    setRoundStartTime(Date.now());
+    setCritTimerLeft(3.0);
   };
+
+  // 3 秒暴擊倒數計時器
+  useEffect(() => {
+    let interval = null;
+    if (!isFinished && actionState === 'idle' && currentRound) {
+      interval = setInterval(() => {
+        const elapsed = (Date.now() - roundStartTime) / 1000;
+        const remaining = Math.max(0, 3.0 - elapsed);
+        setCritTimerLeft(remaining);
+      }, 50);
+    }
+    return () => clearInterval(interval);
+  }, [roundStartTime, actionState, isFinished, currentRound]);
 
   const generateTenQuestionQueue = () => {
     const queue = [];
@@ -171,13 +186,13 @@ export default function LensFocalGame({ mode = 'single', onGameOver }) {
   }, [timeLeft, isFinished, mode]);
 
   // ==========================================
-  // 2. 驗證作答與 3 秒雙倍爆擊
+  // 驗證作答與 3 秒雙倍爆擊
   // ==========================================
   const handleSubmitAnswer = () => {
     if (!currentRound || isFinished || actionState !== 'idle') return;
 
-    const answerTime = (Date.now() - roundStartTime) / 1000; // 計算作答耗時 (秒)
-    const criticalHit = answerTime <= 3.0; // 3秒內答對判定
+    const answerTime = (Date.now() - roundStartTime) / 1000; 
+    const criticalHit = answerTime <= 3.0; // 3秒速答判定
 
     let isCorrect = false;
     if (currentRound.qType === 'text_choice') {
@@ -249,12 +264,12 @@ export default function LensFocalGame({ mode = 'single', onGameOver }) {
         }, 1200);
       }
     } else {
-      // === 雙人 PK 模式：3秒速答雙倍扣對方 HP ===
+      // 雙人 PK 模式
       const isP1 = currentPlayer === 'p1';
 
       if (isCorrect) {
         setIsCritical(criticalHit);
-        const damage = criticalHit ? 20 : 10; // 3 秒內雙倍傷害 (扣 20 HP)
+        const damage = criticalHit ? 20 : 10;
 
         setLevel(nextLevel);
         setActionState(isP1 ? 'player_attack' : 'enemy_attack');
@@ -477,7 +492,7 @@ export default function LensFocalGame({ mode = 'single', onGameOver }) {
       {/* 對戰角色擂台 */}
       {!isFinished && currentRound && (
         <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 relative flex justify-between items-center min-h-[180px]">
-          {/* 3 秒速答爆擊標籤 */}
+          {/* 暴擊結果浮貼標籤 */}
           {isCritical && (
             <div className="absolute top-2 left-1/2 -translate-x-12 z-30 bg-amber-500 text-slate-950 font-black text-xs px-3 py-1 rounded-full shadow-xl border-2 border-amber-300 animate-bounce flex items-center gap-1">
               <Flame className="w-4 h-4 fill-current text-rose-600" /> ⚡ CRITICAL! 3秒速答雙倍傷害 (-20 HP)
@@ -542,6 +557,31 @@ export default function LensFocalGame({ mode = 'single', onGameOver }) {
       {/* 答題介面區 */}
       {!isFinished && currentRound && (
         <div className="space-y-4">
+          {/* 超明顯 3 秒速答動態倒數提示條 */}
+          <div className="bg-slate-900 border border-slate-800 p-3 rounded-2xl space-y-1.5 relative overflow-hidden">
+            <div className="flex justify-between items-center text-xs font-bold px-1">
+              <span className="flex items-center gap-1.5 text-amber-300">
+                <Timer className="w-4 h-4 text-amber-400 animate-spin" />
+                {critTimerLeft > 0 ? '⚡ 3秒速答倒數 (雙倍 20HP 傷害暴擊區)：' : '⏱️ 3秒爆擊超時：'}
+              </span>
+              <span className={`font-mono text-sm font-black ${critTimerLeft > 0 ? 'text-amber-400 animate-pulse' : 'text-slate-500'}`}>
+                {critTimerLeft > 0 ? `${critTimerLeft.toFixed(1)}s` : '普攻模式 (10 HP)'}
+              </span>
+            </div>
+
+            {/* 倒數能量進度條 */}
+            <div className="w-full bg-slate-950 h-2.5 rounded-full border border-slate-800 p-0.5 relative overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-75 ${
+                  critTimerLeft > 0 
+                    ? 'bg-gradient-to-r from-amber-500 via-yellow-400 to-cyan-400 shadow-[0_0_12px_rgba(251,191,36,0.8)]' 
+                    : 'bg-slate-700 opacity-40'
+                }`}
+                style={{ width: `${(critTimerLeft / 3.0) * 100}%` }}
+              />
+            </div>
+          </div>
+
           <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl text-center space-y-2">
             {renderOpticsCanvas()}
             <h3 className="text-sm md:text-base font-black text-white mt-1">
