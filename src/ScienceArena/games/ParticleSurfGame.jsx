@@ -3,10 +3,10 @@ import { Trophy, RefreshCw, ArrowRight, ArrowLeft, ArrowUp, ArrowDown, Waves } f
 
 export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
   // 單人模式狀態
-  const [progress, setProgress] = useState(0); // 0 ~ 10
+  const [progress, setProgress] = useState(0); 
   const [timeLeft, setTimeLeft] = useState(60);
   const [score, setScore] = useState(0);
-  const [questionCount, setQuestionCount] = useState(1); // 記錄答題題號 (1~3 題為方向題)
+  const [questionCount, setQuestionCount] = useState(1);
 
   // 雙人 PK 模式獨立進度
   const [p1Progress, setP1Progress] = useState(0);
@@ -16,29 +16,29 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
 
   // 當前回合與視覺動態狀態
   const [singleRound, setSingleRound] = useState(null);
-  const [actionState, setActionState] = useState('idle'); // 'idle' | 'success' | 'fall'
+  const [actionState, setActionState] = useState('idle'); 
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
 
   // ==========================================
-  // 1. 精準物理邏輯與題型遞增生成器
+  // 1. 校正物理邏輯與題型遞增生成器
   // ==========================================
   const generateParticleQuestion = (qIndex) => {
     const waveDirection = Math.random() > 0.5 ? 'right' : 'left';
 
     if (qIndex <= 3) {
-      // === 前 3 題：瞬間運動方向判斷 ===
-      // 選定介面斜率點：45° (上升段), 135° (下降段), 225° (下降段), 315° (上升段)
+      // 前 3 題：瞬間運動方向判斷
+      // 選定 45° (波峰左側斜率為正), 135° (波峰右側斜率為負), 225° (波谷左側斜率為負), 315° (波谷右側斜率為正)
       const phases = [45, 135, 225, 315];
       const particlePhase = phases[Math.floor(Math.random() * phases.length)];
 
       let correctAns = '';
       if (waveDirection === 'right') {
-        // 波向右傳：45° 與 315° 向上，135° 與 225° 向下
-        correctAns = (particlePhase === 45 || particlePhase === 315) ? '向上移動' : '向下移動';
-      } else {
-        // 波向左傳：45° 與 315° 向下，135° 與 225° 向上
+        // 波向右傳：斜率 > 0 (45°, 315°) ➔ 質點向下；斜率 < 0 (135°, 225°) ➔ 質點向上
         correctAns = (particlePhase === 45 || particlePhase === 315) ? '向下移動' : '向上移動';
+      } else {
+        // 波向左傳：斜率 > 0 (45°, 315°) ➔ 質點向上；斜率 < 0 (135°, 225°) ➔ 質點向下
+        correctAns = (particlePhase === 45 || particlePhase === 315) ? '向上移動' : '向下移動';
       }
 
       return {
@@ -52,17 +52,14 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
         particleName: '介面質點 P'
       };
     } else {
-      // === 第 3 題後：週期位移題型 (1/4T, 2/4T, 3/4T, 4/4T) ===
-      const isTypeA = Math.random() > 0.5; // Type A: 算隨後位置 ｜ Type B: 算最快週期
+      // 第 3 題後：週期位移題型 (1/4T ~ 4/4T)
+      const isTypeA = Math.random() > 0.5;
 
       if (isTypeA) {
-        // 題型 A：經過 Δt 後，衝浪手在什麼位置？
-        const startPhases = [0, 90, 180, 270]; // 0:平衡(升), 90:波峰, 180:平衡(降), 270:波谷
+        const startPhases = [0, 90, 180, 270];
         const startPhase = startPhases[Math.floor(Math.random() * startPhases.length)];
-        const deltaQuarters = [1, 2, 3, 4][Math.floor(Math.random() * 4)]; // 1/4T ~ 4/4T
+        const deltaQuarters = [1, 2, 3, 4][Math.floor(Math.random() * 4)];
 
-        // 質點隨著時間推移，相位增加 (質點振動一週期 = 360°)
-        // 注意：微移法中，若波向右傳，介面質點隨時間發展的相位變化是按時間前進 (+90° * deltaQuarters)
         const finalPhase = (startPhase + deltaQuarters * 90) % 360;
 
         let correctAns = '';
@@ -83,16 +80,14 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
           particleName: '衝浪手'
         };
       } else {
-        // 題型 B：到達目標位置，最快要幾個週期？
-        const startPhases = [0, 90, 270]; // 0:平衡, 90:波峰, 270:波谷
+        const startPhases = [0, 90, 270];
         const startPhase = startPhases[Math.floor(Math.random() * startPhases.length)];
         
         let targetPhase = 90;
-        if (startPhase === 90) targetPhase = 270; // 波峰 ➔ 波谷
-        else if (startPhase === 270) targetPhase = 90; // 波谷 ➔ 波峰
-        else targetPhase = Math.random() > 0.5 ? 90 : 270; // 平衡 ➔ 波峰或波谷
+        if (startPhase === 90) targetPhase = 270;
+        else if (startPhase === 270) targetPhase = 90;
+        else targetPhase = Math.random() > 0.5 ? 90 : 270;
 
-        // 計算所需 1/4T 個數
         let diff = (targetPhase - startPhase + 360) % 360;
         const requiredQuarters = diff / 90;
         const correctAns = `${requiredQuarters}/4 個週期`;
@@ -128,7 +123,7 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
     generateNextRounds(1);
   }, [mode]);
 
-  // 單人倒數計時器
+  // 計時器
   useEffect(() => {
     let timer = null;
     if (mode === 'single' && !isFinished && timeLeft > 0) {
@@ -139,9 +134,7 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
     return () => clearInterval(timer);
   }, [timeLeft, isFinished, mode]);
 
-  // ==========================================
-  // 2. 單人與 PK 模式作答邏輯
-  // ==========================================
+  // 作答邏輯
   const handleSingleAnswer = (userAns) => {
     if (actionState !== 'idle' || isFinished) return;
 
@@ -167,7 +160,7 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
     } else {
       setActionState('fall');
       setShowAnalysis(true);
-      setProgress((prev) => Math.max(0, prev - 1)); // 答錯被浪往後衝
+      setProgress((prev) => Math.max(0, prev - 1));
 
       setTimeout(() => {
         setActionState('idle');
@@ -213,7 +206,7 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
   };
 
   // ==========================================
-  // 3. SVG 微移法與正弦波畫布
+  // SVG 動態波浪畫布與動畫呈現
   // ==========================================
   const renderWaveCanvas = (roundData, isFallAnimation = false) => {
     if (!roundData) return null;
@@ -226,14 +219,28 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
     const particleX = (roundData.particlePhase / 360) * width;
     const particleY = centerY - Math.sin((roundData.particlePhase * Math.PI) / 180) * amplitude;
 
+    // 微移法虛線 (右移或左移 15px)
     const shiftDx = roundData.waveDirection === 'right' ? 15 : -15;
 
     return (
-      <div className="relative w-full flex justify-center items-center py-2">
+      <div className="relative w-full flex justify-center items-center py-2 overflow-hidden">
         <svg width={width} height={height} className="overflow-visible">
+          {/* 平衡位置 */}
           <line x1="0" y1={centerY} x2={width} y2={centerY} stroke="#475569" strokeDasharray="4 4" strokeWidth="1" />
 
-          {/* 1. 原始正弦波 */}
+          {/* 動態流動背景水波 (CSS 動畫) */}
+          <path
+            d={`M 0 ${centerY - Math.sin(0) * amplitude} 
+               Q ${width * 0.25} ${centerY - amplitude * 1.4}, ${width * 0.5} ${centerY} 
+               T ${width} ${centerY}`}
+            fill="none"
+            stroke="#0284c7"
+            strokeWidth="8"
+            opacity="0.3"
+            className={roundData.waveDirection === 'right' ? 'animate-pulse' : 'animate-ping'}
+          />
+
+          {/* 1. 主正弦波形 */}
           <path
             d={`M 0 ${centerY - Math.sin(0) * amplitude} 
                Q ${width * 0.25} ${centerY - amplitude * 1.4}, ${width * 0.5} ${centerY} 
@@ -277,7 +284,7 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
 
   return (
     <div className="bg-slate-950 border border-slate-800 rounded-3xl p-4 md:p-8 max-w-4xl mx-auto space-y-6 text-slate-100 select-none overflow-hidden">
-      {/* 頂部資訊標頭 */}
+      {/* 頂部標頭 */}
       <div className="flex justify-between items-center border-b border-slate-800 pb-4">
         <div>
           <div className="flex items-center gap-2">
@@ -312,7 +319,7 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
         </div>
       </div>
 
-      {/* 單人模式專屬：進度條 */}
+      {/* 單人模式進度條 */}
       {mode === 'single' && !isFinished && (
         <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-2">
           <div className="flex justify-between items-center text-xs font-bold">
@@ -330,7 +337,7 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
         </div>
       )}
 
-      {/* 主對戰與答題區 */}
+      {/* 主戰場區 */}
       {!isFinished && (
         <>
           {mode === 'single' ? (
@@ -340,11 +347,11 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
                   波傳播方向：
                   {singleRound?.waveDirection === 'right' ? (
                     <span className="text-amber-400 flex items-center gap-1 font-black">
-                      向右傳播 ➔ <ArrowRight className="w-4 h-4 animate-bounce" />
+                      👉 向右傳播 <ArrowRight className="w-4 h-4 animate-bounce" />
                     </span>
                   ) : (
                     <span className="text-amber-400 flex items-center gap-1 font-black">
-                      🧲 向左傳播 <ArrowLeft className="w-4 h-4 animate-bounce" />
+                      👈 向左傳播 <ArrowLeft className="w-4 h-4 animate-bounce" />
                     </span>
                   )}
                 </div>
@@ -361,7 +368,7 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
                 </div>
               </div>
 
-              {/* 答題按鈕區 */}
+              {/* 答題區 */}
               <div className={`grid gap-3 ${singleRound?.options.length > 2 ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-2'}`}>
                 {singleRound?.options.map((ans) => (
                   <button
@@ -378,12 +385,15 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
               </div>
             </div>
           ) : (
-            /* 雙人 PK 模式 */
+            /* 雙人 PK 模式（含波傳播方向與獨立畫布） */
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Left: Player 1 */}
+              {/* Player 1 */}
               <div className="bg-slate-900/90 border border-indigo-500/40 p-4 rounded-3xl space-y-3">
                 <div className="flex justify-between items-center text-xs font-bold text-indigo-300 border-b border-slate-800 pb-2">
                   <span>🔵 Player 1</span>
+                  <span className="text-amber-400">
+                    {p1Round?.waveDirection === 'right' ? '👉 向右傳播' : '👈 向左傳播'}
+                  </span>
                   <span>進度: {p1Progress} / 10</span>
                 </div>
                 {renderWaveCanvas(p1Round)}
@@ -401,10 +411,13 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
                 </div>
               </div>
 
-              {/* Right: Player 2 */}
+              {/* Player 2 */}
               <div className="bg-slate-900/90 border border-rose-500/40 p-4 rounded-3xl space-y-3">
                 <div className="flex justify-between items-center text-xs font-bold text-rose-300 border-b border-slate-800 pb-2">
                   <span>🔴 Player 2</span>
+                  <span className="text-amber-400">
+                    {p2Round?.waveDirection === 'right' ? '👉 向右傳播' : '👈 向左傳播'}
+                  </span>
                   <span>進度: {p2Progress} / 10</span>
                 </div>
                 {renderWaveCanvas(p2Round)}
