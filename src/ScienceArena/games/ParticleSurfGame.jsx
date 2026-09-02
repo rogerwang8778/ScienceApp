@@ -19,10 +19,19 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
   const [actionState, setActionState] = useState('idle'); 
   const [isFinished, setIsFinished] = useState(false);
 
-  // 動畫控制：波形橫移量 (px) 與動畫結束定格標記
-  const [animOffset, setAnimOffset] = useState(0);
-  const [showFinalTarget, setShowFinalTarget] = useState(false);
-  const animRef = useRef(null);
+  // 動畫控制 (單人 & 雙人 P1 / P2 獨立平移量與終點標示)
+  const [animOffsetSingle, setAnimOffsetSingle] = useState(0);
+  const [showFinalSingle, setShowFinalSingle] = useState(false);
+
+  const [animOffsetP1, setAnimOffsetP1] = useState(0);
+  const [showFinalP1, setShowFinalP1] = useState(false);
+
+  const [animOffsetP2, setAnimOffsetP2] = useState(0);
+  const [showFinalP2, setShowFinalP2] = useState(false);
+
+  const animRefSingle = useRef(null);
+  const animRefP1 = useRef(null);
+  const animRefP2 = useRef(null);
 
   // ==========================================
   // 1. 嚴謹物理數學模型題庫生成器
@@ -46,7 +55,7 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
         qCategory: 'direction',
         waveDirection,
         particlePhase,
-        deltaQuarters: 0.25, // 預設微移 1/4 個週期進行動畫展示
+        deltaQuarters: 0.25,
         title: `第 ${qIndex} 題：瞬間運動方向`,
         desc: `波向${waveDirection === 'right' ? '右' : '左'}傳播，請判斷質點 P 此刻的瞬間運動方向？`,
         options: ['向上移動', '向下移動'],
@@ -82,7 +91,7 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
           qCategory: 'period_position',
           waveDirection,
           particlePhase: startPhase,
-          deltaQuarters: deltaQuarters / 4, // 1/4, 2/4, 3/4, 4/4 個週期
+          deltaQuarters: deltaQuarters / 4,
           title: `第 ${qIndex} 題：週期隨後位置`,
           desc: `波向${waveDirection === 'right' ? '右' : '左'}傳播。衝浪手原本位於【${phaseName}】，經過 ${deltaQuarters}/4 個週期 (T) 後，會位於什麼位置？`,
           options: ['波峰', '波谷', '平衡位置'],
@@ -130,12 +139,16 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
   const generateNextRounds = (qIdx) => {
     if (mode === 'single') {
       setSingleRound(generateParticleQuestion(qIdx));
+      setAnimOffsetSingle(0);
+      setShowFinalSingle(false);
     } else {
       setP1Round(generateParticleQuestion(qIdx));
       setP2Round(generateParticleQuestion(qIdx));
+      setAnimOffsetP1(0);
+      setShowFinalP1(false);
+      setAnimOffsetP2(0);
+      setShowFinalP2(false);
     }
-    setAnimOffset(0);
-    setShowFinalTarget(false);
   };
 
   useEffect(() => {
@@ -154,13 +167,11 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
   }, [timeLeft, isFinished, mode]);
 
   // ==========================================
-  // 2. 觸發精準週期波形平移動畫
+  // 2. 通用動畫引擎 (支援 Single, P1, P2)
   // ==========================================
-  const triggerWaveAnimation = (direction, deltaPeriodFraction, callback) => {
+  const triggerWaveAnimation = (targetKey, direction, deltaPeriodFraction, callback) => {
     let start = null;
-    const duration = 1500; // 動畫播放 1.5 秒讓學生看清動態演變
-    
-    // 一個完整波長 λ 定義為 340px，因此 deltaPeriodFraction 決定平移距離
+    const duration = 1200;
     const fullWaveLength = 340; 
     const distance = (direction === 'right' ? 1 : -1) * (fullWaveLength * deltaPeriodFraction);
 
@@ -169,19 +180,29 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
       const progressTime = timestamp - start;
       const rate = Math.min(progressTime / duration, 1);
       
-      setAnimOffset(distance * rate);
+      const currentOffset = distance * rate;
+      if (targetKey === 'single') setAnimOffsetSingle(currentOffset);
+      else if (targetKey === 'p1') setAnimOffsetP1(currentOffset);
+      else if (targetKey === 'p2') setAnimOffsetP2(currentOffset);
 
       if (progressTime < duration) {
-        animRef.current = requestAnimationFrame(step);
+        if (targetKey === 'single') animRefSingle.current = requestAnimationFrame(step);
+        else if (targetKey === 'p1') animRefP1.current = requestAnimationFrame(step);
+        else if (targetKey === 'p2') animRefP2.current = requestAnimationFrame(step);
       } else {
-        setShowFinalTarget(true); // 動畫到達終點，開啟終點定格標記
+        if (targetKey === 'single') setShowFinalSingle(true);
+        else if (targetKey === 'p1') setShowFinalP1(true);
+        else if (targetKey === 'p2') setShowFinalP2(true);
+
         setTimeout(() => {
           if (callback) callback();
-        }, 800); // 定格停留 0.8 秒給學生吸收
+        }, 800);
       }
     };
 
-    animRef.current = requestAnimationFrame(step);
+    if (targetKey === 'single') animRefSingle.current = requestAnimationFrame(step);
+    else if (targetKey === 'p1') animRefP1.current = requestAnimationFrame(step);
+    else if (targetKey === 'p2') animRefP2.current = requestAnimationFrame(step);
   };
 
   const handleSingleAnswer = (userAns) => {
@@ -192,8 +213,7 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
 
     setActionState(isCorrect ? 'success' : 'fall');
 
-    // 啟動與題目週期比例完全吻合的橫移物理動畫
-    triggerWaveAnimation(singleRound.waveDirection, singleRound.deltaQuarters || 0.25, () => {
+    triggerWaveAnimation('single', singleRound.waveDirection, singleRound.deltaQuarters || 0.25, () => {
       if (isCorrect) {
         const nextProg = progress + 1;
         setProgress(nextProg);
@@ -220,29 +240,43 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
     const round = player === 'p1' ? p1Round : p2Round;
     const isCorrect = userAns === round.correctAns;
     const nextQIdx = questionCount + 1;
-    setQuestionCount(nextQIdx);
 
-    if (player === 'p1') {
-      if (isCorrect) {
-        const next = p1Progress + 1;
-        setP1Progress(next);
-        if (next >= 10) setIsFinished(true);
-        else setP1Round(generateParticleQuestion(nextQIdx));
+    // 啟動 P1 或 P2 獨立畫布動畫
+    triggerWaveAnimation(player, round.waveDirection, round.deltaQuarters || 0.25, () => {
+      if (player === 'p1') {
+        if (isCorrect) {
+          const next = p1Progress + 1;
+          setP1Progress(next);
+          if (next >= 10) setIsFinished(true);
+          else {
+            setP1Round(generateParticleQuestion(nextQIdx));
+            setAnimOffsetP1(0);
+            setShowFinalP1(false);
+          }
+        } else {
+          setP1Progress((prev) => Math.max(0, prev - 1));
+          setP1Round(generateParticleQuestion(nextQIdx));
+          setAnimOffsetP1(0);
+          setShowFinalP1(false);
+        }
       } else {
-        setP1Progress((prev) => Math.max(0, prev - 1));
-        setP1Round(generateParticleQuestion(nextQIdx));
+        if (isCorrect) {
+          const next = p2Progress + 1;
+          setP2Progress(next);
+          if (next >= 10) setIsFinished(true);
+          else {
+            setP2Round(generateParticleQuestion(nextQIdx));
+            setAnimOffsetP2(0);
+            setShowFinalP2(false);
+          }
+        } else {
+          setP2Progress((prev) => Math.max(0, prev - 1));
+          setP2Round(generateParticleQuestion(nextQIdx));
+          setAnimOffsetP2(0);
+          setShowFinalP2(false);
+        }
       }
-    } else {
-      if (isCorrect) {
-        const next = p2Progress + 1;
-        setP2Progress(next);
-        if (next >= 10) setIsFinished(true);
-        else setP2Round(generateParticleQuestion(nextQIdx));
-      } else {
-        setP2Progress((prev) => Math.max(0, prev - 1));
-        setP2Round(generateParticleQuestion(nextQIdx));
-      }
-    }
+    });
   };
 
   const handleExit = () => {
@@ -251,9 +285,9 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
   };
 
   // ==========================================
-  // 3. SVG 畫布：顯示即時平移與最終抵達點
+  // 3. 通用 SVG 波動畫布與終點高亮標籤
   // ==========================================
-  const renderWaveCanvas = (roundData, isFallAnimation = false) => {
+  const renderWaveCanvas = (roundData, currentAnimOffset, showFinal, isFallAnimation = false) => {
     if (!roundData) return null;
 
     const width = 340;
@@ -263,8 +297,8 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
 
     const particleX = (roundData.particlePhase / 360) * width;
     
-    // 平移相位 offset，換算成弧度
-    const phaseOffsetRad = (animOffset / width) * 2 * Math.PI;
+    // 依據即時平移距離換算成弧度
+    const phaseOffsetRad = (currentAnimOffset / width) * 2 * Math.PI;
     const particleY = centerY - Math.sin((roundData.particlePhase * Math.PI) / 180 - phaseOffsetRad) * amplitude;
 
     return (
@@ -274,7 +308,7 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
           <line x1="0" y1={centerY} x2={width} y2={centerY} stroke="#475569" strokeDasharray="4 4" strokeWidth="1" />
 
           {/* 1. 平移正弦波形 */}
-          <g transform={`translate(${animOffset}, 0)`}>
+          <g transform={`translate(${currentAnimOffset}, 0)`}>
             <path
               d={`M -340 ${centerY - Math.sin(-340 * Math.PI / 170) * amplitude} 
                  Q ${width * 0.25 - 340} ${centerY - amplitude * 1.4}, ${width * 0.5 - 340} ${centerY} 
@@ -293,7 +327,7 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
           <line x1={particleX} y1="10" x2={particleX} y2={height - 10} stroke="#f59e0b" strokeDasharray="2 2" opacity="0.4" />
 
           {/* 3. 動畫結束時的高亮定格圓圈標記 */}
-          {showFinalTarget && (
+          {showFinal && (
             <circle
               cx={particleX}
               cy={particleY}
@@ -312,8 +346,8 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
             })`}
             className="transition-transform duration-75"
           >
-            <circle r="8" fill={isFallAnimation ? '#ef4444' : showFinalTarget ? '#22c55e' : '#f59e0b'} className="animate-ping opacity-75" />
-            <circle r="6" fill={isFallAnimation ? '#ef4444' : showFinalTarget ? '#22c55e' : '#fbbf24'} stroke="#ffffff" strokeWidth="2" />
+            <circle r="8" fill={isFallAnimation ? '#ef4444' : showFinal ? '#22c55e' : '#f59e0b'} className="animate-ping opacity-75" />
+            <circle r="6" fill={isFallAnimation ? '#ef4444' : showFinal ? '#22c55e' : '#fbbf24'} stroke="#ffffff" strokeWidth="2" />
             <text x="0" y="-12" textAnchor="middle" fill="#ffffff" fontSize="15">
               {isFallAnimation ? '🏊‍♂️' : '🏄‍♂️'}
             </text>
@@ -321,9 +355,9 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
         </svg>
 
         {/* 5. 終點動態定格浮籤文字 */}
-        {showFinalTarget && (
+        {showFinal && (
           <div className="absolute bottom-1 bg-emerald-500/90 text-white font-black text-xs px-3 py-1 rounded-full shadow-lg border border-emerald-300 animate-bounce flex items-center gap-1">
-            <CheckCircle2 className="w-4 h-4" /> 最終抵達：{singleRound?.correctAns}
+            <CheckCircle2 className="w-4 h-4" /> 最終抵達：{roundData?.correctAns}
           </div>
         )}
       </div>
@@ -404,7 +438,7 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
                   )}
                 </div>
 
-                {renderWaveCanvas(singleRound, actionState === 'fall')}
+                {renderWaveCanvas(singleRound, animOffsetSingle, showFinalSingle, actionState === 'fall')}
 
                 <div className="space-y-1">
                   <span className="text-[10px] font-bold text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
@@ -433,7 +467,7 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
               </div>
             </div>
           ) : (
-            /* 雙人 PK 模式 */
+            /* 雙人 PK 模式（含獨立波傳播方向、獨立平移動畫與終點視覺定格） */
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Player 1 */}
               <div className="bg-slate-900/90 border border-indigo-500/40 p-4 rounded-3xl space-y-3">
@@ -444,7 +478,7 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
                   </span>
                   <span>進度: {p1Progress} / 10</span>
                 </div>
-                {renderWaveCanvas(p1Round)}
+                {renderWaveCanvas(p1Round, animOffsetP1, showFinalP1)}
                 <p className="text-xs font-bold text-white text-center">{p1Round?.desc}</p>
                 <div className={`grid gap-2 ${p1Round?.options.length > 2 ? 'grid-cols-2' : 'grid-cols-2'}`}>
                   {p1Round?.options.map((ans) => (
@@ -468,7 +502,7 @@ export default function ParticleSurfGame({ mode = 'single', onGameOver }) {
                   </span>
                   <span>進度: {p2Progress} / 10</span>
                 </div>
-                {renderWaveCanvas(p2Round)}
+                {renderWaveCanvas(p2Round, animOffsetP2, showFinalP2)}
                 <p className="text-xs font-bold text-white text-center">{p2Round?.desc}</p>
                 <div className={`grid gap-2 ${p2Round?.options.length > 2 ? 'grid-cols-2' : 'grid-cols-2'}`}>
                   {p2Round?.options.map((ans) => (
