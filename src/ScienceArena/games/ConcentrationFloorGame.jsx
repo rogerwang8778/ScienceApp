@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Shield, Heart, Trophy, RefreshCw, Droplet, ArrowRight, Zap } from 'lucide-react';
+import { Heart, Trophy, RefreshCw, Droplet } from 'lucide-react';
 
 export default function ConcentrationFloorGame({ mode = 'single', onGameOver }) {
   // 血條與遊戲狀態
@@ -7,7 +7,7 @@ export default function ConcentrationFloorGame({ mode = 'single', onGameOver }) 
   const [enemyHp, setEnemyHp] = useState(100);
   const [score, setScore] = useState(0);
   const [combo, setCombo] = useState(0);
-  const [level, setLevel] = useState(1); // [修改1] 每答對一題難度等級 +1
+  const [level, setLevel] = useState(1);
   const [timeLeft, setTimeLeft] = useState(30);
 
   // 動作與回合狀態
@@ -21,44 +21,51 @@ export default function ConcentrationFloorGame({ mode = 'single', onGameOver }) 
   const pourTimerRef = useRef(null);
 
   // ==========================================
-  // [修改1 & 修改2] 動態難度與題型生成邏輯
+  // 1. 動態難度生成 & 確保穩定 4 個選項
   // ==========================================
   const generateRound = (currentLevel) => {
     const type = Math.random() > 0.5 ? 'typeA' : 'typeB';
     let roundData = {};
 
     if (type === 'typeA') {
-      // 類型 A：給定初始 P1、W1 與目標 P2，求加/減水量 W_water (上限 1000g)
+      // 類型 A：給定初始 P1、W1 與目標 P2，求加/蒸發水量 W_water (上限 1000g)
       let P1, W1, P2, W_water;
 
-      if (currentLevel <= 3) {
-        // 入門級：整百數值，翻倍/折半
+      if (currentLevel <= 2) {
+        // Lvl 1-2: 基礎心算 (150g ~ 300g)
         P1 = 20; 
-        W1 = 100 * (currentLevel % 2 === 1 ? 1 : 2); // 100g 或 200g
+        W1 = 100 + currentLevel * 50; 
         P2 = 10; 
-        W_water = W1; // 加水量等於初始質量 (如 100g 或 200g)
-      } else if (currentLevel <= 6) {
-        // 進階級：非整百質量 (如 150g, 250g)，需要簡單心算
-        W1 = 150 + (currentLevel - 4) * 100; // 150g, 250g, 350g
-        P1 = 30;
-        P2 = 15;
-        W_water = W1; // 加水量上限均在 1000g 以內
+        W_water = W1; 
+      } else if (currentLevel <= 5) {
+        // Lvl 3-5: 中階非整數比率 (如 120g, 240g, 360g)
+        W1 = 120 + (currentLevel - 2) * 60; 
+        P1 = 25;
+        P2 = 10; // 加水 1.5 倍 W1
+        W_water = Math.round(W1 * 1.5); 
       } else {
-        // 挑戰級：蒸發水分濃縮變體題 (上限不超過 1000g)
-        P1 = 15;
-        W1 = 400 + (currentLevel % 3) * 100; // 400g, 500g, 600g
-        P2 = 30;
-        W_water = -Math.floor(W1 / 2); // 蒸發一半水分，濃縮翻倍
+        // Lvl 6+: 高階蒸發濃縮或複雜加水
+        P1 = 12;
+        W1 = 250 + (currentLevel % 4) * 80;
+        P2 = 30; // 蒸發水分題
+        W_water = -Math.round(W1 * 0.6);
       }
 
       const targetAns = Math.abs(W_water);
-      // 生成選項 (上限不超過 1000)
-      const wrongOpts = [
-        Math.min(1000, targetAns + 100),
-        Math.max(50, targetAns - 100),
-        Math.min(1000, Math.floor(targetAns * 1.5))
-      ];
-      const options = Array.from(new Set([targetAns, ...wrongOpts])).sort(() => 0.5 - Math.random());
+      
+      // 生成 4 個不重複且合理的干擾選項
+      const optsSet = new Set([targetAns]);
+      const offsets = [50, -50, 100, -100, 150, -150, 200];
+      
+      for (let offset of offsets) {
+        if (optsSet.size >= 4) break;
+        const candidate = targetAns + offset;
+        if (candidate > 0 && candidate <= 1000) {
+          optsSet.add(candidate);
+        }
+      }
+
+      const options = Array.from(optsSet).sort(() => 0.5 - Math.random());
 
       roundData = {
         type: 'typeA',
@@ -66,49 +73,55 @@ export default function ConcentrationFloorGame({ mode = 'single', onGameOver }) 
         desc: `初始溶液：${W1}g，濃度：${P1}%。目標調整至濃度：${P2}%。`,
         questionText: W_water < 0 ? `請問需要「蒸發」多少克的水分？` : `請問需要「加入」多少克的水？`,
         targetValue: targetAns,
-        maxGauge: 1000, // [修改2] 水量上限 1000g
+        maxGauge: 1000, 
         options,
         correctIdx: options.indexOf(targetAns),
         unit: 'g'
       };
     } else {
-      // 類型 B：給定初始 P1、W1 與加水量 W_water，求最終濃度 P2 (上限 100%)
+      // 類型 B：求最終濃度 P2 (上限 100%)
       let P1, W1, W_water, P2;
 
-      if (currentLevel <= 3) {
-        P1 = 20;
+      if (currentLevel <= 2) {
+        P1 = 24;
         W1 = 100;
-        W_water = 100 * currentLevel; // 加水 100g, 200g, 300g
-        P2 = Math.round((P1 * W1) / (W1 + W_water)); // 10%, 6.7% 等
-      } else if (currentLevel <= 6) {
-        P1 = 40;
-        W1 = 200;
-        W_water = 200 + (currentLevel - 4) * 100; // 加水 200g, 300g, 400g
+        W_water = 100 + currentLevel * 100; 
+        P2 = Math.round((P1 * W1) / (W1 + W_water)); 
+      } else if (currentLevel <= 5) {
+        P1 = 35;
+        W1 = 180 + (currentLevel - 2) * 40;
+        W_water = 220; 
         P2 = Math.round((P1 * W1) / (W1 + W_water)); 
       } else {
-        // 挑戰級：高濃度蒸發濃縮，最高濃度極限為 100%
-        P1 = 30;
-        W1 = 300;
-        W_water = -150; // 蒸發 150g 水，總重變 150g
-        P2 = Math.min(100, Math.round((P1 * W1) / (W1 + W_water))); // 60% (不超過 100%)
+        P1 = 18;
+        W1 = 400;
+        W_water = -160; // 蒸發濃縮
+        P2 = Math.min(100, Math.round((P1 * W1) / (W1 + W_water))); 
       }
 
-      const wrongOpts = [
-        Math.min(100, P2 + 10),
-        Math.max(2, P2 - 5),
-        Math.min(100, P2 * 2)
-      ];
-      const options = Array.from(new Set([P2, ...wrongOpts])).sort(() => 0.5 - Math.random());
+      const targetAns = P2;
+      const optsSet = new Set([targetAns]);
+      const offsets = [4, -4, 8, -8, 12, -12, 15];
+
+      for (let offset of offsets) {
+        if (optsSet.size >= 4) break;
+        const candidate = targetAns + offset;
+        if (candidate > 0 && candidate <= 100) {
+          optsSet.add(candidate);
+        }
+      }
+
+      const options = Array.from(optsSet).sort(() => 0.5 - Math.random());
 
       roundData = {
         type: 'typeB',
         title: W_water < 0 ? '🔥 蒸發濃縮挑戰' : '🧪 最終濃度推算',
         desc: `初始溶液：${W1}g，濃度：${P1}%。${W_water < 0 ? `蒸發 ${Math.abs(W_water)}g 水` : `加入 ${W_water}g 水`}。`,
         questionText: `請問最終溶液的重量百分濃度為多少 %？`,
-        targetValue: P2,
-        maxGauge: 100, // [修改2] 濃度上限 100%
+        targetValue: targetAns,
+        maxGauge: 100, 
         options,
-        correctIdx: options.indexOf(P2),
+        correctIdx: options.indexOf(targetAns),
         unit: '%'
       };
     }
@@ -138,7 +151,7 @@ export default function ConcentrationFloorGame({ mode = 'single', onGameOver }) 
 
     if (isCorrect) {
       setActionState('player_attack');
-      const nextLevel = level + 1; // [修改1] 每答對一題，等級 +1
+      const nextLevel = level + 1;
       setLevel(nextLevel);
 
       setTimeout(() => {
@@ -173,21 +186,25 @@ export default function ConcentrationFloorGame({ mode = 'single', onGameOver }) 
       setTimeout(() => {
         setActionState('idle');
         if (playerHp > 20 && enemyHp > 0) {
-          generateRound(level); // 答錯維持當前等級重試新題
+          generateRound(level);
         }
       }, 900);
     }
   };
 
-  // [修改2] PK 模式：水龍頭注水 (對應 1000g 水量或 100% 濃度上限)
+  // ==========================================
+  // 2. 放慢注水速率 (增量由 15 調降至 5)
+  // ==========================================
   const startPouring = () => {
     if (isPouringRef.current || actionState !== 'idle') return;
     isPouringRef.current = true;
-    const increment = currentRound.maxGauge === 1000 ? 15 : 2; // 注水速度控制
+    
+    // 放慢流速：水量每次加 5g，濃度每次加 1%
+    const increment = currentRound.maxGauge === 1000 ? 5 : 1; 
 
     pourTimerRef.current = setInterval(() => {
       setP1PourValue((prev) => Math.min(currentRound.maxGauge, prev + increment));
-    }, 30);
+    }, 35);
   };
 
   const stopPouring = () => {
@@ -195,7 +212,7 @@ export default function ConcentrationFloorGame({ mode = 'single', onGameOver }) 
     isPouringRef.current = false;
     clearInterval(pourTimerRef.current);
 
-    // 容錯度門檻：克數 ±35g，濃度 ±4%
+    // 容錯區間
     const margin = currentRound.maxGauge === 1000 ? 35 : 4;
     const diff = Math.abs(p1PourValue - currentRound.targetValue);
     const isCorrect = diff <= margin;
@@ -209,7 +226,7 @@ export default function ConcentrationFloorGame({ mode = 'single', onGameOver }) 
 
   return (
     <div className="bg-slate-950 border border-slate-800 rounded-3xl p-4 md:p-8 max-w-4xl mx-auto space-y-6 text-slate-100 select-none overflow-hidden">
-      {/* 1. 天空競技場 頂部資訊 (顯示當前關卡難度 Level) */}
+      {/* 頂部關卡卡片 */}
       <div className="flex justify-between items-center border-b border-slate-800 pb-4">
         <div>
           <div className="flex items-center gap-2">
@@ -244,10 +261,10 @@ export default function ConcentrationFloorGame({ mode = 'single', onGameOver }) 
         </div>
       </div>
 
-      {/* 2. 對戰舞台 */}
+      {/* 對戰舞台 */}
       {!isFinished && currentRound && (
         <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 relative flex justify-between items-center min-h-[200px]">
-          {/* 左側：玩家/P1 */}
+          {/* 左側角色 */}
           <div className={`flex flex-col items-center gap-2 z-10 transition-all duration-300 ${actionState === 'player_attack' ? 'translate-x-12 scale-110' : ''} ${actionState === 'player_hit' ? '-translate-x-4 animate-shake text-rose-500' : ''}`}>
             {actionState === 'player_hit' && <span className="absolute -top-8 text-rose-500 font-black text-xl animate-bounce">-20 HP!</span>}
             <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-indigo-600/20 border-2 border-indigo-400 flex items-center justify-center relative shadow-lg shadow-indigo-500/20">
@@ -272,7 +289,7 @@ export default function ConcentrationFloorGame({ mode = 'single', onGameOver }) 
             {combo > 1 && <p className="text-xs font-bold text-amber-400 animate-pulse mt-1">🔥 {combo} COMBO!</p>}
           </div>
 
-          {/* 右側：關主/P2 */}
+          {/* 右側角色 */}
           <div className={`flex flex-col items-center gap-2 z-10 transition-all duration-300 ${actionState === 'enemy_attack' ? '-translate-x-12 scale-110' : ''} ${actionState === 'enemy_hit' ? 'translate-x-4 animate-shake text-rose-500' : ''}`}>
             {actionState === 'enemy_hit' && <span className="absolute -top-8 text-amber-400 font-black text-xl animate-bounce">-25 HP!</span>}
             <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-rose-600/20 border-2 border-rose-500 flex items-center justify-center relative shadow-lg shadow-rose-500/20">
@@ -292,7 +309,7 @@ export default function ConcentrationFloorGame({ mode = 'single', onGameOver }) 
         </div>
       )}
 
-      {/* 3. 題目卡片 */}
+      {/* 題目卡片 */}
       {!isFinished && currentRound && (
         <div className="space-y-4">
           <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl space-y-2 text-center">
@@ -307,7 +324,7 @@ export default function ConcentrationFloorGame({ mode = 'single', onGameOver }) 
             </p>
           </div>
 
-          {/* 4. 單人 4選1 或 PK 水龍頭量筒 */}
+          {/* 單人模式：4 選 1 */}
           {mode === 'single' ? (
             <div className="grid grid-cols-2 gap-3">
               {currentRound.options.map((opt, idx) => (
@@ -322,8 +339,8 @@ export default function ConcentrationFloorGame({ mode = 'single', onGameOver }) 
               ))}
             </div>
           ) : (
-            /* [修改2] PK 模式：移除提示刻度線，水量上限 1000g / 濃度上限 100% */
-            <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl text-center space-y-4">
+            /* PK 模式：水龍頭與帶刻度量筒 */
+            <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl text-center space-y-5">
               <div className="flex justify-between items-center text-xs font-mono">
                 <span className="text-slate-400">目前量筒注入刻度：</span>
                 <span className="text-lg font-bold text-cyan-400">
@@ -331,12 +348,31 @@ export default function ConcentrationFloorGame({ mode = 'single', onGameOver }) 
                 </span>
               </div>
 
-              {/* 擬真量筒柱狀圖 (純水流，無目標提示刻度線) */}
-              <div className="w-full bg-slate-950 h-10 rounded-2xl border border-slate-800 relative overflow-hidden flex items-center p-1 shadow-inner">
-                <div
-                  className="bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 h-full rounded-xl transition-all duration-75"
-                  style={{ width: `${(p1PourValue / currentRound.maxGauge) * 100}%` }}
-                />
+              {/* 帶有 25%、50%、75%、100% 視覺刻度線的擬真量筒 */}
+              <div className="space-y-1">
+                <div className="w-full bg-slate-950 h-12 rounded-2xl border border-slate-700 relative overflow-hidden flex items-center p-1 shadow-inner">
+                  {/* 注水水流 */}
+                  <div
+                    className="bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 h-full rounded-xl transition-all duration-75"
+                    style={{ width: `${(p1PourValue / currentRound.maxGauge) * 100}%` }}
+                  />
+
+                  {/* 等比例刻度線 (25%, 50%, 75%) */}
+                  <div className="absolute inset-0 flex justify-between px-2 pointer-events-none items-center">
+                    <div className="w-0.5 h-full bg-slate-700/60" style={{ left: '25%' }} />
+                    <div className="w-0.5 h-full bg-slate-600/80" style={{ left: '50%' }} />
+                    <div className="w-0.5 h-full bg-slate-700/60" style={{ left: '75%' }} />
+                  </div>
+                </div>
+
+                {/* 刻度標籤文字 */}
+                <div className="flex justify-between text-[10px] font-mono text-slate-500 px-1">
+                  <span>0{currentRound.unit}</span>
+                  <span>{currentRound.maxGauge * 0.25}{currentRound.unit}</span>
+                  <span>{currentRound.maxGauge * 0.5}{currentRound.unit}</span>
+                  <span>{currentRound.maxGauge * 0.75}{currentRound.unit}</span>
+                  <span>{currentRound.maxGauge}{currentRound.unit}</span>
+                </div>
               </div>
 
               <button
@@ -347,14 +383,14 @@ export default function ConcentrationFloorGame({ mode = 'single', onGameOver }) 
                 disabled={actionState !== 'idle'}
                 className="w-full py-4 bg-gradient-to-r from-cyan-600 to-blue-600 active:from-cyan-700 active:to-blue-700 text-white font-black text-base rounded-2xl shadow-xl transition-all flex items-center justify-center gap-2 select-none touch-none cursor-pointer"
               >
-                <Droplet className="w-5 h-5 fill-white animate-bounce" /> 按住水龍頭注水 (心算並目測放開)
+                <Droplet className="w-5 h-5 fill-white animate-bounce" /> 按住水龍頭注水 (對準刻度放開)
               </button>
             </div>
           )}
         </div>
       )}
 
-      {/* 5. 結算畫面 */}
+      {/* 結算畫面 */}
       {isFinished && (
         <div className="text-center space-y-6 py-8 max-w-md mx-auto">
           <Trophy className="w-16 h-16 text-amber-400 mx-auto animate-bounce" />
