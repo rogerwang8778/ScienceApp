@@ -66,11 +66,14 @@ export default function ElectromagnetismLab() {
   };
 
   // ==========================================
-  // 3. 冷次定律 State & 雙子分頁控制 (放寬可完全穿透邊界)
+  // 3. 冷次定律 State & 雙子分頁控制 (對稱邊界不消失)
   // ==========================================
   const [lenzSubTab, setLenzSubTab] = useState('magnet'); // 'magnet' | 'primaryWire'
   
-  // 子分頁 1：手動拖曳磁鐵 (放寬拖曳範圍至 -60 ~ 500)
+  // 線圈基準原點偏移量 (將整體線圈右移以空出左側視窗)
+  const offsetX = 40; 
+
+  // 子分頁 1：手動拖曳磁鐵 (範圍改為 -20 ~ 420，對稱且不超出畫面)
   const [magnetPole, setMagnetPole] = useState('N'); // 'N' | 'S' (左端極性)
   const [magnetX, setMagnetX] = useState(380); 
   const [isDragging, setIsDragging] = useState(false);
@@ -94,8 +97,8 @@ export default function ElectromagnetismLab() {
     const clientX = e.clientX || (e.touches && e.touches[0].clientX) || 0;
     const deltaX = clientX - dragRef.current.startX;
     
-    // 將邊緣放寬至 -60，讓磁鐵可以完全移到左側外部
-    const newX = Math.max(-60, Math.min(500, dragRef.current.initialMagnetX + deltaX));
+    // 磁鐵可移動範圍 (-20 ~ 420)
+    const newX = Math.max(-20, Math.min(420, dragRef.current.initialMagnetX + deltaX));
     setMagnetX(newX);
 
     const now = Date.now();
@@ -131,20 +134,19 @@ export default function ElectromagnetismLab() {
     return () => clearTimeout(timer);
   }, [primaryCurrent]);
 
-  // 全方位冷次定律邏輯運算 (含左側完全穿出)
+  // 全方位冷次定律邏輯運算
   const getLenzLogic = () => {
     if (lenzSubTab === 'magnet') {
       const isMoving = Math.abs(velocity) > 15;
-      const isMovingLeft = velocity < 0; // true: 向左, false: 向右
+      const isMovingLeft = velocity < 0; 
 
-      // 磁鐵位置資訊 (磁鐵寬度 100)
       const magnetLeftEdge = magnetX;
       const magnetRightEdge = magnetX + 100;
       const magnetCenter = magnetX + 50;
 
-      // 螺線管範圍 X=90 ~ X=220
-      // 磁鐵完全在內部條件
-      const isFullyInside = magnetLeftEdge >= 40 && magnetRightEdge <= 270;
+      // 線圈實際範圍 X = 130 ~ 260
+      const coilCenter = 130 + offsetX + 25; // 195
+      const isFullyInside = magnetLeftEdge >= (80 + offsetX) && magnetRightEdge <= (220 + offsetX);
 
       if (!isMoving || isFullyInside) {
         return {
@@ -165,35 +167,32 @@ export default function ElectromagnetismLab() {
       let frontIUp = false;
       const speedMagnitude = Math.min(Math.abs(velocity) / 15, 1);
 
-      // 1. 磁鐵位於右側區域 (中心在 X > 155)
-      if (magnetCenter >= 155) {
+      if (magnetCenter >= coilCenter) {
         if (magnetPole === 'N') {
-          if (isMovingLeft) { // N極靠近右端 -> 感應磁場向右
+          if (isMovingLeft) { 
             bDir = 'right'; leftIndPole = 'S'; rightIndPole = 'N'; frontIUp = false;
-          } else { // N極遠離右端 -> 感應磁場向左
+          } else { 
             bDir = 'left'; leftIndPole = 'N'; rightIndPole = 'S'; frontIUp = true;
           }
-        } else { // S極
-          if (isMovingLeft) { // S極靠近右端 -> 感應磁場向左
+        } else { 
+          if (isMovingLeft) { 
             bDir = 'left'; leftIndPole = 'N'; rightIndPole = 'S'; frontIUp = true;
-          } else { // S極遠離右端 -> 感應磁場向右
+          } else { 
             bDir = 'right'; leftIndPole = 'S'; rightIndPole = 'N'; frontIUp = false;
           }
         }
-      } 
-      // 2. 磁鐵位於左側區域 (中心在 X < 155)
-      else {
-        const rightPole = magnetPole === 'N' ? 'S' : 'N'; // 靠近/穿出左端的極性
+      } else {
+        const rightPole = magnetPole === 'N' ? 'S' : 'N'; 
         if (rightPole === 'S') {
-          if (isMovingLeft) { // S極遠離左端 -> 感應磁場向右
+          if (isMovingLeft) { 
             bDir = 'right'; leftIndPole = 'N'; rightIndPole = 'S'; frontIUp = false;
-          } else { // S極靠近左端 -> 感應磁場向左
+          } else { 
             bDir = 'left'; leftIndPole = 'S'; rightIndPole = 'N'; frontIUp = true;
           }
-        } else { // N極穿出/靠近左端
-          if (isMovingLeft) { // N極遠離左端 -> 感應磁場向左
+        } else { 
+          if (isMovingLeft) { 
             bDir = 'left'; leftIndPole = 'S'; rightIndPole = 'N'; frontIUp = true;
-          } else { // N極靠近左端 -> 感應磁場向右
+          } else { 
             bDir = 'right'; leftIndPole = 'N'; rightIndPole = 'S'; frontIUp = false;
           }
         }
@@ -213,7 +212,6 @@ export default function ElectromagnetismLab() {
         needleAngle
       };
     } else {
-      // 主線圈模式
       const isChanging = Math.abs(currentChangeRate) > 0.5;
 
       if (!isChanging) {
@@ -648,7 +646,7 @@ export default function ElectromagnetismLab() {
       )}
 
       {/* ==========================================
-          3. 冷次定律（支援條形磁鐵完全穿透左側邊界）
+          3. 冷次定律（寬視窗與對稱邊界）
       ========================================== */}
       {activeTab === 'lenz' && (
         <div className="space-y-6">
@@ -694,7 +692,7 @@ export default function ElectromagnetismLab() {
                   </button>
                 </div>
                 <span className="text-xs text-cyan-300 font-bold flex items-center gap-1">
-                  <MoveHorizontal className="w-4 h-4 animate-pulse" /> 左右拖曳磁鐵穿透螺線管 (已開放完全穿出左側)
+                  <MoveHorizontal className="w-4 h-4 animate-pulse" /> 左右拖曳磁鐵穿透螺線管 (左側移動距離已完全對稱不消失)
                 </span>
               </div>
             ) : (
@@ -720,17 +718,18 @@ export default function ElectromagnetismLab() {
             )}
           </div>
 
-          <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 flex flex-col items-center justify-center min-h-[340px]">
-            <svg width="580" height="260" className="select-none font-mono text-[11px]">
+          <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 flex flex-col items-center justify-center min-h-[340px] overflow-x-auto">
+            {/* SVG 畫布寬度增加至 660 */}
+            <svg width="660" height="260" className="select-none font-mono text-[11px]">
               {/* ================= 左側：感應螺線管線圈 ================= */}
               <g>
-                <text x="170" y="22" textAnchor="middle" fill="#a855f7" fontSize="12" fontWeight="bold">感應螺線管線圈</text>
+                <text x={170 + offsetX} y="22" textAnchor="middle" fill="#a855f7" fontSize="12" fontWeight="bold">感應螺線管線圈</text>
 
-                {/* 1. 感應線圈後側 (細虛線 - 3D 空間的最底層) */}
+                {/* 1. 感應線圈後側 (細虛線) */}
                 {[0, 1, 2, 3, 4].map((i) => (
                   <path
                     key={`coil-back-${i}`}
-                    d={`M ${120 + i * 32} 150 C ${120 + i * 32} 50, ${90 + i * 32} 50, ${90 + i * 32} 70`}
+                    d={`M ${120 + offsetX + i * 32} 150 C ${120 + offsetX + i * 32} 50, ${90 + offsetX + i * 32} 50, ${90 + offsetX + i * 32} 70`}
                     fill="none"
                     stroke="#c084fc"
                     strokeWidth="2.2"
@@ -739,7 +738,7 @@ export default function ElectromagnetismLab() {
                   />
                 ))}
 
-                {/* 可完全穿透至左側的條形磁鐵 */}
+                {/* 條形磁鐵 (置於後側導線與前側導線之間) */}
                 {lenzSubTab === 'magnet' && (
                   <g 
                     className="cursor-grab active:cursor-grabbing"
@@ -784,9 +783,9 @@ export default function ElectromagnetismLab() {
                 {lenzRes.isMoving && (
                   <g>
                     <line
-                      x1={lenzRes.bDir === 'right' ? '70' : '260'}
+                      x1={lenzRes.bDir === 'right' ? 70 + offsetX : 260 + offsetX}
                       y1="110"
-                      x2={lenzRes.bDir === 'right' ? '260' : '70'}
+                      x2={lenzRes.bDir === 'right' ? 260 + offsetX : 70 + offsetX}
                       y2="110"
                       stroke="#06b6d4"
                       strokeWidth="3.5"
@@ -794,21 +793,21 @@ export default function ElectromagnetismLab() {
                     <polygon
                       points={
                         lenzRes.bDir === 'right'
-                          ? '260,105 272,110 260,115'
-                          : '70,105 58,110 70,115'
+                          ? `${260 + offsetX},105 ${272 + offsetX},110 ${260 + offsetX},115`
+                          : `${70 + offsetX},105 ${58 + offsetX},110 ${70 + offsetX},115`
                       }
                       fill="#06b6d4"
                     />
-                    <text x="165" y="98" textAnchor="middle" fill="#06b6d4" fontSize="11" fontWeight="bold">
+                    <text x={165 + offsetX} y="98" textAnchor="middle" fill="#06b6d4" fontSize="11" fontWeight="bold">
                       B感應 ({lenzRes.bDir === 'right' ? '向右 →' : '向左 ←'})
                     </text>
                   </g>
                 )}
 
-                {/* 2. 感應線圈前側 (粗實線 - 遮擋內部的磁鐵) */}
+                {/* 2. 感應線圈前側 (粗實線) */}
                 {[0, 1, 2, 3, 4].map((i) => {
-                  const startX = 90 + i * 32;
-                  const endX = 120 + i * 32;
+                  const startX = 90 + offsetX + i * 32;
+                  const endX = 120 + offsetX + i * 32;
                   const wireX = startX + 2; 
                   const wireY = 110;
 
@@ -846,7 +845,7 @@ export default function ElectromagnetismLab() {
 
                 {/* 3. 底部迴路與檢流計 */}
                 <path
-                  d="M 90 135 L 90 200 L 140 200 M 190 200 L 248 200 L 248 135"
+                  d={`M ${90 + offsetX} 135 L ${90 + offsetX} 200 L ${140 + offsetX} 200 M ${190 + offsetX} 200 L ${248 + offsetX} 200 L ${248 + offsetX} 135`}
                   fill="none"
                   stroke="#a855f7"
                   strokeWidth="2.5"
@@ -857,30 +856,30 @@ export default function ElectromagnetismLab() {
                   <g>
                     {lenzRes.frontIUp ? (
                       <>
-                        <polygon points="90,158 85,168 95,168" fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
-                        <polygon points="110,200 120,195 120,205" fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
-                        <polygon points="210,200 220,195 220,205" fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
-                        <polygon points="248,172 243,162 253,162" fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
+                        <polygon points={`${90 + offsetX},158 ${85 + offsetX},168 ${95 + offsetX},168`} fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
+                        <polygon points={`${110 + offsetX},200 ${120 + offsetX},195 ${120 + offsetX},205`} fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
+                        <polygon points={`${210 + offsetX},200 ${220 + offsetX},195 ${220 + offsetX},205`} fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
+                        <polygon points={`${248 + offsetX},172 ${243 + offsetX},162 ${253 + offsetX},162`} fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
                       </>
                     ) : (
                       <>
-                        <polygon points="90,172 85,162 95,162" fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
-                        <polygon points="122,200 112,195 112,205" fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
-                        <polygon points="222,200 212,195 212,205" fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
-                        <polygon points="248,158 243,168 253,168" fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
+                        <polygon points={`${90 + offsetX},172 ${85 + offsetX},162 ${95 + offsetX},162`} fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
+                        <polygon points={`${122 + offsetX},200 ${112 + offsetX},195 ${112 + offsetX},205`} fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
+                        <polygon points={`${222 + offsetX},200 ${212 + offsetX},195 ${212 + offsetX},205`} fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
+                        <polygon points={`${248 + offsetX},158 ${243 + offsetX},168 ${253 + offsetX},168`} fill="#f59e0b" stroke="#ffffff" strokeWidth="0.8" />
                       </>
                     )}
                   </g>
                 )}
 
                 {/* 下方檢流計 (G) */}
-                <circle cx="165" cy="200" r="16" fill="#0f172a" stroke="#a855f7" strokeWidth="2" />
-                <text x="165" y="204" textAnchor="middle" fill="#a855f7" fontSize="10" fontWeight="bold">G</text>
+                <circle cx={165 + offsetX} cy="200" r="16" fill="#0f172a" stroke="#a855f7" strokeWidth="2" />
+                <text x={165 + offsetX} y="204" textAnchor="middle" fill="#a855f7" fontSize="10" fontWeight="bold">G</text>
                 
                 <line
-                  x1="165"
+                  x1={165 + offsetX}
                   y1="200"
-                  x2={165 + 12 * Math.sin((lenzRes.needleAngle * Math.PI) / 180)}
+                  x2={165 + offsetX + 12 * Math.sin((lenzRes.needleAngle * Math.PI) / 180)}
                   y2={200 - 12 * Math.cos((lenzRes.needleAngle * Math.PI) / 180)}
                   stroke="#ef4444"
                   strokeWidth="2.5"
@@ -889,10 +888,10 @@ export default function ElectromagnetismLab() {
                 {/* 線圈兩端極性 */}
                 {lenzRes.isMoving && (
                   <g>
-                    <text x="45" y="115" textAnchor="middle" fill={lenzRes.leftIndPole === 'N' ? '#3b82f6' : '#ef4444'} fontSize="18" fontWeight="bold">
+                    <text x={45 + offsetX} y="115" textAnchor="middle" fill={lenzRes.leftIndPole === 'N' ? '#3b82f6' : '#ef4444'} fontSize="18" fontWeight="bold">
                       {lenzRes.leftIndPole}
                     </text>
-                    <text x="275" y="115" textAnchor="middle" fill={lenzRes.rightIndPole === 'N' ? '#3b82f6' : '#ef4444'} fontSize="18" fontWeight="bold">
+                    <text x={275 + offsetX} y="115" textAnchor="middle" fill={lenzRes.rightIndPole === 'N' ? '#3b82f6' : '#ef4444'} fontSize="18" fontWeight="bold">
                       {lenzRes.rightIndPole}
                     </text>
                   </g>
@@ -902,7 +901,7 @@ export default function ElectromagnetismLab() {
                 {isRunning && lenzRes.isMoving && [0, 1, 2, 3, 4].map((i) => {
                   const dir = lenzRes.frontIUp ? 1 : -1;
                   const t = (animOffset * 5 + i * 72) * Math.PI / 180;
-                  const cx = 105 + i * 32 + 15 * Math.cos(t);
+                  const cx = 105 + offsetX + i * 32 + 15 * Math.cos(t);
                   const cy = 110 + dir * 40 * Math.sin(t);
                   const isFront = cy >= 105;
 
@@ -924,7 +923,7 @@ export default function ElectromagnetismLab() {
               {/* ================= 右側：載流主線圈 (僅在實驗二顯示) ================= */}
               {lenzSubTab === 'primaryWire' && (
                 <g>
-                  <text x="430" y="22" textAnchor="middle" fill="#f59e0b" fontSize="12" fontWeight="bold">
+                  <text x={430 + offsetX} y="22" textAnchor="middle" fill="#f59e0b" fontSize="12" fontWeight="bold">
                     主線圈 (載流螺線管)
                   </text>
 
@@ -932,7 +931,7 @@ export default function ElectromagnetismLab() {
                   {[0, 1, 2, 3, 4].map((i) => (
                     <path
                       key={`primary-back-${i}`}
-                      d={`M ${380 + i * 28} 150 C ${380 + i * 28} 50, ${355 + i * 28} 50, ${355 + i * 28} 70`}
+                      d={`M ${380 + offsetX + i * 28} 150 C ${380 + offsetX + i * 28} 50, ${355 + offsetX + i * 28} 50, ${355 + offsetX + i * 28} 70`}
                       fill="none"
                       stroke="#fbbf24"
                       strokeWidth="2"
@@ -945,9 +944,9 @@ export default function ElectromagnetismLab() {
                   {primaryCurrent !== 0 && (
                     <g>
                       <line
-                        x1={primaryCurrent > 0 ? '330' : '510'}
+                        x1={primaryCurrent > 0 ? 330 + offsetX : 510 + offsetX}
                         y1="110"
-                        x2={primaryCurrent > 0 ? '510' : '330'}
+                        x2={primaryCurrent > 0 ? 510 + offsetX : 330 + offsetX}
                         y2="110"
                         stroke="#f59e0b"
                         strokeWidth={Math.min(Math.abs(primaryCurrent) / 20 + 1.5, 5)}
@@ -955,12 +954,12 @@ export default function ElectromagnetismLab() {
                       <polygon
                         points={
                           primaryCurrent > 0
-                            ? '510,105 522,110 510,115'
-                            : '330,105 318,110 330,115'
+                            ? `${510 + offsetX},105 ${522 + offsetX},110 ${510 + offsetX},115`
+                            : `${330 + offsetX},105 ${318 + offsetX},110 ${330 + offsetX},115`
                         }
                         fill="#f59e0b"
                       />
-                      <text x="420" y="98" textAnchor="middle" fill="#f59e0b" fontSize="11" fontWeight="bold">
+                      <text x={420 + offsetX} y="98" textAnchor="middle" fill="#f59e0b" fontSize="11" fontWeight="bold">
                         B主 ({primaryCurrent > 0 ? '向右 →' : '向左 ←'})
                       </text>
                     </g>
@@ -968,13 +967,13 @@ export default function ElectromagnetismLab() {
 
                   {/* 2. 主線圈前側 */}
                   {[0, 1, 2, 3, 4].map((i) => {
-                    const wireX = 357 + i * 28;
+                    const wireX = 357 + offsetX + i * 28;
                     const wireY = 110;
 
                     return (
                       <g key={`primary-front-${i}`}>
                         <path
-                          d={`M ${355 + i * 28} 70 C ${355 + i * 28} 170, ${380 + i * 28} 170, ${380 + i * 28} 150`}
+                          d={`M ${355 + offsetX + i * 28} 70 C ${355 + offsetX + i * 28} 170, ${380 + offsetX + i * 28} 170, ${380 + offsetX + i * 28} 150`}
                           fill="none"
                           stroke="#f59e0b"
                           strokeWidth={Math.min(Math.abs(primaryCurrent) / 20 + 2, 5)}
@@ -1003,15 +1002,15 @@ export default function ElectromagnetismLab() {
                     );
                   })}
 
-                  <text x="325" y="115" textAnchor="middle" fill={primaryCurrent >= 0 ? '#ef4444' : '#3b82f6'} fontSize="16" fontWeight="bold">
+                  <text x={325 + offsetX} y="115" textAnchor="middle" fill={primaryCurrent >= 0 ? '#ef4444' : '#3b82f6'} fontSize="16" fontWeight="bold">
                     {primaryCurrent >= 0 ? 'S' : 'N'}
                   </text>
-                  <text x="515" y="115" textAnchor="middle" fill={primaryCurrent >= 0 ? '#3b82f6' : '#ef4444'} fontSize="16" fontWeight="bold">
+                  <text x={515 + offsetX} y="115" textAnchor="middle" fill={primaryCurrent >= 0 ? '#3b82f6' : '#ef4444'} fontSize="16" fontWeight="bold">
                     {primaryCurrent >= 0 ? 'N' : 'S'}
                   </text>
 
                   {/* 3. 下方直流電源迴路 */}
-                  <g transform="translate(0, 5)">
+                  <g transform={`translate(${offsetX}, 5)`}>
                     <path
                       d="M 355 135 L 355 210 L 400 210 M 460 210 L 508 210 L 508 135"
                       fill="none"
@@ -1071,7 +1070,7 @@ export default function ElectromagnetismLab() {
                   {isRunning && primaryCurrent !== 0 && [0, 1, 2, 3, 4].map((i) => {
                     const dir = primaryCurrent > 0 ? 1 : -1;
                     const t = (animOffset * (Math.abs(primaryCurrent) / 15) + i * 72) * Math.PI / 180;
-                    const cx = 367 + i * 28 + 12 * Math.cos(t);
+                    const cx = 367 + offsetX + i * 28 + 12 * Math.cos(t);
                     const cy = 110 + dir * 40 * Math.sin(t);
                     const isFront = cy >= 105;
 
