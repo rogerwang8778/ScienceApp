@@ -452,7 +452,6 @@ export default function LensFocalGame({ mode = 'single', onGameOver }) {
   // 渲染獨立作答面板模組 (給 P1 或 P2 重複使用)
   const renderPlayerControlPanel = (player, orientation, setOrientation, type, setType, size, setSize, pos, setPos, textOpt, setTextOpt, noImg, setNoImg, isReady) => {
     const isP1 = player === 'p1';
-    const themeColor = isP1 ? 'indigo' : 'rose';
 
     return (
       <div className={`p-3.5 rounded-2xl border space-y-3 ${
@@ -571,7 +570,7 @@ export default function LensFocalGame({ mode = 'single', onGameOver }) {
                       onClick={() => setPos(item)}
                       className={`py-1.5 rounded-lg text-[10px] font-bold border transition-all ${
                         pos === item
-                          ? isP1 ? 'bg-amber-500 text-slate-950 border-amber-200' : 'bg-amber-500 text-slate-950 border-amber-200'
+                          ? 'bg-amber-500 text-slate-950 border-amber-200'
                           : 'bg-slate-900 text-slate-300 border-slate-800'
                       }`}
                     >
@@ -672,7 +671,7 @@ export default function LensFocalGame({ mode = 'single', onGameOver }) {
 
           <div className="z-10 text-center">
             <Swords className="w-8 h-8 text-slate-600 mx-auto animate-pulse" />
-            <span className="text-xs font-black italic text-slate-500 uppercase tracking-widest mt-1 block">電子白板同屏 PK</span>
+            <span className="text-xs font-black italic text-slate-500 uppercase tracking-widest mt-1 block">競技場對決</span>
           </div>
 
           {/* P2 */}
@@ -757,7 +756,7 @@ export default function LensFocalGame({ mode = 'single', onGameOver }) {
               }
             </h3>
             <p className="text-xs text-slate-400 mt-1">
-              電子白板搶速對決結束！雙方在透鏡成像性質反應力上表現精彩！
+              雙人搶速對決結束！兩位選手在透鏡成像性質反應力上表現相當精彩！
             </p>
           </div>
 
