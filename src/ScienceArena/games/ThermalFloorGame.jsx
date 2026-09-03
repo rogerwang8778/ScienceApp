@@ -72,32 +72,30 @@ export default function ThermalFloorGame({ mode = 'single', onGameOver }) {
         desc: `【熱水】${M1}g，${T1}°C ｜ 【冷水】${M2}g，${T2}°C`,
         prompt: `兩水混合（不計熱量散失），請在游標滑至【平衡溫度 (°C)】時按下鎖定！`,
         targetValue: targetTemp,
-        minRange: 0,
-        maxRange: 100,
         unit: '°C'
       };
     } else {
-      // 類型 B: 給定熱水溫度 T1、冷水溫度 T2 與目標平衡溫度 T，推算熱水質量比例 (%)
+      // 類型 B: 給定熱水溫度 T1、冷水溫度 T2 與目標平衡溫度 T，推算熱水:冷水質量比例 (0~10等份)
       let T1 = 80;
       let T2 = 20;
-      // 隨機產生一個整數比例 M1 : M2 (例如 1:1, 1:2, 2:1, 1:3, 3:1)
-      const ratioPairs = [[1,1], [1,2], [2,1], [1,3], [3,1], [2,3], [3,2]];
+      // 隨機產生整數比例 (例如 3:7, 1:1, 2:3 等，總和取10等份對應 0%~100%)
+      const ratioPairs = [[1, 9], [2, 8], [3, 7], [4, 6], [5, 5], [6, 4], [7, 3], [8, 2], [9, 1]];
       const pair = ratioPairs[Math.floor(Math.random() * ratioPairs.length)];
       const M1 = pair[0];
       const M2 = pair[1];
 
       const targetTemp = Math.round((M1 * T1 + M2 * T2) / (M1 + M2));
-      // 熱水質量比例 = M1 / (M1 + M2) * 100%
-      const hotWaterRatio = Math.round((M1 / (M1 + M2)) * 100);
+      // 熱水佔比 (%) = (M1 / 10) * 100
+      const hotWaterRatioPercent = M1 * 10;
 
       roundData = {
         qType: 'typeB',
         title: '🧪 混合質量比例估計',
         desc: `【熱水】${T1}°C ｜ 【冷水】${T2}°C ➔ 【目標平衡溫度】${targetTemp}°C`,
-        prompt: `為達成目標溫度，請在游標滑至正確【熱水質量百分比 (%)】時按下鎖定！`,
-        targetValue: hotWaterRatio,
-        minRange: 0,
-        maxRange: 100,
+        prompt: `為達成目標溫度，請在游標滑至正確【熱水：冷水 質量比例】時按下鎖定！`,
+        targetValue: hotWaterRatioPercent,
+        hotPart: M1,
+        coldPart: M2,
         unit: '%'
       };
     }
@@ -113,7 +111,7 @@ export default function ThermalFloorGame({ mode = 'single', onGameOver }) {
   // 游標來回滑動 RAF 動畫迴圈
   useEffect(() => {
     let lastTime = performance.now();
-    const speed = 0.08 + level * 0.005; // 隨關卡推進稍微加快滑動速率
+    const speed = 0.08 + level * 0.005;
 
     const updateCursors = (now) => {
       const delta = now - lastTime;
@@ -162,11 +160,10 @@ export default function ThermalFloorGame({ mode = 'single', onGameOver }) {
     const answerTime = (Date.now() - roundStartTime) / 1000;
     const criticalHit = answerTime <= 5.0; // 5 秒速答判定
 
-    // 取得按下時游標的值
     const currentPos = player === 'p1' ? Math.round(p1CursorPos) : Math.round(p2CursorPos);
     const target = currentRound.targetValue;
 
-    // 判斷是否落入容錯區間 (±5 的刻度內算精準命中)
+    // 容錯區間 (±5 刻度)
     const margin = 5;
     const isCorrect = Math.abs(currentPos - target) <= margin;
     const nextLevel = level + 1;
@@ -235,13 +232,11 @@ export default function ThermalFloorGame({ mode = 'single', onGameOver }) {
           }
         }, 250);
 
-        // 先鎖定且答對者推進下一題
         setTimeout(() => {
           setActionState('idle');
           if (playerHp > 0 && enemyHp > 0) generateRound(nextLevel);
         }, 1100);
       } else {
-        // 鎖定錯誤自扣 20 HP
         setActionState(player === 'p1' ? 'p2_attack' : 'p1_attack');
 
         setTimeout(() => {
@@ -273,9 +268,22 @@ export default function ThermalFloorGame({ mode = 'single', onGameOver }) {
     if (onGameOver) onGameOver(gainedExp);
   };
 
+  // 格式化當前游標數值顯示文字
+  const getCursorDisplayValue = (cursorPos) => {
+    if (currentRound.qType === 'typeA') {
+      return `${Math.round(cursorPos)} °C`;
+    } else {
+      // 轉換成熱:冷 比例 (以 10 等分估計，例如 3:7)
+      const hotRatio = Math.round(cursorPos / 10);
+      const coldRatio = 10 - hotRatio;
+      return `熱水:冷水 = ${hotRatio}:${coldRatio}`;
+    }
+  };
+
   // 渲染獨立游標控制面板
   const renderTimingControlPanel = (player, cursorPos) => {
     const isP1 = player === 'p1';
+    const isTypeB = currentRound.qType === 'typeB';
 
     return (
       <div className={`p-4 rounded-2xl border space-y-3 ${
@@ -288,37 +296,57 @@ export default function ThermalFloorGame({ mode = 'single', onGameOver }) {
             {isP1 ? '🛡️ Player 1 (左側選手)' : '⚔️ Player 2 (右側選手)'}
           </span>
           <span className="text-base font-bold text-amber-400 font-mono">
-            當前鎖定值：{Math.round(cursorPos)} {currentRound.unit}
+            當前鎖定值：{getCursorDisplayValue(cursorPos)}
           </span>
         </div>
 
-        {/* 來回滑動刻度軸 */}
+        {/* 類型 B 左右端說明標籤 */}
+        {isTypeB && (
+          <div className="flex justify-between text-xs font-bold px-1">
+            <span className="text-rose-400 flex items-center gap-1">🔥 熱水 100% (左端)</span>
+            <span className="text-cyan-400 flex items-center gap-1">(右端) 冷水 100% 💧</span>
+          </div>
+        )}
+
+        {/* 來回滑動刻度軸 (已移除答案提示領域) */}
         <div className="space-y-1">
           <div className="w-full bg-slate-950 h-10 rounded-xl border border-slate-700 relative overflow-hidden flex items-center p-1 shadow-inner">
-            {/* 答案正確區域背景視覺提示 (選填: 讓對決更有動態感) */}
-            <div
-              className="absolute h-full bg-emerald-500/20 border-x border-emerald-400/50"
-              style={{
-                left: `${Math.max(0, currentRound.targetValue - 5)}%`,
-                width: '10%'
-              }}
-            />
+            {/* 10 等分網格刻度線 */}
+            <div className="absolute inset-0 flex justify-between px-1 pointer-events-none items-center">
+              {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((step) => (
+                <div
+                  key={step}
+                  className={`h-full ${step % 5 === 0 ? 'w-0.5 bg-slate-500/60' : 'w-px bg-slate-800/80'}`}
+                />
+              ))}
+            </div>
 
             {/* 來回滑動的游標 */}
             <div
-              className={`absolute top-0 bottom-0 w-3 rounded-full shadow-[0_0_12px_rgba(251,191,36,0.9)] transition-none ${
+              className={`absolute top-0 bottom-0 w-3 rounded-full shadow-[0_0_12px_rgba(251,191,36,0.9)] transition-none z-10 ${
                 isP1 ? 'bg-gradient-to-b from-indigo-400 to-cyan-300' : 'bg-gradient-to-b from-rose-400 to-amber-300'
               }`}
               style={{ left: `calc(${cursorPos}% - 6px)` }}
             />
           </div>
 
-          <div className="flex justify-between text-[10px] font-mono text-slate-400 px-1">
-            <span>0{currentRound.unit}</span>
-            <span>25{currentRound.unit}</span>
-            <span>50{currentRound.unit}</span>
-            <span>75{currentRound.unit}</span>
-            <span>100{currentRound.unit}</span>
+          {/* 刻度文字標籤 */}
+          <div className="flex justify-between text-[9px] font-mono text-slate-400 px-0.5">
+            {isTypeB ? (
+              // 類型 B: 10:0 ~ 0:10 比例標籤
+              [0, 2, 4, 6, 8, 10].map((h) => (
+                <span key={h}>{h}:{10 - h}</span>
+              ))
+            ) : (
+              // 類型 A: 溫度標籤
+              <>
+                <span>0°C</span>
+                <span>25°C</span>
+                <span>50°C</span>
+                <span>75°C</span>
+                <span>100°C</span>
+              </>
+            )}
           </div>
         </div>
 
