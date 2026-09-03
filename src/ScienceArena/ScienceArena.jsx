@@ -26,7 +26,7 @@ export default function ScienceArena({ onAddExp }) {
     },
     {
       id: 'concentration10F',
-      unit: '天空競技場 100F',
+      unit: '天空競技場 10F',
       title: '10F 濃度擂台：水龍頭稀釋對對碰',
       desc: '計算質量百分濃度，PK 模式體驗長按水龍頭精準注水對決！',
       icon: '💧',
