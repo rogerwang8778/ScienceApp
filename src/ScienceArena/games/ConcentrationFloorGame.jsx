@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Heart, Trophy, RefreshCw, Droplet } from 'lucide-react';
+import { Trophy, RefreshCw, Droplet, Swords } from 'lucide-react';
 
 export default function ConcentrationFloorGame({ mode = 'single', onGameOver }) {
   // 血條與遊戲狀態
@@ -10,20 +10,22 @@ export default function ConcentrationFloorGame({ mode = 'single', onGameOver }) 
   const [level, setLevel] = useState(1);
   const [timeLeft, setTimeLeft] = useState(60); 
 
-  // 雙人模式：輪流回合控制 ('p1' | 'p2')
-  const [currentPlayer, setCurrentPlayer] = useState('p1');
-
   // 動作與回合狀態
-  const [actionState, setActionState] = useState('idle'); 
+  const [actionState, setActionState] = useState('idle'); // 'idle' | 'p1_attack' | 'p2_attack' | 'p1_hit' | 'p2_hit'
   const [currentRound, setCurrentRound] = useState(null);
   const [isFinished, setIsFinished] = useState(false);
 
-  // PK 模式水龍頭注水 State
+  // P1 與 P2 獨立注水數值與計時器 (雙人同屏搶答)
   const [p1PourValue, setP1PourValue] = useState(0);
-  const isPouringRef = useRef(false);
-  const pourTimerRef = useRef(null);
+  const [p2PourValue, setP2PourValue] = useState(0);
 
-  // 題庫生成邏輯 (支援等級難度動態遞增)
+  const isPouringP1Ref = useRef(false);
+  const pourTimerP1Ref = useRef(null);
+
+  const isPouringP2Ref = useRef(false);
+  const pourTimerP2Ref = useRef(null);
+
+  // 題庫生成邏輯 (支援難度遞增)
   const generateRound = (currentLevel) => {
     const type = Math.random() > 0.5 ? 'typeA' : 'typeB';
     let roundData = {};
@@ -96,6 +98,7 @@ export default function ConcentrationFloorGame({ mode = 'single', onGameOver }) 
 
     setCurrentRound(roundData);
     setP1PourValue(0);
+    setP2PourValue(0);
   };
 
   useEffect(() => {
@@ -113,24 +116,24 @@ export default function ConcentrationFloorGame({ mode = 'single', onGameOver }) 
     return () => clearInterval(timer);
   }, [timeLeft, isFinished, mode]);
 
-  // 作答判定：單人與 PK 模式皆為一次扣 10 滴血，難度同步遞增
-  const handleAnswer = (isCorrect) => {
+  // 作答處理 (支援 P1 或 P2 獨立驗證)
+  const handlePlayerAnswer = (player, isCorrect) => {
     if (actionState !== 'idle' || isFinished) return;
 
     const nextLevel = level + 1;
 
     if (mode === 'single') {
-      // === 單人闖關邏輯 ===
+      // === 單人模式 ===
       if (isCorrect) {
-        setActionState('player_attack');
+        setActionState('p1_attack');
         setLevel(nextLevel);
 
         setTimeout(() => {
-          setActionState('enemy_hit');
+          setActionState('p2_hit');
           setCombo((prev) => prev + 1);
           setScore((prev) => prev + 20 + nextLevel * 5);
           setEnemyHp((prev) => {
-            const nextHp = Math.max(0, prev - 10); // 答對扣 10 滴血
+            const nextHp = Math.max(0, prev - 10);
             if (nextHp === 0) setTimeout(() => setIsFinished(true), 600);
             return nextHp;
           });
@@ -141,9 +144,9 @@ export default function ConcentrationFloorGame({ mode = 'single', onGameOver }) 
           if (enemyHp > 10 && playerHp > 0) generateRound(nextLevel);
         }, 900);
       } else {
-        setActionState('enemy_attack');
+        setActionState('p2_attack');
         setTimeout(() => {
-          setActionState('player_hit');
+          setActionState('p1_hit');
           setCombo(0);
           setPlayerHp((prev) => {
             const nextHp = Math.max(0, prev - 20);
@@ -158,78 +161,103 @@ export default function ConcentrationFloorGame({ mode = 'single', onGameOver }) 
         }, 900);
       }
     } else {
-      // === 雙人 PK 輪流作答邏輯 (一次扣 10 滴血，難度逐漸遞增) ===
-      const isP1 = currentPlayer === 'p1';
-
+      // === 雙人同時 PK 模式：答對扣對方 HP，答錯自扣 HP ===
       if (isCorrect) {
-        setLevel(nextLevel); // PK 模式答對難度提升
-        setActionState(isP1 ? 'player_attack' : 'enemy_attack');
-        setTimeout(() => {
-          setActionState(isP1 ? 'enemy_hit' : 'player_hit');
-          if (isP1) {
-            setEnemyHp((prev) => {
-              const nextHp = Math.max(0, prev - 10); // PK 模式扣 10 滴血
-              if (nextHp === 0) setTimeout(() => setIsFinished(true), 600);
-              return nextHp;
-            });
-          } else {
-            setPlayerHp((prev) => {
-              const nextHp = Math.max(0, prev - 10); // PK 模式扣 10 滴血
-              if (nextHp === 0) setTimeout(() => setIsFinished(true), 600);
-              return nextHp;
-            });
-          }
-        }, 250);
-      } else {
-        setActionState(isP1 ? 'enemy_attack' : 'player_attack');
-        setTimeout(() => {
-          setActionState(isP1 ? 'player_hit' : 'enemy_hit');
-          if (isP1) {
-            setPlayerHp((prev) => {
-              const nextHp = Math.max(0, prev - 20);
-              if (nextHp === 0) setTimeout(() => setIsFinished(true), 600);
-              return nextHp;
-            });
-          } else {
-            setEnemyHp((prev) => {
-              const nextHp = Math.max(0, prev - 20);
-              if (nextHp === 0) setTimeout(() => setIsFinished(true), 600);
-              return nextHp;
-            });
-          }
-        }, 250);
-      }
+        setLevel(nextLevel);
+        setActionState(player === 'p1' ? 'p1_attack' : 'p2_attack');
 
-      // 換下一位玩家回合，帶入提升後的等級
-      setTimeout(() => {
-        setActionState('idle');
-        setCurrentPlayer(isP1 ? 'p2' : 'p1');
-        if (playerHp > 10 && enemyHp > 10) generateRound(nextLevel);
-      }, 900);
+        setTimeout(() => {
+          setActionState(player === 'p1' ? 'p2_hit' : 'p1_hit');
+          if (player === 'p1') {
+            setEnemyHp((prev) => {
+              const nextHp = Math.max(0, prev - 10);
+              if (nextHp === 0) setTimeout(() => setIsFinished(true), 600);
+              return nextHp;
+            });
+          } else {
+            setPlayerHp((prev) => {
+              const nextHp = Math.max(0, prev - 10);
+              if (nextHp === 0) setTimeout(() => setIsFinished(true), 600);
+              return nextHp;
+            });
+          }
+        }, 250);
+
+        // 率先答對直接進下一題
+        setTimeout(() => {
+          setActionState('idle');
+          if (playerHp > 0 && enemyHp > 0) generateRound(nextLevel);
+        }, 900);
+      } else {
+        // 答錯自扣 20 HP
+        setActionState(player === 'p1' ? 'p2_attack' : 'p1_attack');
+
+        setTimeout(() => {
+          setActionState(player === 'p1' ? 'p1_hit' : 'p2_hit');
+          if (player === 'p1') {
+            setPlayerHp((prev) => {
+              const nextHp = Math.max(0, prev - 20);
+              if (nextHp === 0) setTimeout(() => setIsFinished(true), 600);
+              return nextHp;
+            });
+          } else {
+            setEnemyHp((prev) => {
+              const nextHp = Math.max(0, prev - 20);
+              if (nextHp === 0) setTimeout(() => setIsFinished(true), 600);
+              return nextHp;
+            });
+          }
+        }, 250);
+
+        setTimeout(() => {
+          setActionState('idle');
+        }, 900);
+      }
     }
   };
 
-  // 注水控制
-  const startPouring = () => {
-    if (isPouringRef.current || actionState !== 'idle') return;
-    isPouringRef.current = true;
-    
+  // P1 注水觸控邏輯
+  const startPouringP1 = () => {
+    if (isPouringP1Ref.current || actionState !== 'idle') return;
+    isPouringP1Ref.current = true;
     const increment = currentRound.maxGauge === 1000 ? 5 : 1; 
 
-    pourTimerRef.current = setInterval(() => {
+    pourTimerP1Ref.current = setInterval(() => {
       setP1PourValue((prev) => Math.min(currentRound.maxGauge, prev + increment));
     }, 35);
   };
 
-  const stopPouring = () => {
-    if (!isPouringRef.current) return;
-    isPouringRef.current = false;
-    clearInterval(pourTimerRef.current);
+  const stopPouringP1 = () => {
+    if (!isPouringP1Ref.current) return;
+    isPouringP1Ref.current = false;
+    clearInterval(pourTimerP1Ref.current);
 
     const margin = currentRound.maxGauge === 1000 ? 35 : 4;
     const diff = Math.abs(p1PourValue - currentRound.targetValue);
     const isCorrect = diff <= margin;
-    handleAnswer(isCorrect);
+    handlePlayerAnswer('p1', isCorrect);
+  };
+
+  // P2 注水觸控邏輯
+  const startPouringP2 = () => {
+    if (isPouringP2Ref.current || actionState !== 'idle') return;
+    isPouringP2Ref.current = true;
+    const increment = currentRound.maxGauge === 1000 ? 5 : 1; 
+
+    pourTimerP2Ref.current = setInterval(() => {
+      setP2PourValue((prev) => Math.min(currentRound.maxGauge, prev + increment));
+    }, 35);
+  };
+
+  const stopPouringP2 = () => {
+    if (!isPouringP2Ref.current) return;
+    isPouringP2Ref.current = false;
+    clearInterval(pourTimerP2Ref.current);
+
+    const margin = currentRound.maxGauge === 1000 ? 35 : 4;
+    const diff = Math.abs(p2PourValue - currentRound.targetValue);
+    const isCorrect = diff <= margin;
+    handlePlayerAnswer('p2', isCorrect);
   };
 
   const handleExit = () => {
@@ -237,27 +265,85 @@ export default function ConcentrationFloorGame({ mode = 'single', onGameOver }) 
     if (onGameOver) onGameOver(gainedExp);
   };
 
+  // 渲染獨立注水刻度面板
+  const renderPourControl = (player, pourValue, startPour, stopPour) => {
+    const isP1 = player === 'p1';
+
+    return (
+      <div className={`p-4 rounded-2xl border space-y-3 ${
+        isP1 ? 'bg-indigo-950/20 border-indigo-500/30' : 'bg-rose-950/20 border-rose-500/30'
+      }`}>
+        <div className="flex justify-between items-center text-xs font-mono">
+          <span className={`font-black px-2.5 py-0.5 rounded-full border ${
+            isP1 ? 'bg-indigo-500/20 text-indigo-300 border-indigo-400' : 'bg-rose-500/20 text-rose-300 border-rose-400'
+          }`}>
+            {isP1 ? '🔵 Player 1 (上方選手)' : '🔴 Player 2 (下方選手)'}
+          </span>
+          <span className="text-base font-bold text-cyan-400">
+            {pourValue} {currentRound.unit} <span className="text-xs text-slate-500">(上限 {currentRound.maxGauge}{currentRound.unit})</span>
+          </span>
+        </div>
+
+        {/* 量筒刻度條 */}
+        <div className="space-y-1">
+          <div className="w-full bg-slate-950 h-10 rounded-xl border border-slate-700 relative overflow-hidden flex items-center p-1 shadow-inner">
+            <div
+              className={`h-full rounded-lg transition-all duration-75 ${
+                isP1 ? 'bg-gradient-to-r from-indigo-500 to-cyan-400' : 'bg-gradient-to-r from-rose-500 to-amber-400'
+              }`}
+              style={{ width: `${(pourValue / currentRound.maxGauge) * 100}%` }}
+            />
+
+            <div className="absolute inset-0 flex justify-between px-2 pointer-events-none items-center">
+              <div className="w-0.5 h-full bg-slate-700/80" style={{ left: '25%' }} />
+              <div className="w-0.5 h-full bg-slate-500/80" style={{ left: '50%' }} />
+              <div className="w-0.5 h-full bg-slate-700/80" style={{ left: '75%' }} />
+            </div>
+          </div>
+
+          <div className="flex justify-between text-[10px] font-mono text-slate-400 px-1">
+            <span>0{currentRound.unit}</span>
+            <span>{currentRound.maxGauge * 0.25}{currentRound.unit}</span>
+            <span>{currentRound.maxGauge * 0.5}{currentRound.unit}</span>
+            <span>{currentRound.maxGauge * 0.75}{currentRound.unit}</span>
+            <span>{currentRound.maxGauge}{currentRound.unit}</span>
+          </div>
+        </div>
+
+        {/* 注水壓鈕 */}
+        <button
+          onMouseDown={startPour}
+          onMouseUp={stopPour}
+          onTouchStart={startPour}
+          onTouchEnd={stopPour}
+          disabled={actionState !== 'idle'}
+          className={`w-full py-3.5 text-white font-black text-sm rounded-xl shadow-xl transition-all flex items-center justify-center gap-2 select-none touch-none cursor-pointer active:scale-98 ${
+            isP1 
+              ? 'bg-gradient-to-r from-indigo-600 to-blue-600 hover:brightness-110' 
+              : 'bg-gradient-to-r from-rose-600 to-amber-600 hover:brightness-110'
+          }`}
+        >
+          <Droplet className="w-4 h-4 fill-white animate-bounce" />
+          {isP1 ? 'Player 1' : 'Player 2'} 按住注水 (對準刻度放開搶答)
+        </button>
+      </div>
+    );
+  };
+
   return (
-    <div className="bg-slate-950 border border-slate-800 rounded-3xl p-4 md:p-8 max-w-4xl mx-auto space-y-6 text-slate-100 select-none overflow-hidden">
+    <div className="bg-slate-950 border border-slate-800 rounded-3xl p-4 md:p-6 max-w-5xl mx-auto space-y-4 text-slate-100 select-none overflow-hidden">
       {/* 頂部資訊列 */}
-      <div className="flex justify-between items-center border-b border-slate-800 pb-4">
+      <div className="flex justify-between items-center border-b border-slate-800 pb-3">
         <div>
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-black bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 px-2.5 py-1 rounded-lg uppercase tracking-wider">
-              Heaven's Arena • Floor 10F ({mode === 'pvp' ? '雙人輪流 PK' : '單人闖關'})
+              Heaven's Arena • Floor 10F ({mode === 'pvp' ? '雙人同屏搶速 PK' : '單人闖關'})
             </span>
             <span className="text-[10px] font-bold text-amber-300 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-md">
               難度 Lvl.{level}
             </span>
-            {mode === 'pvp' && (
-              <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-md border ${
-                currentPlayer === 'p1' ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40' : 'bg-rose-500/20 text-rose-300 border-rose-500/40'
-              }`}>
-                👉 當前攻擊：{currentPlayer === 'p1' ? 'Player 1' : 'Player 2'}
-              </span>
-            )}
           </div>
-          <h2 className="text-xl md:text-2xl font-black text-white mt-1 flex items-center gap-2">
+          <h2 className="text-lg md:text-xl font-black text-white mt-1 flex items-center gap-2">
             🧪 10F 濃度擂台：水龍頭稀釋對對碰
           </h2>
         </div>
@@ -265,17 +351,17 @@ export default function ConcentrationFloorGame({ mode = 'single', onGameOver }) 
         <div className="flex items-center gap-4">
           <div className="text-right">
             <p className="text-[10px] text-slate-400">當前積分</p>
-            <p className="text-lg font-mono font-bold text-amber-400">{score} PTS</p>
+            <p className="text-base font-mono font-bold text-amber-400">{score} PTS</p>
           </div>
 
-          <div className="bg-slate-900 border border-slate-800 px-3.5 py-1.5 rounded-2xl text-center">
+          <div className="bg-slate-900 border border-slate-800 px-3 py-1 rounded-2xl text-center">
             <p className="text-[10px] text-slate-400">時間限制</p>
             {mode === 'single' ? (
-              <p className={`text-base font-mono font-bold ${timeLeft <= 5 ? 'text-rose-500 animate-ping' : 'text-cyan-400'}`}>
+              <p className={`text-sm font-mono font-bold ${timeLeft <= 5 ? 'text-rose-500 animate-ping' : 'text-cyan-400'}`}>
                 {timeLeft}s
               </p>
             ) : (
-              <p className="text-base font-mono font-bold text-emerald-400">∞ (打倒為止)</p>
+              <p className="text-sm font-mono font-bold text-emerald-400">∞ (雙人同屏搶答)</p>
             )}
           </div>
         </div>
@@ -283,51 +369,48 @@ export default function ConcentrationFloorGame({ mode = 'single', onGameOver }) 
 
       {/* 對戰舞台 */}
       {!isFinished && currentRound && (
-        <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 relative flex justify-between items-center min-h-[200px]">
+        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 relative flex justify-between items-center min-h-[140px]">
           {/* P1 角色 */}
-          <div className={`flex flex-col items-center gap-2 z-10 transition-all duration-300 ${actionState === 'player_attack' ? 'translate-x-12 scale-110' : ''} ${actionState === 'player_hit' ? '-translate-x-4 animate-shake text-rose-500' : ''}`}>
-            {actionState === 'player_hit' && <span className="absolute -top-8 text-rose-500 font-black text-xl animate-bounce">-20 HP!</span>}
-            <div className={`w-20 h-20 md:w-24 md:h-24 rounded-2xl border-2 flex items-center justify-center relative shadow-lg ${
-              mode === 'pvp' && currentPlayer === 'p1' ? 'border-amber-400 bg-indigo-600/30 ring-4 ring-amber-400/30' : 'border-indigo-400 bg-indigo-600/20'
-            }`}>
-              <div className="text-4xl md:text-5xl">🧪</div>
-              <span className="absolute -bottom-2 bg-indigo-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                {mode === 'pvp' ? 'Player 1' : '挑戰者'}
+          <div className={`flex flex-col items-center gap-1.5 z-10 transition-all duration-300 ${actionState === 'p1_attack' ? 'translate-x-8 scale-110' : ''} ${actionState === 'p1_hit' ? '-translate-x-4 animate-shake text-rose-500' : ''}`}>
+            {actionState === 'p1_hit' && <span className="absolute -top-6 text-rose-500 font-black text-lg animate-bounce">-20 HP!</span>}
+            <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl border-2 border-indigo-400 bg-indigo-600/20 flex items-center justify-center relative shadow-lg">
+              <div className="text-3xl md:text-4xl">🧪</div>
+              <span className="absolute -bottom-2 bg-indigo-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full">
+                Player 1
               </span>
             </div>
-            <div className="w-28 md:w-36 space-y-1">
+            <div className="w-24 md:w-32 space-y-1">
               <div className="flex justify-between text-[10px] font-mono font-bold">
-                <span className="text-indigo-300">{mode === 'pvp' ? 'P1' : 'YOU'}</span>
+                <span className="text-indigo-300">P1</span>
                 <span className="text-rose-400">{playerHp} HP</span>
               </div>
-              <div className="w-full bg-slate-950 h-2.5 rounded-full border border-slate-800 p-0.5">
+              <div className="w-full bg-slate-950 h-2 rounded-full border border-slate-800 p-0.5">
                 <div className="bg-gradient-to-r from-indigo-500 to-emerald-400 h-full rounded-full transition-all duration-300" style={{ width: `${playerHp}%` }} />
               </div>
             </div>
           </div>
 
           <div className="z-10 text-center">
-            <span className="text-2xl md:text-3xl font-black italic text-slate-700 tracking-widest">VS</span>
-            {combo > 1 && <p className="text-xs font-bold text-amber-400 animate-pulse mt-1">🔥 {combo} COMBO!</p>}
+            <Swords className="w-8 h-8 text-slate-600 mx-auto animate-pulse" />
+            <span className="text-xs font-black italic text-slate-500 uppercase tracking-widest mt-1 block">競技場對決</span>
+            {combo > 1 && <p className="text-[10px] font-bold text-amber-400 animate-pulse mt-0.5">🔥 {combo} COMBO!</p>}
           </div>
 
           {/* P2 / 關主 角色 */}
-          <div className={`flex flex-col items-center gap-2 z-10 transition-all duration-300 ${actionState === 'enemy_attack' ? '-translate-x-12 scale-110' : ''} ${actionState === 'enemy_hit' ? 'translate-x-4 animate-shake text-rose-500' : ''}`}>
-            {actionState === 'enemy_hit' && <span className="absolute -top-8 text-amber-400 font-black text-xl animate-bounce">-10 HP!</span>}
-            <div className={`w-20 h-20 md:w-24 md:h-24 rounded-2xl border-2 flex items-center justify-center relative shadow-lg ${
-              mode === 'pvp' && currentPlayer === 'p2' ? 'border-amber-400 bg-rose-600/30 ring-4 ring-amber-400/30' : 'border-rose-500 bg-rose-600/20'
-            }`}>
-              <div className="text-4xl md:text-5xl">💧</div>
-              <span className="absolute -bottom-2 bg-rose-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+          <div className={`flex flex-col items-center gap-1.5 z-10 transition-all duration-300 ${actionState === 'p2_attack' ? '-translate-x-8 scale-110' : ''} ${actionState === 'p2_hit' ? 'translate-x-4 animate-shake text-rose-500' : ''}`}>
+            {actionState === 'p2_hit' && <span className="absolute -top-6 text-amber-400 font-black text-lg animate-bounce">-10 HP!</span>}
+            <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl border-2 border-rose-500 bg-rose-600/20 flex items-center justify-center relative shadow-lg">
+              <div className="text-3xl md:text-4xl">💧</div>
+              <span className="absolute -bottom-2 bg-rose-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full">
                 {mode === 'pvp' ? 'Player 2' : '10F 關主'}
               </span>
             </div>
-            <div className="w-28 md:w-36 space-y-1">
+            <div className="w-24 md:w-32 space-y-1">
               <div className="flex justify-between text-[10px] font-mono font-bold">
                 <span className="text-rose-400">{mode === 'pvp' ? 'P2' : 'BOSS'}</span>
                 <span className="text-rose-400">{enemyHp} HP</span>
               </div>
-              <div className="w-full bg-slate-950 h-2.5 rounded-full border border-slate-800 p-0.5 dir-rtl">
+              <div className="w-full bg-slate-950 h-2 rounded-full border border-slate-800 p-0.5 dir-rtl">
                 <div className="bg-gradient-to-r from-rose-500 to-amber-400 h-full rounded-full transition-all duration-300" style={{ width: `${enemyHp}%` }} />
               </div>
             </div>
@@ -335,14 +418,18 @@ export default function ConcentrationFloorGame({ mode = 'single', onGameOver }) 
         </div>
       )}
 
-      {/* 題目卡片 */}
+      {/* 題目與操作區域 */}
       {!isFinished && currentRound && (
         <div className="space-y-4">
-          <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl space-y-2 text-center">
-            <span className="text-[10px] font-bold text-cyan-400 bg-cyan-500/10 px-2.5 py-1 rounded-lg border border-cyan-500/20">
+          {/* 上方：Player 1 控制區 (僅在雙人 PK 顯示) */}
+          {mode === 'pvp' && renderPourControl('p1', p1PourValue, startPouringP1, stopPouringP1)}
+
+          {/* 中間公共題目卡片 */}
+          <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-1.5 text-center">
+            <span className="text-[10px] font-bold text-cyan-400 bg-cyan-500/10 px-2.5 py-0.5 rounded-lg border border-cyan-500/20">
               {currentRound.title}
             </span>
-            <h3 className="text-base md:text-lg font-bold text-white mt-1">
+            <h3 className="text-sm md:text-base font-bold text-white mt-1">
               {currentRound.desc}
             </h3>
             <p className="text-xs text-amber-300 font-semibold">
@@ -350,13 +437,13 @@ export default function ConcentrationFloorGame({ mode = 'single', onGameOver }) 
             </p>
           </div>
 
-          {/* 單人模式：4選1 ｜ PK 模式：水龍頭注水控制 */}
+          {/* 下方：單人 4 選 1 ｜ 雙人 Player 2 控制區 */}
           {mode === 'single' ? (
             <div className="grid grid-cols-2 gap-3">
               {currentRound.options.map((opt, idx) => (
                 <button
                   key={idx}
-                  onClick={() => handleAnswer(idx === currentRound.correctIdx)}
+                  onClick={() => handlePlayerAnswer('p1', idx === currentRound.correctIdx)}
                   disabled={actionState !== 'idle'}
                   className="p-4 rounded-2xl bg-slate-900 hover:bg-cyan-600/20 border border-slate-800 hover:border-cyan-500 text-center font-mono font-bold text-base text-white hover:text-cyan-300 transition-all cursor-pointer disabled:opacity-50"
                 >
@@ -365,56 +452,7 @@ export default function ConcentrationFloorGame({ mode = 'single', onGameOver }) 
               ))}
             </div>
           ) : (
-            <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl text-center space-y-5">
-              <div className="flex justify-between items-center text-xs font-mono">
-                <span className="text-slate-400">
-                  {currentPlayer === 'p1' ? '🔵 Player 1' : '🔴 Player 2'} 回合注水刻度：
-                </span>
-                <span className="text-lg font-bold text-cyan-400">
-                  {p1PourValue} {currentRound.unit} <span className="text-xs text-slate-500">(容量上限 {currentRound.maxGauge}{currentRound.unit})</span>
-                </span>
-              </div>
-
-              {/* 量筒刻度線 */}
-              <div className="space-y-1">
-                <div className="w-full bg-slate-950 h-12 rounded-2xl border border-slate-700 relative overflow-hidden flex items-center p-1 shadow-inner">
-                  <div
-                    className="bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 h-full rounded-xl transition-all duration-75"
-                    style={{ width: `${(p1PourValue / currentRound.maxGauge) * 100}%` }}
-                  />
-
-                  <div className="absolute inset-0 flex justify-between px-2 pointer-events-none items-center">
-                    <div className="w-0.5 h-full bg-slate-700/80" style={{ left: '25%' }} />
-                    <div className="w-0.5 h-full bg-slate-500/80" style={{ left: '50%' }} />
-                    <div className="w-0.5 h-full bg-slate-700/80" style={{ left: '75%' }} />
-                  </div>
-                </div>
-
-                <div className="flex justify-between text-[10px] font-mono text-slate-400 px-1">
-                  <span>0{currentRound.unit}</span>
-                  <span>{currentRound.maxGauge * 0.25}{currentRound.unit}</span>
-                  <span>{currentRound.maxGauge * 0.5}{currentRound.unit}</span>
-                  <span>{currentRound.maxGauge * 0.75}{currentRound.unit}</span>
-                  <span>{currentRound.maxGauge}{currentRound.unit}</span>
-                </div>
-              </div>
-
-              <button
-                onMouseDown={startPouring}
-                onMouseUp={stopPouring}
-                onTouchStart={startPouring}
-                onTouchEnd={stopPouring}
-                disabled={actionState !== 'idle'}
-                className={`w-full py-4 text-white font-black text-base rounded-2xl shadow-xl transition-all flex items-center justify-center gap-2 select-none touch-none cursor-pointer ${
-                  currentPlayer === 'p1' 
-                    ? 'bg-gradient-to-r from-indigo-600 to-blue-600 active:from-indigo-700 active:to-blue-700' 
-                    : 'bg-gradient-to-r from-rose-600 to-amber-600 active:from-rose-700 active:to-amber-700'
-                }`}
-              >
-                <Droplet className="w-5 h-5 fill-white animate-bounce" />
-                {currentPlayer === 'p1' ? 'Player 1' : 'Player 2'} 按住注水 (對準刻度放開)
-              </button>
-            </div>
+            renderPourControl('p2', p2PourValue, startPouringP2, stopPouringP2)
           )}
         </div>
       )}
@@ -427,7 +465,7 @@ export default function ConcentrationFloorGame({ mode = 'single', onGameOver }) 
             <h3 className="text-2xl font-black text-white">
               {mode === 'single'
                 ? enemyHp === 0 ? '🎉 10F 濃度擂台突破成功！' : '⚔️ 擂台挑戰結束'
-                : playerHp > enemyHp ? '🎉 Player 1 獲勝！' : '🎉 Player 2 獲勝！'
+                : playerHp > enemyHp ? '🎉 Player 1 (上方) 獲勝！' : '🎉 Player 2 (下方) 獲勝！'
               }
             </h3>
             <p className="text-xs text-slate-400 mt-1">
@@ -449,7 +487,7 @@ export default function ConcentrationFloorGame({ mode = 'single', onGameOver }) 
               <span className="font-bold text-emerald-400">{playerHp}%</span>
             </div>
             <div className="flex justify-between py-1 border-b border-slate-800">
-              <span className="text-slate-400">{mode === 'single' ? '關主' : 'P2'} 剩餘 HP：</span>
+              <span className="text-slate-400">P2 剩餘 HP：</span>
               <span className="font-bold text-rose-400">{enemyHp}%</span>
             </div>
             <div className="flex justify-between py-1">
