@@ -8,12 +8,9 @@ export default function DensityFloorGame({ mode = 'single', onGameOver }) {
   const [score, setScore] = useState(0);
   const [combo, setCombo] = useState(0);
   const [level, setLevel] = useState(1);
-  const [timeLeft, setTimeLeft] = useState(60); // [修改1] 單人模式時間延長至 60 秒
+  const [timeLeft, setTimeLeft] = useState(60); 
 
-  // [修改2] 雙人 PK 輪流回合控制 ('p1' | 'p2')
-  const [currentPlayer, setCurrentPlayer] = useState('p1');
-
-  // 動畫動作狀態：'idle' | 'player_attack' | 'enemy_attack' | 'player_hit' | 'enemy_hit'
+  // 動畫動作狀態：'idle' | 'p1_attack' | 'p2_attack' | 'p1_hit' | 'p2_hit'
   const [actionState, setActionState] = useState('idle');
   const [currentRound, setCurrentRound] = useState(null);
   const [isFinished, setIsFinished] = useState(false);
@@ -38,12 +35,11 @@ export default function DensityFloorGame({ mode = 'single', onGameOver }) {
     { name: '金塊', M: 386, V: 20, density: 19.3 }
   ];
 
-  // [修改1 & 2] 難度階梯式生成器
+  // 難度階梯式生成器
   const generateRound = (currentLevel = 1) => {
     const liquid = liquids[Math.floor(Math.random() * liquids.length)];
     const actionGoal = Math.random() > 0.5 ? 'float' : 'sink';
 
-    // 根據 level 動態產出不同難度的物質 (Lvl 越高，M 與 V 的心算複雜度越高)
     let pool = [...baseMaterials];
     if (currentLevel >= 3) {
       pool.push(
@@ -104,8 +100,8 @@ export default function DensityFloorGame({ mode = 'single', onGameOver }) {
     return () => clearInterval(timer);
   }, [timeLeft, isFinished, mode]);
 
-  // [修改1 & 2] 作答邏輯 (扣10滴血 + 題目漸進變難 + 雙人輪流)
-  const handleAnswer = (index) => {
+  // 作答邏輯 (支援 P1 與 P2 獨立作答)
+  const handlePlayerAnswer = (player, index) => {
     if (!currentRound || isFinished || actionState !== 'idle') return;
 
     const isCorrect = index === currentRound.correctAnswerIndex;
@@ -114,15 +110,15 @@ export default function DensityFloorGame({ mode = 'single', onGameOver }) {
     if (mode === 'single') {
       // === 單人模式 ===
       if (isCorrect) {
-        setActionState('player_attack');
+        setActionState('p1_attack');
         setLevel(nextLevel);
 
         setTimeout(() => {
-          setActionState('enemy_hit');
+          setActionState('p2_hit');
           setCombo((prev) => prev + 1);
           setScore((prev) => prev + 20 + nextLevel * 5);
           setEnemyHp((prev) => {
-            const nextHp = Math.max(0, prev - 10); // [修改1] 答對扣 10 滴血 (10 次通關)
+            const nextHp = Math.max(0, prev - 10);
             if (nextHp === 0) setTimeout(() => setIsFinished(true), 600);
             return nextHp;
           });
@@ -133,9 +129,9 @@ export default function DensityFloorGame({ mode = 'single', onGameOver }) {
           if (enemyHp > 10 && playerHp > 0) generateRound(nextLevel);
         }, 900);
       } else {
-        setActionState('enemy_attack');
+        setActionState('p2_attack');
         setTimeout(() => {
-          setActionState('player_hit');
+          setActionState('p1_hit');
           setCombo(0);
           setPlayerHp((prev) => {
             const nextHp = Math.max(0, prev - 20);
@@ -150,35 +146,40 @@ export default function DensityFloorGame({ mode = 'single', onGameOver }) {
         }, 900);
       }
     } else {
-      // === [修改2] 雙人 PK 輪流作答 (一次扣 10 滴血，難度遞增) ===
-      const isP1 = currentPlayer === 'p1';
-
+      // === 雙人同屏搶答 PK 模式 ===
       if (isCorrect) {
-        setLevel(nextLevel); // PK 答對難度提升
-        setActionState(isP1 ? 'player_attack' : 'enemy_attack');
+        setLevel(nextLevel);
+        setActionState(player === 'p1' ? 'p1_attack' : 'p2_attack');
 
         setTimeout(() => {
-          setActionState(isP1 ? 'enemy_hit' : 'player_hit');
-          if (isP1) {
+          setActionState(player === 'p1' ? 'p2_hit' : 'p1_hit');
+          if (player === 'p1') {
             setEnemyHp((prev) => {
-              const nextHp = Math.max(0, prev - 10); // 攻擊對方扣 10 滴血
+              const nextHp = Math.max(0, prev - 10);
               if (nextHp === 0) setTimeout(() => setIsFinished(true), 600);
               return nextHp;
             });
           } else {
             setPlayerHp((prev) => {
-              const nextHp = Math.max(0, prev - 10); // 攻擊對方扣 10 滴血
+              const nextHp = Math.max(0, prev - 10);
               if (nextHp === 0) setTimeout(() => setIsFinished(true), 600);
               return nextHp;
             });
           }
         }, 250);
+
+        // 先答對者直接推進下一題
+        setTimeout(() => {
+          setActionState('idle');
+          if (playerHp > 0 && enemyHp > 0) generateRound(nextLevel);
+        }, 900);
       } else {
-        setActionState(isP1 ? 'enemy_attack' : 'player_attack');
+        // 答錯自扣 20 HP
+        setActionState(player === 'p1' ? 'p2_attack' : 'p1_attack');
 
         setTimeout(() => {
-          setActionState(isP1 ? 'player_hit' : 'enemy_hit');
-          if (isP1) {
+          setActionState(player === 'p1' ? 'p1_hit' : 'p2_hit');
+          if (player === 'p1') {
             setPlayerHp((prev) => {
               const nextHp = Math.max(0, prev - 20);
               if (nextHp === 0) setTimeout(() => setIsFinished(true), 600);
@@ -192,14 +193,11 @@ export default function DensityFloorGame({ mode = 'single', onGameOver }) {
             });
           }
         }, 250);
-      }
 
-      // 換下一個玩家回合並產出新題
-      setTimeout(() => {
-        setActionState('idle');
-        setCurrentPlayer(isP1 ? 'p2' : 'p1');
-        if (playerHp > 10 && enemyHp > 10) generateRound(nextLevel);
-      }, 900);
+        setTimeout(() => {
+          setActionState('idle');
+        }, 900);
+      }
     }
   };
 
@@ -208,27 +206,76 @@ export default function DensityFloorGame({ mode = 'single', onGameOver }) {
     if (onGameOver) onGameOver(gainedExp);
   };
 
+  // 渲染獨立作答面板模組
+  const renderOptionPanel = (player) => {
+    const isP1 = player === 'p1';
+
+    return (
+      <div className={`p-3.5 rounded-2xl border space-y-2.5 ${
+        isP1 ? 'bg-indigo-950/20 border-indigo-500/30' : 'bg-rose-950/20 border-rose-500/30'
+      }`}>
+        <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+          <span className={`text-xs font-black px-2.5 py-0.5 rounded-full border ${
+            isP1 ? 'bg-indigo-500/20 text-indigo-300 border-indigo-400' : 'bg-rose-500/20 text-rose-300 border-rose-400'
+          }`}>
+            {isP1 ? '🛡️ Player 1 (左側選手)' : '⚔️ Player 2 (右側選手)'}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 gap-2">
+          {currentRound.options.map((option, idx) => (
+            <button
+              key={idx}
+              onClick={() => handlePlayerAnswer(player, idx)}
+              disabled={actionState !== 'idle'}
+              className={`p-3 rounded-xl border text-left transition-all flex items-center justify-between group cursor-pointer disabled:opacity-50 ${
+                isP1
+                  ? 'bg-slate-900/90 hover:bg-indigo-600/20 border-slate-800 hover:border-indigo-500'
+                  : 'bg-slate-900/90 hover:bg-rose-600/20 border-slate-800 hover:border-rose-500'
+              }`}
+            >
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <span className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-mono font-bold ${
+                    isP1 
+                      ? 'bg-slate-800 group-hover:bg-indigo-600 text-slate-300 group-hover:text-white' 
+                      : 'bg-slate-800 group-hover:bg-rose-600 text-slate-300 group-hover:text-white'
+                  }`}>
+                    {['A', 'B', 'C', 'D'][idx]}
+                  </span>
+                  <span className="font-bold text-white text-xs">
+                    {option.name}
+                  </span>
+                </div>
+                <div className="text-[10px] font-mono text-slate-400 pl-7">
+                  M = <span className="text-amber-300">{option.M}g</span> ｜ V = <span className="text-cyan-300">{option.V}cm³</span>
+                </div>
+              </div>
+
+              <span className={`text-[10px] font-bold ${isP1 ? 'text-indigo-400' : 'text-rose-400'}`}>
+                搶答 ➔
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div className="bg-slate-950 border border-slate-800 rounded-3xl p-4 md:p-8 max-w-4xl mx-auto space-y-6 text-slate-100 select-none overflow-hidden">
-      {/* 1. 天空競技場 頂部資訊 */}
-      <div className="flex justify-between items-center border-b border-slate-800 pb-4">
+    <div className="bg-slate-950 border border-slate-800 rounded-3xl p-4 md:p-6 max-w-6xl mx-auto space-y-4 text-slate-100 select-none overflow-hidden">
+      {/* 頂部資訊 */}
+      <div className="flex justify-between items-center border-b border-slate-800 pb-3">
         <div>
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-black bg-rose-500/20 text-rose-400 border border-rose-500/40 px-2.5 py-1 rounded-lg uppercase tracking-wider">
-              Heaven's Arena • Floor 1F ({mode === 'pvp' ? '雙人輪流 PK' : '單人闖關'})
+              Heaven's Arena • Floor 1F ({mode === 'pvp' ? '雙人同屏搶速 PK' : '單人闖關'})
             </span>
             <span className="text-[10px] font-bold text-amber-300 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-md">
               難度 Lvl.{level}
             </span>
-            {mode === 'pvp' && (
-              <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-md border ${
-                currentPlayer === 'p1' ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40' : 'bg-rose-500/20 text-rose-300 border-rose-500/40'
-              }`}>
-                👉 當前攻擊：{currentPlayer === 'p1' ? 'Player 1' : 'Player 2'}
-              </span>
-            )}
           </div>
-          <h2 className="text-xl md:text-2xl font-black text-white mt-1 flex items-center gap-2">
+          <h2 className="text-lg md:text-xl font-black text-white mt-1 flex items-center gap-2">
             ⚔️ 1F 密度擂台：浮沉剋制戰
           </h2>
         </div>
@@ -236,55 +283,48 @@ export default function DensityFloorGame({ mode = 'single', onGameOver }) {
         <div className="flex items-center gap-4">
           <div className="text-right">
             <p className="text-[10px] text-slate-400">當前積分</p>
-            <p className="text-lg font-mono font-bold text-amber-400">{score} PTS</p>
+            <p className="text-base font-mono font-bold text-amber-400">{score} PTS</p>
           </div>
 
-          <div className="bg-slate-900 border border-slate-800 px-3.5 py-1.5 rounded-2xl text-center">
+          <div className="bg-slate-900 border border-slate-800 px-3 py-1 rounded-2xl text-center">
             <p className="text-[10px] text-slate-400">時間限制</p>
             {mode === 'single' ? (
-              <p className={`text-base font-mono font-bold ${timeLeft <= 5 ? 'text-rose-500 animate-ping' : 'text-cyan-400'}`}>
+              <p className={`text-sm font-mono font-bold ${timeLeft <= 5 ? 'text-rose-500 animate-ping' : 'text-cyan-400'}`}>
                 {timeLeft}s
               </p>
             ) : (
-              <p className="text-base font-mono font-bold text-emerald-400">
-                ∞ (打倒為止)
+              <p className="text-sm font-mono font-bold text-emerald-400">
+                ∞ (雙人同屏搶答)
               </p>
             )}
           </div>
         </div>
       </div>
 
-      {/* 2. 對戰角色視覺擂台舞台 */}
+      {/* 對戰角色視覺擂台 */}
       {!isFinished && currentRound && (
-        <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 relative flex justify-between items-center min-h-[220px]">
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 via-transparent to-rose-600/10 rounded-3xl pointer-events-none" />
+        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 relative flex justify-between items-center min-h-[140px]">
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 via-transparent to-rose-600/10 rounded-2xl pointer-events-none" />
 
-          {/* === 左側：P1 角色 === */}
-          <div className={`flex flex-col items-center gap-2 z-10 transition-all duration-300 ${
-            actionState === 'player_attack' ? 'translate-x-12 scale-110' : ''
-          } ${actionState === 'player_hit' ? '-translate-x-4 animate-shake text-rose-500' : ''}`}>
-            
-            {actionState === 'player_hit' && (
-              <span className="absolute -top-8 text-rose-500 font-black text-xl animate-bounce">
-                -20 HP!
-              </span>
-            )}
+          {/* 左側：P1 角色 */}
+          <div className={`flex flex-col items-center gap-1.5 z-10 transition-all duration-300 ${
+            actionState === 'p1_attack' ? 'translate-x-8 scale-110' : ''
+          } ${actionState === 'p1_hit' ? '-translate-x-4 animate-shake text-rose-500' : ''}`}>
+            {actionState === 'p1_hit' && <span className="absolute -top-6 text-rose-500 font-black text-lg animate-bounce">-20 HP!</span>}
 
-            <div className={`w-20 h-20 md:w-24 md:h-24 rounded-2xl border-2 flex items-center justify-center relative shadow-lg ${
-              mode === 'pvp' && currentPlayer === 'p1' ? 'border-amber-400 bg-indigo-600/30 ring-4 ring-amber-400/30' : 'border-indigo-400 bg-indigo-600/20'
-            }`}>
-              <div className="text-4xl md:text-5xl">🛡️</div>
-              <span className="absolute -bottom-2 bg-indigo-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                {mode === 'pvp' ? 'Player 1' : '挑戰者'}
+            <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl border-2 border-indigo-400 bg-indigo-600/20 flex items-center justify-center relative shadow-lg">
+              <div className="text-3xl md:text-4xl">🛡️</div>
+              <span className="absolute -bottom-2 bg-indigo-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full">
+                Player 1
               </span>
             </div>
 
-            <div className="w-28 md:w-36 space-y-1">
+            <div className="w-24 md:w-32 space-y-1">
               <div className="flex justify-between text-[10px] font-mono font-bold">
-                <span className="text-indigo-300">{mode === 'pvp' ? 'P1' : 'YOU'}</span>
+                <span className="text-indigo-300">P1</span>
                 <span className="text-rose-400">{playerHp} HP</span>
               </div>
-              <div className="w-full bg-slate-950 h-2.5 rounded-full border border-slate-800 p-0.5">
+              <div className="w-full bg-slate-950 h-2 rounded-full border border-slate-800 p-0.5">
                 <div className="bg-gradient-to-r from-indigo-500 to-emerald-400 h-full rounded-full transition-all duration-300" style={{ width: `${playerHp}%` }} />
               </div>
             </div>
@@ -292,42 +332,30 @@ export default function DensityFloorGame({ mode = 'single', onGameOver }) {
 
           {/* 中央對決 VS */}
           <div className="z-10 text-center">
-            <span className="text-2xl md:text-3xl font-black italic text-slate-700 tracking-widest">
-              VS
-            </span>
-            {combo > 1 && (
-              <p className="text-xs font-bold text-amber-400 animate-pulse mt-1">
-                🔥 {combo} COMBO!
-              </p>
-            )}
+            <Swords className="w-8 h-8 text-slate-600 mx-auto animate-pulse" />
+            <span className="text-xs font-black italic text-slate-500 uppercase tracking-widest mt-1 block">競技場對決</span>
+            {combo > 1 && <p className="text-[10px] font-bold text-amber-400 animate-pulse mt-0.5">🔥 {combo} COMBO!</p>}
           </div>
 
-          {/* === 右側：P2 / 關主 角色 === */}
-          <div className={`flex flex-col items-center gap-2 z-10 transition-all duration-300 ${
-            actionState === 'enemy_attack' ? '-translate-x-12 scale-110' : ''
-          } ${actionState === 'enemy_hit' ? 'translate-x-4 animate-shake text-rose-500' : ''}`}>
-            
-            {actionState === 'enemy_hit' && (
-              <span className="absolute -top-8 text-amber-400 font-black text-xl animate-bounce">
-                -10 HP!
-              </span>
-            )}
+          {/* 右側：P2 / 關主 角色 */}
+          <div className={`flex flex-col items-center gap-1.5 z-10 transition-all duration-300 ${
+            actionState === 'p2_attack' ? '-translate-x-8 scale-110' : ''
+          } ${actionState === 'p2_hit' ? 'translate-x-4 animate-shake text-rose-500' : ''}`}>
+            {actionState === 'p2_hit' && <span className="absolute -top-6 text-amber-400 font-black text-lg animate-bounce">-10 HP!</span>}
 
-            <div className={`w-20 h-20 md:w-24 md:h-24 rounded-2xl border-2 flex items-center justify-center relative shadow-lg ${
-              mode === 'pvp' && currentPlayer === 'p2' ? 'border-amber-400 bg-rose-600/30 ring-4 ring-amber-400/30' : 'border-rose-500 bg-rose-600/20'
-            }`}>
-              <div className="text-4xl md:text-5xl">🥊</div>
-              <span className="absolute -bottom-2 bg-rose-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+            <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl border-2 border-rose-500 bg-rose-600/20 flex items-center justify-center relative shadow-lg">
+              <div className="text-3xl md:text-4xl">🥊</div>
+              <span className="absolute -bottom-2 bg-rose-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full">
                 {mode === 'pvp' ? 'Player 2' : '1F 關主'}
               </span>
             </div>
 
-            <div className="w-28 md:w-36 space-y-1">
+            <div className="w-24 md:w-32 space-y-1">
               <div className="flex justify-between text-[10px] font-mono font-bold">
                 <span className="text-rose-400">{mode === 'pvp' ? 'P2' : 'BOSS'}</span>
                 <span className="text-rose-400">{enemyHp} HP</span>
               </div>
-              <div className="w-full bg-slate-950 h-2.5 rounded-full border border-slate-800 p-0.5 dir-rtl">
+              <div className="w-full bg-slate-950 h-2 rounded-full border border-slate-800 p-0.5 dir-rtl">
                 <div className="bg-gradient-to-r from-rose-500 to-amber-400 h-full rounded-full transition-all duration-300" style={{ width: `${enemyHp}%` }} />
               </div>
             </div>
@@ -335,29 +363,26 @@ export default function DensityFloorGame({ mode = 'single', onGameOver }) {
         </div>
       )}
 
-      {/* 3. 液體陷阱題目 */}
+      {/* 公共液體題目卡片 */}
       {!isFinished && currentRound && (
-        <div className="space-y-4">
-          <div className={`bg-gradient-to-r ${currentRound.liquid.color} border ${currentRound.liquid.border} p-5 rounded-2xl text-center space-y-2 relative overflow-hidden`}>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-950/60 border border-white/10 text-xs text-slate-300">
-              <span className="text-lg">{currentRound.liquid.icon}</span>
-              當前對決液體：<strong className="text-white">{currentRound.liquid.name}</strong> 
+        <div className="space-y-3">
+          <div className={`bg-gradient-to-r ${currentRound.liquid.color} border ${currentRound.liquid.border} p-3.5 rounded-2xl text-center space-y-1.5 relative overflow-hidden`}>
+            <div className="inline-flex items-center gap-2 px-3 py-0.5 rounded-full bg-slate-950/60 border border-white/10 text-xs text-slate-300">
+              <span className="text-base">{currentRound.liquid.icon}</span>
+              對決液體：<strong className="text-white">{currentRound.liquid.name}</strong> 
               <span className="font-mono text-cyan-300">(密度 D = {currentRound.liquid.density} g/cm³)</span>
             </div>
 
-            <div className="space-y-1">
-              <p className="text-[11px] text-slate-400">
-                {mode === 'pvp' ? `${currentPlayer === 'p1' ? '🔵 Player 1' : '🔴 Player 2'} 戰術指令：` : '攻防戰術指令：'}
-              </p>
-              <h3 className="text-base md:text-lg font-black text-white flex items-center justify-center gap-2">
+            <div className="space-y-0.5">
+              <h3 className="text-sm md:text-base font-black text-white flex items-center justify-center gap-2">
                 {currentRound.actionGoal === 'float' ? (
                   <>
-                    <ArrowUp className="w-5 h-5 text-emerald-400 animate-bounce" />
+                    <ArrowUp className="w-4 h-4 text-emerald-400 animate-bounce" />
                     選出能 <span className="text-emerald-400 underline decoration-wavy">浮在液面上</span> 的盾牌材質！
                   </>
                 ) : (
                   <>
-                    <ArrowDown className="w-5 h-5 text-amber-400 animate-bounce" />
+                    <ArrowDown className="w-4 h-4 text-amber-400 animate-bounce" />
                     選出能 <span className="text-amber-400 underline decoration-wavy">沉入液體底</span> 的砲彈材質！
                   </>
                 )}
@@ -365,41 +390,23 @@ export default function DensityFloorGame({ mode = 'single', onGameOver }) {
             </div>
           </div>
 
-          {/* 4. 四個物體選項 */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {currentRound.options.map((option, idx) => (
-              <button
-                key={idx}
-                onClick={() => handleAnswer(idx)}
-                disabled={actionState !== 'idle'}
-                className="p-4 rounded-2xl bg-slate-900 hover:bg-indigo-600/20 border border-slate-800 hover:border-indigo-500 text-left transition-all flex items-center justify-between group cursor-pointer disabled:opacity-50"
-              >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-lg bg-slate-800 group-hover:bg-indigo-600 text-slate-300 group-hover:text-white flex items-center justify-center text-xs font-mono font-bold">
-                      {['A', 'B', 'C', 'D'][idx]}
-                    </span>
-                    <span className="font-bold text-white text-sm group-hover:text-indigo-300">
-                      {option.name}
-                    </span>
-                  </div>
-                  <div className="text-xs font-mono text-slate-400 pl-8">
-                    質量 M = <span className="text-amber-300">{option.M}g</span> ｜ 體積 V = <span className="text-cyan-300">{option.V}cm³</span>
-                  </div>
-                </div>
-
-                <div className="text-right">
-                  <span className="text-[11px] font-bold text-indigo-400 group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
-                    選擇 ➔
-                  </span>
-                </div>
-              </button>
-            ))}
-          </div>
+          {/* 雙人模式：左右兩邊同屏獨立作答區 ｜ 單人模式：中央選單 */}
+          {mode === 'pvp' ? (
+            <div className="grid grid-cols-2 gap-3">
+              {/* 左側：Player 1 */}
+              {renderOptionPanel('p1')}
+              {/* 右側：Player 2 */}
+              {renderOptionPanel('p2')}
+            </div>
+          ) : (
+            <div className="max-w-2xl mx-auto">
+              {renderOptionPanel('p1')}
+            </div>
+          )}
         </div>
       )}
 
-      {/* 5. 結算畫面 */}
+      {/* 結算畫面 */}
       {isFinished && (
         <div className="text-center space-y-6 py-8 max-w-md mx-auto">
           <Trophy className="w-16 h-16 text-amber-400 mx-auto animate-bounce" />
@@ -407,7 +414,7 @@ export default function DensityFloorGame({ mode = 'single', onGameOver }) {
             <h3 className="text-2xl font-black text-white">
               {mode === 'single'
                 ? enemyHp === 0 ? '🎉 1F 擂台 KO 突破成功！' : '⚔️ 擂台對戰結束'
-                : playerHp > enemyHp ? '🎉 Player 1 獲勝！' : '🎉 Player 2 獲勝！'
+                : playerHp > enemyHp ? '🎉 Player 1 (左側) 搶速勝出！' : '🎉 Player 2 (右側) 搶速勝出！'
               }
             </h3>
             <p className="text-xs text-slate-400 mt-1">
@@ -429,7 +436,7 @@ export default function DensityFloorGame({ mode = 'single', onGameOver }) {
               <span className="font-bold text-emerald-400">{playerHp}%</span>
             </div>
             <div className="flex justify-between py-1 border-b border-slate-800">
-              <span className="text-slate-400">{mode === 'single' ? '關主' : 'P2'} 剩餘 HP：</span>
+              <span className="text-slate-400">P2 剩餘 HP：</span>
               <span className="font-bold text-rose-400">{enemyHp}%</span>
             </div>
             <div className="flex justify-between py-1">
