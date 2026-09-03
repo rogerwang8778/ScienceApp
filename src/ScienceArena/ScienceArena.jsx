@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { Shield, Sparkles, Swords, Flame, Droplet, Search, Thermometer, ArrowLeft } from 'lucide-react';
 
-// 匯入各樓層擂台組件
-import DensityFloorGame from './DensityFloorGame';         // 1F 密度擂台 (雙人同屏搶速)
-import ConcentrationFloorGame from './ConcentrationFloorGame'; // 10F 濃度擂台 (雙人同屏上下注水)
-import ParticleSurfGame from './ParticleSurfGame';         // 20F 波動擂台
-import LensFocalGame from './LensFocalGame';               // 30F 光學擂台 (雙人同屏搶速)
-import ThermalFloorGame from './ThermalFloorGame';         // 40F 熱學擂台 (5秒暴擊 + 游標鎖定搶速)
+// 正確匯入 ./games/ 資料夾內的各樓層擂台組件
+import DensityFloorGame from './games/DensityFloorGame';         // 1F 密度擂台
+import ConcentrationFloorGame from './games/ConcentrationFloorGame'; // 10F 濃度擂台
+import ParticleSurfGame from './games/ParticleSurfGame';         // 20F 波動擂台
+import LensFocalGame from './games/LensFocalGame';               // 30F 光學擂台
+import ThermalFloorGame from './games/ThermalFloorGame';         // 40F 熱學擂台
 
 export default function ScienceArena() {
   // 玩家戰力與等級 State
