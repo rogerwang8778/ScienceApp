@@ -1,205 +1,206 @@
 import React, { useState } from 'react';
-import { Swords, User, Users, Flame, Layers, Play, ArrowLeft } from 'lucide-react';
+import { Shield, Sparkles, Swords, Flame, Droplet, Search, Thermometer, ArrowLeft } from 'lucide-react';
 
-// 引入各樓層小遊戲元件
-import DensityFloorGame from './games/DensityFloorGame';
-import ConcentrationFloorGame from './games/ConcentrationFloorGame';
-import ParticleSurfGame from './games/ParticleSurfGame';
-import LensFocalGame from './games/LensFocalGame';
+// 匯入各樓層擂台組件
+import DensityFloorGame from './DensityFloorGame';         // 1F 密度擂台 (雙人同屏搶速)
+import ConcentrationFloorGame from './ConcentrationFloorGame'; // 10F 濃度擂台 (雙人同屏上下注水)
+import ParticleSurfGame from './ParticleSurfGame';         // 20F 波動擂台
+import LensFocalGame from './LensFocalGame';               // 30F 光學擂台 (雙人同屏搶速)
+import ThermalFloorGame from './ThermalFloorGame';         // 40F 熱學擂台 (5秒暴擊 + 游標鎖定搶速)
 
-export default function ScienceArena({ onAddExp }) {
-  // currentGame: null (選單大廳) | 'density1F' | 'concentration10F' | ...
-  const [currentGame, setCurrentGame] = useState(null);
-  const [gameMode, setGameMode] = useState('single'); // 'single' (單人闖關) | 'pvp' (雙人PK)
+export default function ScienceArena() {
+  // 玩家戰力與等級 State
+  const [playerExp, setPlayerExp] = useState(1200);
+  const [activeFloor, setActiveFloor] = useState(null); // null 代表在大廳
+  const [gameMode, setGameMode] = useState('pvp');       // 'single' ｜ 'pvp'
 
-  // 樓層遊戲卡片清單（未來新增 50F、100F 等關卡，在此擴充即可）
-  const gameList = [
+  // 計算玩家總等級
+  const playerLevel = Math.floor(playerExp / 500) + 1;
+
+  // 樓層關卡清單定義
+  const floors = [
     {
-      id: 'density1F',
-      unit: '天空競技場 1F',
-      title: '1F 密度擂台：浮沉剋制戰',
-      desc: '心算 M/V 密度，運用物體與液體的浮沉特性剋制敵人！',
+      id: '1F',
+      name: '1F 密度擂台：浮沉剋制戰',
+      icon: '🛡️',
+      color: 'from-rose-600/20 to-orange-600/20 border-rose-500/40',
+      badgeColor: 'bg-rose-500/20 text-rose-300 border-rose-500/30',
+      desc: '評估 M/V 密度與液體浮沉關係，同屏左右搶速發動盾牌與砲彈攻勢！',
+      component: DensityFloorGame
+    },
+    {
+      id: '10F',
+      name: '10F 濃度擂台：水龍頭稀釋對對碰',
       icon: '🧪',
-      color: 'from-amber-500/20 to-indigo-500/20',
-      borderColor: 'border-amber-500/40 hover:border-amber-400',
-      badgeColor: 'bg-amber-500/20 text-amber-300'
+      color: 'from-cyan-600/20 to-blue-600/20 border-cyan-500/40',
+      badgeColor: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
+      desc: '雙人同屏上下量筒注水對戰！手算重量百分濃度，精準按住注水搶答扣血！',
+      component: ConcentrationFloorGame
     },
     {
-      id: 'concentration10F',
-      unit: '天空競技場 10F',
-      title: '10F 濃度擂台：水龍頭稀釋對對碰',
-      desc: '計算質量百分濃度，PK 模式體驗長按水龍頭精準注水對決！',
-      icon: '💧',
-      color: 'from-cyan-500/20 to-blue-500/20',
-      borderColor: 'border-cyan-500/40 hover:border-cyan-400',
-      badgeColor: 'bg-cyan-500/20 text-cyan-300'
+      id: '20F',
+      name: '20F 波動擂台：波形衝浪戰',
+      icon: '🌊',
+      color: 'from-blue-600/20 to-indigo-600/20 border-blue-500/40',
+      badgeColor: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
+      desc: '觀察波形週期與波長關係，精準判斷介面振動方向！',
+      component: ParticleSurfGame
     },
     {
-      id: 'waves20F',
-      unit: '天空競技場 20F',
-      title: '20F 波動擂台：質點衝浪手',
-      desc: '運用理化「微移法」預測波前進時介面質點的瞬間運動方向！',
-      icon: '🏄‍♂️',
-      color: 'from-blue-500/20 to-cyan-500/20',
-      borderColor: 'border-blue-500/40 hover:border-blue-400',
-      badgeColor: 'bg-blue-500/20 text-blue-300'
-    },
-    {
-      id: 'optics30F',
-      unit: '天空競技場 30F',
-      title: '30F 光學擂台：透鏡焦點戰',
-      desc: '破解死背痛點！秒殺「物距 vs. 像距 & 成像性質」反應對決！',
+      id: '30F',
+      name: '30F 光學擂台：透鏡焦點戰',
       icon: '🔍',
-      color: 'from-purple-500/20 to-indigo-500/20',
-      borderColor: 'border-purple-500/40 hover:border-purple-400',
-      badgeColor: 'bg-purple-500/20 text-purple-300'
+      color: 'from-purple-600/20 to-indigo-600/20 border-purple-500/40',
+      badgeColor: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
+      desc: '雙人同屏搶速對決！5 秒內回答正確發動 2 倍暴擊傷害，掌握透鏡成像律！',
+      component: LensFocalGame
     },
     {
-      id: 'waves50F',
-      unit: '天空競技場 50F',
-      title: '50F 聲波頻率對決',
-      desc: '分析振幅、頻率與波長，聽音辨位搶答音調與響度變化！（準備中）',
-      icon: '🔊',
-      color: 'from-purple-500/20 to-pink-500/20',
-      borderColor: 'border-purple-500/40 hover:border-purple-400',
-      badgeColor: 'bg-purple-500/20 text-purple-300'
-    },
-    {
-      id: 'electromagnet200F',
-      unit: '200F (念能力層)',
-      title: '200F 右手定則極限 PK',
-      desc: '安培右手、右手開掌與冷次定律極速快答！（準備中）',
-      icon: '⚡',
-      color: 'from-rose-500/20 to-amber-500/20',
-      borderColor: 'border-rose-500/40 hover:border-rose-400',
-      badgeColor: 'bg-rose-500/20 text-rose-300'
+      id: '40F',
+      name: '40F 熱學擂台：熱平衡調溫之劍',
+      icon: '🔥',
+      color: 'from-amber-600/20 to-rose-600/20 border-amber-500/40',
+      badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+      desc: '手算熱平衡溫度與質量比例！5 秒速答暴擊，配合游標精準按下 STOP 鎖定！',
+      component: ThermalFloorGame
     }
   ];
 
-  // 遊戲結束結算並發放 EXP
-  const handleGameOver = (gainedExp = 0) => {
-    if (gainedExp > 0 && onAddExp) {
-      onAddExp(gainedExp);
-    }
-    setCurrentGame(null);
+  // 關卡結束經驗值結算
+  const handleGameOver = (gainedExp) => {
+    setPlayerExp((prev) => prev + gainedExp);
+    setActiveFloor(null);
   };
 
+  // 取得當前進入的樓層組件
+  const currentFloorObj = floors.find((f) => f.id === activeFloor);
+  const ActiveGameComponent = currentFloorObj?.component;
+
   return (
-    <div className="space-y-6">
-      {/* 頂部選單列：在小遊戲進行中時，顯示返回大廳按鈕 */}
-      {currentGame && (
-        <div className="flex justify-between items-center bg-slate-800/80 p-3 rounded-2xl border border-slate-700/80">
-          <button
-            onClick={() => setCurrentGame(null)}
-            className="px-3.5 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all cursor-pointer"
-          >
-            <ArrowLeft className="w-4 h-4" /> 返回獵人天空競技場大廳
-          </button>
-          
-          <div className="text-xs font-bold text-indigo-300 flex items-center gap-1.5">
-            <Swords className="w-4 h-4 text-rose-400" />
-            對戰模式：{gameMode === 'single' ? '單人限時闖關' : '雙人 1v1 PK'}
+    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-8 font-sans select-none">
+      {/* 競技場頂部 Header */}
+      <header className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center bg-slate-900/80 border border-slate-800 p-6 rounded-3xl gap-4 shadow-2xl backdrop-blur-md">
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-500 to-indigo-600 flex items-center justify-center text-2xl shadow-lg ring-2 ring-amber-400/40">
+            ⚔️
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-black bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                Heaven's Science Arena
+              </span>
+              <span className="text-xs font-mono text-slate-400">v2.5 PK Special Edition</span>
+            </div>
+            <h1 className="text-2xl font-black text-white mt-1">天空理化競技場</h1>
           </div>
         </div>
-      )}
 
-      {/* 1. 尚未選擇遊戲時：顯示選單大廳 UI */}
-      {!currentGame && (
-        <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 md:p-8 space-y-8 select-none">
-          {/* 模式切換標頭 */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800 pb-6">
-            <div>
-              <h2 className="text-xl md:text-2xl font-black text-white flex items-center gap-2">
-                <Swords className="w-7 h-7 text-rose-400" />
-                獵人天空競技場大廳
-              </h2>
-              <p className="text-xs text-slate-400 mt-1">
-                挑戰各樓層理化關主！答錯扣除血條 HP，考驗你的概念反應速度！
-              </p>
+        {/* 玩家經驗值與模式選擇面板 */}
+        <div className="flex items-center gap-6">
+          <div className="text-right space-y-1">
+            <div className="flex items-center gap-2 justify-end">
+              <Sparkles className="w-4 h-4 text-amber-400" />
+              <span className="text-xs font-bold text-slate-300">階級 Lvl.{playerLevel}</span>
             </div>
-
-            {/* 單人 / 雙人對戰模式 Toggle */}
-            <div className="bg-slate-900 p-1.5 rounded-2xl border border-slate-800 flex items-center gap-1.5">
-              <button
-                onClick={() => setGameMode('single')}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                  gameMode === 'single'
-                    ? 'bg-indigo-600 text-white shadow-lg'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                <User className="w-3.5 h-3.5" /> 單人限時闖關
-              </button>
-              <button
-                onClick={() => setGameMode('pvp')}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                  gameMode === 'pvp'
-                    ? 'bg-rose-600 text-white shadow-lg'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                <Users className="w-3.5 h-3.5" /> 雙人 1v1 PK
-              </button>
+            <div className="w-36 bg-slate-950 h-2.5 rounded-full border border-slate-800 p-0.5">
+              <div
+                className="bg-gradient-to-r from-amber-500 to-indigo-500 h-full rounded-full transition-all duration-300"
+                style={{ width: `${((playerExp % 500) / 500) * 100}%` }}
+              />
             </div>
+            <p className="text-[10px] font-mono text-slate-400">{playerExp} TOTAL EXP</p>
           </div>
 
-          {/* 樓層小遊戲卡片清單 */}
-          <div className="space-y-4">
-            <h3 className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
-              <Layers className="w-4 h-4 text-indigo-400" /> 選擇挑戰的天空競技場樓層：
-            </h3>
+          {/* 模式切換按鈕 */}
+          <div className="bg-slate-950 border border-slate-800 p-1 rounded-2xl flex items-center">
+            <button
+              onClick={() => setGameMode('single')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                gameMode === 'single' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              👤 單人闖關
+            </button>
+            <button
+              onClick={() => setGameMode('pvp')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                gameMode === 'pvp' ? 'bg-rose-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              ⚔️ 雙人同屏 PK
+            </button>
+          </div>
+        </div>
+      </header>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {gameList.map((game) => (
+      {/* 主內容區域 */}
+      <main className="max-w-6xl mx-auto mt-6">
+        {!activeFloor ? (
+          /* 擂台選單卡片網格 */
+          <div className="space-y-4">
+            <div className="flex justify-between items-center px-2">
+              <h2 className="text-lg font-black text-slate-200 flex items-center gap-2">
+                <Swords className="w-5 h-5 text-amber-400" /> 選擇挑戰樓層擂台：
+              </h2>
+              <span className="text-xs text-slate-400 font-mono">
+                {gameMode === 'pvp' ? '🎮 模式：雙人同屏搶速對決 (適用電子白板)' : '🎮 模式：單人擂台闖關'}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {floors.map((floor) => (
                 <div
-                  key={game.id}
-                  onClick={() => setCurrentGame(game.id)}
-                  className={`bg-gradient-to-br ${game.color} bg-slate-900 border ${game.borderColor} rounded-2xl p-5 cursor-pointer transition-all hover:-translate-y-1 hover:shadow-2xl flex flex-col justify-between space-y-4 group`}
+                  key={floor.id}
+                  onClick={() => setActiveFloor(floor.id)}
+                  className={`bg-slate-900/80 border p-5 rounded-3xl space-y-3 cursor-pointer transition-all hover:scale-[1.02] hover:shadow-2xl relative overflow-hidden group ${floor.color}`}
                 >
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-lg border border-white/10 ${game.badgeColor}`}>
-                        {game.unit}
-                      </span>
-                      <span className="text-2xl group-hover:scale-125 transition-transform">{game.icon}</span>
-                    </div>
-                    <h4 className="text-base font-bold text-white group-hover:text-indigo-300 transition-colors">
-                      {game.title}
-                    </h4>
-                    <p className="text-xs text-slate-400 leading-relaxed">
-                      {game.desc}
+                  <div className="flex justify-between items-start">
+                    <span className="text-4xl">{floor.icon}</span>
+                    <span className={`text-[10px] font-black px-2.5 py-1 rounded-lg border ${floor.badgeColor}`}>
+                      {floor.id} 擂台
+                    </span>
+                  </div>
+
+                  <div>
+                    <h3 className="text-lg font-black text-white group-hover:text-amber-300 transition-colors">
+                      {floor.name}
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-1 line-clamp-2 leading-relaxed">
+                      {floor.desc}
                     </p>
                   </div>
 
-                  <div className="flex justify-between items-center pt-2 border-t border-slate-800/60">
-                    <span className="text-[11px] font-mono font-semibold text-slate-400 flex items-center gap-1">
-                      <Flame className="w-3.5 h-3.5 text-amber-400" /> 扣血機制: 答錯 -20 HP
+                  <div className="pt-2 border-t border-slate-800/80 flex justify-between items-center">
+                    <span className="text-[11px] font-bold text-amber-400 flex items-center gap-1">
+                      ⚡ 支援 5 秒雙倍暴擊
                     </span>
-                    <span className="text-xs font-bold text-indigo-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-                      挑戰樓層 <Play className="w-3.5 h-3.5 fill-indigo-400" />
+                    <span className="text-xs font-black text-indigo-400 group-hover:translate-x-1 transition-transform">
+                      挑戰擂台 ➔
                     </span>
                   </div>
                 </div>
               ))}
             </div>
           </div>
-        </div>
-      )}
+        ) : (
+          /* 擂台遊戲進行介面 */
+          <div className="space-y-4">
+            <button
+              onClick={() => setActiveFloor(null)}
+              className="px-4 py-2 bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer"
+            >
+              <ArrowLeft className="w-4 h-4" /> 返回競技場大廳
+            </button>
 
-      {/* 2. 選擇特定遊戲後，渲染對應小遊戲 */}
-      {currentGame === 'density1F' && (
-        <DensityFloorGame mode={gameMode} onGameOver={handleGameOver} />
-      )}
-
-      {currentGame === 'concentration10F' && (
-        <ConcentrationFloorGame mode={gameMode} onGameOver={handleGameOver} />
-      )}
-      {currentGame === 'waves20F' && (
-        <ParticleSurfGame mode={gameMode} onGameOver={handleGameOver} />
-      )}
-      {currentGame === 'optics30F' && (
-        <LensFocalGame mode={gameMode} onGameOver={handleGameOver} />
-      )}
+            {ActiveGameComponent && (
+              <ActiveGameComponent
+                mode={gameMode}
+                onGameOver={handleGameOver}
+              />
+            )}
+          </div>
+        )}
+      </main>
     </div>
   );
 }
