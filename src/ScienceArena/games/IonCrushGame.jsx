@@ -104,18 +104,18 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
     }
   }, [p1ClearedCount, mode, isFinished]);
 
-  // 使用障眼法技能 (扣除 1 次次數，讓對手隱藏價數 10 秒)
+  // 主動發動障眼法技能 (扣除 1 次次數，讓對手隱藏價數 10 秒)
   const handleUseSkill = (player) => {
     if (mode !== 'pvp' || isFinished) return;
 
     if (player === 'p1' && p1SkillCharges > 0) {
       setP1SkillCharges((prev) => prev - 1);
-      setP2BlindTimer(10);
+      setP2BlindTimer((prev) => prev + 10);
       setP1Msg('🌀 發動【障眼法】！對手價數隱藏 10 秒！');
       setTimeout(() => setP1Msg(''), 2000);
     } else if (player === 'p2' && p2SkillCharges > 0) {
       setP2SkillCharges((prev) => prev - 1);
-      setP1BlindTimer(10);
+      setP1BlindTimer((prev) => prev + 10);
       setP2Msg('🌀 發動【障眼法】！對手價數隱藏 10 秒！');
       setTimeout(() => setP2Msg(''), 2000);
     }
@@ -188,11 +188,24 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
       // === 消除成功 ===
       const comboCount = selection.length;
 
-      // 嚴格單一邏輯更新：累計消除組數與判定充能
+      // 新增機制：若單次消除數量 >= 5 顆，直接對敵施放 5 秒障眼法
+      if (mode === 'pvp' && comboCount >= 5) {
+        if (isP1) {
+          setP2BlindTimer((prev) => prev + 5);
+        } else {
+          setP1BlindTimer((prev) => prev + 5);
+        }
+      }
+
+      // 累計消除組數與判定 5 倍數充能
       setClearedCount((prevCount) => {
         const nextCount = prevCount + 1;
-        // 精準檢查是否「剛好達到 5 的倍數」 (5, 10, 15...)
-        if (nextCount % 5 === 0) {
+        const prevMilestone = Math.floor(prevCount / 5);
+        const nextMilestone = Math.floor(nextCount / 5);
+
+        if (mode === 'pvp' && comboCount >= 5) {
+          setMsg(`⚡ 單次消 5 顆以上！對手價數隱藏 5 秒！`);
+        } else if (nextMilestone > prevMilestone) {
           setSkillCharges((charges) => charges + 1);
           setMsg(`⚡ 電中性！技能充能完成 (+1 次障眼法)！`);
         } else {
@@ -407,7 +420,7 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
           <p className="text-slate-400 text-[11px]">
             {mode === 'single'
               ? '60 秒內消除 15 組離子化合物即可通關！'
-              : '雙人對決每消除 5 組獲得 1 次【🌀 障眼法技能】，可讓對手價數隱藏 10 秒！'}
+              : '雙人 PK：單次消 5 顆以上可觸發對手 5 秒障眼法！每累計 5 組可儲存 1 次主動技能！'}
           </p>
         </div>
       )}
