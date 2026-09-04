@@ -59,11 +59,15 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
   const isDraggingP1 = useRef(false);
   const isDraggingP2 = useRef(false);
 
+  // 防止同一動作多重呼叫的 Ref 鎖
+  const isProcessingP1 = useRef(false);
+  const isProcessingP2 = useRef(false);
+
   // 反饋訊息
   const [p1Msg, setP1Msg] = useState('');
   const [p2Msg, setP2Msg] = useState('');
 
-  // 技能次數與倒數狀態 (每消除 5 組精準增加 1 次技能)
+  // 技能次數與倒數狀態
   const [p1SkillCharges, setP1SkillCharges] = useState(0);
   const [p2SkillCharges, setP2SkillCharges] = useState(0);
 
@@ -156,6 +160,11 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
   // 驗證連線是否滿足「電荷總和 = 0」且包含正負離子
   const validateAndClear = (player) => {
     const isP1 = player === 'p1';
+    const processingRef = isP1 ? isProcessingP1 : isProcessingP2;
+
+    if (processingRef.current) return;
+    processingRef.current = true;
+
     const selection = isP1 ? p1Selection : p2Selection;
     const setSelection = isP1 ? setP1Selection : setP2Selection;
     const grid = isP1 ? p1Grid : p2Grid;
@@ -167,6 +176,7 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
 
     if (selection.length < 2) {
       setSelection([]);
+      processingRef.current = false;
       return;
     }
 
@@ -178,13 +188,11 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
       // === 消除成功 ===
       const comboCount = selection.length;
 
-      // 重構充能邏輯：比較消除前後 5 的商數，防重複觸發
+      // 嚴格單一邏輯更新：累計消除組數與判定充能
       setClearedCount((prevCount) => {
         const nextCount = prevCount + 1;
-        const prevMilestone = Math.floor(prevCount / 5);
-        const nextMilestone = Math.floor(nextCount / 5);
-
-        if (nextMilestone > prevMilestone) {
+        // 精準檢查是否「剛好達到 5 的倍數」 (5, 10, 15...)
+        if (nextCount % 5 === 0) {
           setSkillCharges((charges) => charges + 1);
           setMsg(`⚡ 電中性！技能充能完成 (+1 次障眼法)！`);
         } else {
@@ -226,6 +234,7 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
     }
 
     setSelection([]);
+    processingRef.current = false;
   };
 
   const handleExit = () => {
@@ -264,7 +273,7 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
               {isP1 ? '🛡️ Player 1 (左側選手)' : '⚔️ Player 2 (右側選手)'}
             </span>
 
-            {/* 技能按鈕 (每消除 5 組獲得 1 次技能) */}
+            {/* 技能按鈕 */}
             {mode === 'pvp' && (
               <button
                 onClick={() => handleUseSkill(player)}
@@ -303,12 +312,14 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
         <div
           className="grid grid-cols-6 gap-1.5 bg-slate-950 p-2 rounded-2xl border border-slate-800 touch-none select-none"
           onMouseUp={() => {
-            if (isP1) { isDraggingP1.current = false; validateAndClear('p1'); }
-            else { isDraggingP2.current = false; validateAndClear('p2'); }
+            if (isP1) isDraggingP1.current = false;
+            else isDraggingP2.current = false;
+            validateAndClear(player);
           }}
           onTouchEnd={() => {
-            if (isP1) { isDraggingP1.current = false; validateAndClear('p1'); }
-            else { isDraggingP2.current = false; validateAndClear('p2'); }
+            if (isP1) isDraggingP1.current = false;
+            else isDraggingP2.current = false;
+            validateAndClear(player);
           }}
         >
           {grid.map((row, r) =>
