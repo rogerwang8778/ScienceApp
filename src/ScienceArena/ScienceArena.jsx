@@ -8,6 +8,7 @@ import ParticleSurfGame from './games/ParticleSurfGame';         // 20F 波動�
 import LensFocalGame from './games/LensFocalGame';               // 30F 光學擂台
 import ThermalFloorGame from './games/ThermalFloorGame';         // 40F 熱學擂台
 import IonCrushGame from './games/IonCrushGame';                 // 50F 化合物擂台 (新增)
+import ActivityFloorGame from './games/ActivityFloorGame'; // 60F 活性擂台
 
 export default function ScienceArena() {
   const [playerExp, setPlayerExp] = useState(1200);
@@ -70,6 +71,15 @@ export default function ScienceArena() {
       badgeColor: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
       desc: 'Candy Crush 離子連連看！滑動連續連結相鄰正負離子，滿足電荷總和 = 0 消除爆破！',
       component: IonCrushGame
+    },
+    {
+      id: '60F',
+      name: '60F 活性擂台：金屬奪氧吹牛戰',
+      icon: '🔥',
+      color: 'from-amber-600/20 to-orange-600/20 border-amber-500/40',
+      badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+      desc: '吹牛賽局與金屬活性順序結合！手牌博弈搶奪氧化物，配合技能發動精準奪氧暴擊！',
+      component: ActivityFloorGame
     }
   ];
 
