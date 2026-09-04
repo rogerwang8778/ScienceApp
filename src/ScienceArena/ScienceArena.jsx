@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Shield, Sparkles, Swords, Flame, Droplet, Search, Thermometer, ArrowLeft } from 'lucide-react';
+import { Shield, Sparkles, Swords, ArrowLeft } from 'lucide-react';
 
 // 正確匯入 ./games/ 資料夾內的各樓層擂台組件
 import DensityFloorGame from './games/DensityFloorGame';         // 1F 密度擂台
@@ -7,17 +7,15 @@ import ConcentrationFloorGame from './games/ConcentrationFloorGame'; // 10F 濃�
 import ParticleSurfGame from './games/ParticleSurfGame';         // 20F 波動擂台
 import LensFocalGame from './games/LensFocalGame';               // 30F 光學擂台
 import ThermalFloorGame from './games/ThermalFloorGame';         // 40F 熱學擂台
+import IonCrushGame from './games/IonCrushGame';                 // 50F 化合物擂台 (新增)
 
 export default function ScienceArena() {
-  // 玩家戰力與等級 State
   const [playerExp, setPlayerExp] = useState(1200);
-  const [activeFloor, setActiveFloor] = useState(null); // null 代表在大廳
-  const [gameMode, setGameMode] = useState('pvp');       // 'single' ｜ 'pvp'
+  const [activeFloor, setActiveFloor] = useState(null);
+  const [gameMode, setGameMode] = useState('pvp');
 
-  // 計算玩家總等級
   const playerLevel = Math.floor(playerExp / 500) + 1;
 
-  // 樓層關卡清單定義
   const floors = [
     {
       id: '1F',
@@ -63,22 +61,28 @@ export default function ScienceArena() {
       badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
       desc: '手算熱平衡溫度與質量比例！5 秒速答暴擊，配合游標精準按下 STOP 鎖定！',
       component: ThermalFloorGame
+    },
+    {
+      id: '50F',
+      name: '50F 化合物擂台：電中性離子連連看',
+      icon: '⚡',
+      color: 'from-purple-600/20 to-pink-600/20 border-purple-500/40',
+      badgeColor: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
+      desc: 'Candy Crush 離子連連看！滑動連續連結相鄰正負離子，滿足電荷總和 = 0 消除爆破！',
+      component: IonCrushGame
     }
   ];
 
-  // 關卡結束經驗值結算
   const handleGameOver = (gainedExp) => {
     setPlayerExp((prev) => prev + gainedExp);
     setActiveFloor(null);
   };
 
-  // 取得當前進入的樓層組件
   const currentFloorObj = floors.find((f) => f.id === activeFloor);
   const ActiveGameComponent = currentFloorObj?.component;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-8 font-sans select-none">
-      {/* 競技場頂部 Header */}
       <header className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center bg-slate-900/80 border border-slate-800 p-6 rounded-3xl gap-4 shadow-2xl backdrop-blur-md">
         <div className="flex items-center gap-4">
           <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-500 to-indigo-600 flex items-center justify-center text-2xl shadow-lg ring-2 ring-amber-400/40">
@@ -95,7 +99,6 @@ export default function ScienceArena() {
           </div>
         </div>
 
-        {/* 玩家經驗值與模式選擇面板 */}
         <div className="flex items-center gap-6">
           <div className="text-right space-y-1">
             <div className="flex items-center gap-2 justify-end">
@@ -111,7 +114,6 @@ export default function ScienceArena() {
             <p className="text-[10px] font-mono text-slate-400">{playerExp} TOTAL EXP</p>
           </div>
 
-          {/* 模式切換按鈕 */}
           <div className="bg-slate-950 border border-slate-800 p-1 rounded-2xl flex items-center">
             <button
               onClick={() => setGameMode('single')}
@@ -133,17 +135,15 @@ export default function ScienceArena() {
         </div>
       </header>
 
-      {/* 主內容區域 */}
       <main className="max-w-6xl mx-auto mt-6">
         {!activeFloor ? (
-          /* 擂台選單卡片網格 */
           <div className="space-y-4">
             <div className="flex justify-between items-center px-2">
               <h2 className="text-lg font-black text-slate-200 flex items-center gap-2">
                 <Swords className="w-5 h-5 text-amber-400" /> 選擇挑戰樓層擂台：
               </h2>
               <span className="text-xs text-slate-400 font-mono">
-                {gameMode === 'pvp' ? '🎮 模式：雙人同屏搶速對決 (適用電子白板)' : '🎮 模式：單人擂台闖關'}
+                {gameMode === 'pvp' ? '🎮 模式：雙人同屏 PK (適用電子白板)' : '🎮 模式：單人擂台闖關'}
               </span>
             </div>
 
@@ -172,7 +172,7 @@ export default function ScienceArena() {
 
                   <div className="pt-2 border-t border-slate-800/80 flex justify-between items-center">
                     <span className="text-[11px] font-bold text-amber-400 flex items-center gap-1">
-                      ⚡ 支援 5 秒雙倍暴擊
+                      ⚡ 電中性化合物消除
                     </span>
                     <span className="text-xs font-black text-indigo-400 group-hover:translate-x-1 transition-transform">
                       挑戰擂台 ➔
@@ -183,7 +183,6 @@ export default function ScienceArena() {
             </div>
           </div>
         ) : (
-          /* 擂台遊戲進行介面 */
           <div className="space-y-4">
             <button
               onClick={() => setActiveFloor(null)}
