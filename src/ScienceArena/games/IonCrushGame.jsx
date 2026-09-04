@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Trophy, RefreshCw, Zap, Flame, Timer, Swords, Sparkles, EyeOff, ShieldAlert } from 'lucide-react';
+import { Trophy, RefreshCw, Zap, Flame, Timer, Swords, Sparkles, EyeOff, Snowflake } from 'lucide-react';
 
 // 離子清單定義
 const IONS = [
@@ -55,6 +55,10 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
   // 連線選擇 State
   const [p1Selection, setP1Selection] = useState([]);
   const [p2Selection, setP2Selection] = useState([]);
+
+  // 沉澱狀態：紀錄哪幾排（Row Index 0~5）處於沉澱封鎖中
+  const [p1PrecipitatedRows, setP1PrecipitatedRows] = useState([]);
+  const [p2PrecipitatedRows, setP2PrecipitatedRows] = useState([]);
 
   const isDraggingP1 = useRef(false);
   const isDraggingP2 = useRef(false);
@@ -133,6 +137,11 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
     if (isFinished) return;
 
     const isP1 = player === 'p1';
+    const precipitatedRows = isP1 ? p1PrecipitatedRows : p2PrecipitatedRows;
+
+    // 若該排處於沉澱凍結狀態，無法選取！
+    if (precipitatedRows.includes(r)) return;
+
     const grid = isP1 ? p1Grid : p2Grid;
     const selection = isP1 ? p1Selection : p2Selection;
     const setSelection = isP1 ? setP1Selection : setP2Selection;
@@ -174,6 +183,10 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
     const setMsg = isP1 ? setP1Msg : setP2Msg;
     const setSkillCharges = isP1 ? setP1SkillCharges : setP2SkillCharges;
 
+    const myPrecipitatedRows = isP1 ? p1PrecipitatedRows : p2PrecipitatedRows;
+    const setMyPrecipitatedRows = isP1 ? setP1PrecipitatedRows : setP2PrecipitatedRows;
+    const setOpponentPrecipitatedRows = isP1 ? setP2PrecipitatedRows : setP1PrecipitatedRows;
+
     if (selection.length < 2) {
       setSelection([]);
       processingRef.current = false;
@@ -188,22 +201,47 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
       // === 消除成功 ===
       const comboCount = selection.length;
 
-      // 新增機制：若單次消除數量 >= 5 顆，直接對敵施放 5 秒障眼法
-      if (mode === 'pvp' && comboCount >= 5) {
-        if (isP1) {
-          setP2BlindTimer((prev) => prev + 5);
-        } else {
-          setP1BlindTimer((prev) => prev + 5);
+      // 檢查是否包含 Ca²⁺ 與 SO₄²⁻ 生成硫酸鈣沉澱 (CaSO₄)
+      const hasCa = selection.some((item) => item.ion.baseSymbol === 'Ca');
+      const hasSO4 = selection.some((item) => item.ion.baseSymbol === 'SO₄');
+      const isPrecipitateCombo = hasCa && hasSO4;
+
+      // 若生成硫酸鈣沉澱，隨機對對方一排施加沉澱狀態
+      if (mode === 'pvp' && isPrecipitateCombo) {
+        const randomRow = Math.floor(Math.random() * GRID_SIZE);
+        setOpponentPrecipitatedRows((prev) => {
+          if (!prev.includes(randomRow)) return [...prev, randomRow];
+          return prev;
+        });
+      }
+
+      // 解除自己的沉澱物判定：若消除的格子包含「沉澱排」的相鄰排（r-1 或 r+1）
+      if (myPrecipitatedRows.length > 0) {
+        const selectedRows = selection.map((item) => item.r);
+        const rowsToUnlock = myPrecipitatedRows.filter((pRow) =>
+          selectedRows.some((sRow) => Math.abs(sRow - pRow) === 1)
+        );
+
+        if (rowsToUnlock.length > 0) {
+          setMyPrecipitatedRows((prev) => prev.filter((r) => !rowsToUnlock.includes(r)));
         }
       }
 
-      // 累計消除組數與判定 5 倍數充能
+      // 1. 若單次消除 >= 5 顆，觸發 5 秒障眼法
+      if (mode === 'pvp' && comboCount >= 5) {
+        if (isP1) setP2BlindTimer((prev) => prev + 5);
+        else setP1BlindTimer((prev) => prev + 5);
+      }
+
+      // 2. 累計消除組數與訊息判定
       setClearedCount((prevCount) => {
         const nextCount = prevCount + 1;
         const prevMilestone = Math.floor(prevCount / 5);
         const nextMilestone = Math.floor(nextCount / 5);
 
-        if (mode === 'pvp' && comboCount >= 5) {
+        if (mode === 'pvp' && isPrecipitateCombo) {
+          setMsg(`🧊 生成 CaSO₄ 硫酸鈣沉澱！對手隨機一排被沉澱凍結！`);
+        } else if (mode === 'pvp' && comboCount >= 5) {
           setMsg(`⚡ 單次消 5 顆以上！對手價數隱藏 5 秒！`);
         } else if (nextMilestone > prevMilestone) {
           setSkillCharges((charges) => charges + 1);
@@ -215,7 +253,7 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
       });
 
       setScore((prev) => prev + comboCount * 20);
-      setTimeout(() => setMsg(''), 1500);
+      setTimeout(() => setMsg(''), 1800);
 
       // 複製 Grid 並清空選中項
       const newGrid = grid.map((row) => [...row]);
@@ -264,6 +302,7 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
     const blindTimer = isP1 ? p1BlindTimer : p2BlindTimer;
 
     const skillCharges = isP1 ? p1SkillCharges : p2SkillCharges;
+    const precipitatedRows = isP1 ? p1PrecipitatedRows : p2PrecipitatedRows;
 
     return (
       <div className={`p-4 rounded-3xl border space-y-3 relative overflow-hidden ${
@@ -335,12 +374,15 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
             validateAndClear(player);
           }}
         >
-          {grid.map((row, r) =>
-            row.map((ion, c) => {
+          {grid.map((row, r) => {
+            const isRowPrecipitated = precipitatedRows.includes(r);
+
+            return row.map((ion, c) => {
               const isSelected = selection.some((item) => item.r === r && item.c === c);
               return (
                 <button
                   key={`${r}-${c}`}
+                  disabled={isRowPrecipitated}
                   onMouseDown={() => {
                     if (isP1) isDraggingP1.current = true;
                     else isDraggingP2.current = true;
@@ -356,26 +398,32 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
                     else isDraggingP2.current = true;
                     handleTileTouch(player, r, c);
                   }}
-                  className={`w-11 h-11 md:w-12 md:h-12 rounded-2xl font-black text-xs md:text-sm border-2 flex items-center justify-center transition-all cursor-pointer ${
-                    ion.color
+                  className={`w-11 h-11 md:w-12 md:h-12 rounded-2xl font-black text-xs md:text-sm border-2 flex items-center justify-center transition-all cursor-pointer relative ${
+                    isRowPrecipitated
+                      ? 'bg-slate-800/90 border-slate-600 text-slate-500 cursor-not-allowed opacity-60'
+                      : ion.color
                   } ${
                     isSelected
                       ? 'ring-4 ring-amber-300 scale-110 z-20 shadow-[0_0_15px_rgba(251,191,36,0.9)]'
                       : 'hover:scale-105 opacity-90'
                   }`}
                 >
-                  {/* 若正在承受障眼法效果，隱藏價數，僅顯示基本元素名稱 */}
-                  {isBlinded ? ion.baseSymbol : ion.symbol}
+                  {/* 若排被沉澱凍結，呈現雪花結晶覆蓋狀態 */}
+                  {isRowPrecipitated ? (
+                    <Snowflake className="w-5 h-5 text-cyan-300 animate-spin" />
+                  ) : (
+                    isBlinded ? ion.baseSymbol : ion.symbol
+                  )}
                 </button>
               );
-            })
-          )}
+            });
+          })}
         </div>
 
         {/* 消除反饋訊息 */}
         <div className="h-6 text-center text-xs font-bold">
           {msg ? (
-            <span className={msg.includes('⚡') ? 'text-emerald-400 animate-bounce' : 'text-rose-400'}>
+            <span className={msg.includes('🧊') ? 'text-cyan-300 animate-bounce' : msg.includes('⚡') ? 'text-emerald-400 animate-bounce' : 'text-rose-400'}>
               {msg}
             </span>
           ) : (
@@ -420,7 +468,7 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
           <p className="text-slate-400 text-[11px]">
             {mode === 'single'
               ? '60 秒內消除 15 組離子化合物即可通關！'
-              : '雙人 PK：單次消 5 顆以上可觸發對手 5 秒障眼法！每累計 5 組可儲存 1 次主動技能！'}
+              : '🧊 沉澱Combo：消除 Ca²⁺ 與 SO₄²⁻ (CaSO₄) 可隨機封鎖對手一排！在相鄰排消除即可解凍！'}
           </p>
         </div>
       )}
