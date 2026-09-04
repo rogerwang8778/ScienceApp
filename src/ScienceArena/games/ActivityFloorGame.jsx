@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy, RefreshCw, Zap, Flame, Swords, HelpCircle, UserCheck } from 'lucide-react';
+import { Trophy, RefreshCw, Zap, Flame, Swords, HelpCircle, UserCheck, EyeOff } from 'lucide-react';
 
 // 15 種金屬活性資料庫
 const METALS = [
@@ -34,7 +34,8 @@ export default function ActivityFloorGame({ mode = 'single', onGameOver }) {
   const [currentRound, setCurrentRound] = useState(1);
   const [isFinished, setIsFinished] = useState(false);
 
-  // 階段定義：'p1_play' (階段1) -> 'p2_play' (階段2) -> 'p1_skill' (階段3) -> 'p2_skill' (階段4) -> 'reveal' (階段5 結算)
+  // 階段定義：
+  // 'p1_play' -> 'switch_p2_play' -> 'p2_play' -> 'p1_skill' -> 'switch_p2_skill' -> 'p2_skill' -> 'reveal'
   const [stage, setStage] = useState('p1_play');
 
   // 氧化物目標 (當前與下一回合)
@@ -110,15 +111,22 @@ export default function ActivityFloorGame({ mode = 'single', onGameOver }) {
     }
   };
 
-  // 推進至下一階段
+  // 推進至下一階段（含換人提示頁）
   const nextStage = () => {
-    if (stage === 'p1_play' && p1PlayedCard) setStage('p2_play');
-    else if (stage === 'p2_play' && p2PlayedCard) setStage('p1_skill');
-    else if (stage === 'p1_skill') setStage('p2_skill');
-    else if (stage === 'p2_skill') resolveRound();
+    if (stage === 'p1_play' && p1PlayedCard) {
+      if (mode === 'pvp') setStage('switch_p2_play');
+      else setStage('p2_play');
+    } else if (stage === 'p2_play' && p2PlayedCard) {
+      setStage('p1_skill');
+    } else if (stage === 'p1_skill') {
+      if (mode === 'pvp') setStage('switch_p2_skill');
+      else setStage('p2_skill');
+    } else if (stage === 'p2_skill') {
+      resolveRound();
+    }
   };
 
-  // 階段 5：結算階段
+  // 階段 5：結算階段 (包含雙小比小規則)
   const resolveRound = () => {
     let finalP1Card = { ...p1PlayedCard };
     let finalP2Card = { ...p2PlayedCard };
@@ -126,7 +134,7 @@ export default function ActivityFloorGame({ mode = 'single', onGameOver }) {
     let p1SkillNotice = '';
     let p2SkillNotice = '';
 
-    // 處理 P1 換牌技能 (針對 P2 的牌進行隨機更換)
+    // 1. 處理 P1 換牌技能 (針對 P2 的牌進行隨機更換)
     if (p1ActiveSkill === 's1') {
       setP1Skills((prev) => ({ ...prev, s1: true }));
       const remainP2Hand = p2Hand.filter((c) => c.uid !== finalP2Card.uid);
@@ -137,7 +145,7 @@ export default function ActivityFloorGame({ mode = 'single', onGameOver }) {
       }
     }
 
-    // 處理 P2 換牌技能 (針對 P1 的牌進行隨機更換)
+    // 2. 處理 P2 換牌技能 (針對 P1 的牌進行隨機更換)
     if (p2ActiveSkill === 's1') {
       setP2Skills((prev) => ({ ...prev, s1: true }));
       const remainP1Hand = p1Hand.filter((c) => c.uid !== finalP1Card.uid);
@@ -148,7 +156,7 @@ export default function ActivityFloorGame({ mode = 'single', onGameOver }) {
       }
     }
 
-    // 處理活性 +1 / -1 技能
+    // 3. 處理活性 +1 / -1 技能
     let p1Rank = finalP1Card.rank;
     let p2Rank = finalP2Card.rank;
 
@@ -158,7 +166,7 @@ export default function ActivityFloorGame({ mode = 'single', onGameOver }) {
     if (p2ActiveSkill === 's2') { p2Rank += 1; setP2Skills((prev) => ({ ...prev, s2: true })); p2SkillNotice = '⚡ P2 發動技能：活性 +1！'; }
     if (p2ActiveSkill === 's3') { p2Rank -= 1; setP2Skills((prev) => ({ ...prev, s3: true })); p2SkillNotice = '🧪 P2 發動技能：活性 -1！'; }
 
-    // 勝負與得分計算
+    // 4. 勝負與得分計算
     const targetRank = targetOxide.rank;
     const oxideBaseScore = targetOxide.score;
 
@@ -168,22 +176,47 @@ export default function ActivityFloorGame({ mode = 'single', onGameOver }) {
 
     const skillNotice = [p1SkillNotice, p2SkillNotice].filter(Boolean).join(' ｜ ');
 
-    if (p1Rank > p2Rank) {
-      p1Earned += oxideBaseScore;
-      let isPrecise = (p1Rank === targetRank + 1);
-      if (isPrecise) p1Earned += 5;
+    // 判定是否兩人活性都比題目小
+    const isBothSmaller = p1Rank < targetRank && p2Rank < targetRank;
 
-      resultText = `🎉 P1【${finalP1Card.name} (活性${p1Rank})】擊敗 P2【${finalP2Card.name} (活性${p2Rank})】！奪走 氧化${targetOxide.name}！(${isPrecise ? '⚡精準奪氧暴擊 +5分！' : `+${oxideBaseScore}分`})`;
-      setP1Score((prev) => prev + p1Earned);
-    } else if (p2Rank > p1Rank) {
-      p2Earned += oxideBaseScore;
-      let isPrecise = (p2Rank === targetRank + 1);
-      if (isPrecise) p2Earned += 5;
+    if (isBothSmaller) {
+      // 雙方都比題目小，活性「更小」者獲勝！
+      if (p1Rank < p2Rank) {
+        p1Earned += oxideBaseScore;
+        let isPrecise = (p1Rank === targetRank - 1);
+        if (isPrecise) p1Earned += 5;
 
-      resultText = `🎉 P2【${finalP2Card.name} (活性${p2Rank})】擊敗 P1【${finalP1Card.name} (活性${p1Rank})】！奪走 氧化${targetOxide.name}！(${isPrecise ? '⚡精準奪氧暴擊 +5分！' : `+${oxideBaseScore}分`})`;
-      setP2Score((prev) => prev + p2Earned);
+        resultText = `🛡️ 雙方均小於氧化${targetOxide.name} (活性${targetRank})！P1【${finalP1Card.name} (活性${p1Rank})】比 P2【${finalP2Card.name} (活性${p2Rank})】更安定，逆向勝出！(${isPrecise ? '⚡精準防禦暴擊 +5分！' : `+${oxideBaseScore}分`})`;
+        setP1Score((prev) => prev + p1Earned);
+      } else if (p2Rank < p1Rank) {
+        p2Earned += oxideBaseScore;
+        let isPrecise = (p2Rank === targetRank - 1);
+        if (isPrecise) p2Earned += 5;
+
+        resultText = `🛡️ 雙方均小於氧化${targetOxide.name} (活性${targetRank})！P2【${finalP2Card.name} (活性${p2Rank})】比 P1【${finalP1Card.name} (活性${p1Rank})】更安定，逆向勝出！(${isPrecise ? '⚡精準防禦暴擊 +5分！' : `+${oxideBaseScore}分`})`;
+        setP2Score((prev) => prev + p2Earned);
+      } else {
+        resultText = `🤝 雙方活性相同 (${p1Rank}) 且均低於題目，無人得分！`;
+      }
     } else {
-      resultText = `🤝 雙方活性點數相同 (${p1Rank})，反應抵銷，無人得分！`;
+      // 比大 (至少有一人活性 >= 題目)
+      if (p1Rank > p2Rank) {
+        p1Earned += oxideBaseScore;
+        let isPrecise = (p1Rank === targetRank + 1);
+        if (isPrecise) p1Earned += 5;
+
+        resultText = `🎉 P1【${finalP1Card.name} (活性${p1Rank})】擊敗 P2【${finalP2Card.name} (活性${p2Rank})】！成功奪走 氧化${targetOxide.name}！(${isPrecise ? '⚡精準奪氧暴擊 +5分！' : `+${oxideBaseScore}分`})`;
+        setP1Score((prev) => prev + p1Earned);
+      } else if (p2Rank > p1Rank) {
+        p2Earned += oxideBaseScore;
+        let isPrecise = (p2Rank === targetRank + 1);
+        if (isPrecise) p2Earned += 5;
+
+        resultText = `🎉 P2【${finalP2Card.name} (活性${p2Rank})】擊敗 P1【${finalP1Card.name} (活性${p1Rank})】！成功奪走 氧化${targetOxide.name}！(${isPrecise ? '⚡精準奪氧暴擊 +5分！' : `+${oxideBaseScore}分`})`;
+        setP2Score((prev) => prev + p2Earned);
+      } else {
+        resultText = `🤝 雙方活性點數相同 (${p1Rank})，反應抵銷，無人得分！`;
+      }
     }
 
     setRoundResultMsg(skillNotice ? `${skillNotice}\n${resultText}` : resultText);
@@ -295,8 +328,8 @@ export default function ActivityFloorGame({ mode = 'single', onGameOver }) {
               </p>
             </div>
             <div className="text-right">
-              <span className="text-[10px] text-amber-300 block">精準奪氧 (活性={targetOxide.rank + 1})</span>
-              <span className="text-xs font-black text-emerald-400">+5 分暴擊獎勵！</span>
+              <span className="text-[10px] text-amber-300 block">🛡️ 若兩人皆低於{targetOxide.rank}，改為比小！</span>
+              <span className="text-xs font-black text-emerald-400">精準比大/比小差1可 +5 分！</span>
             </div>
           </div>
 
@@ -314,8 +347,27 @@ export default function ActivityFloorGame({ mode = 'single', onGameOver }) {
         </div>
       )}
 
+      {/* 換人操作遮蔽頁 (防偷看屏障) */}
+      {(stage === 'switch_p2_play' || stage === 'switch_p2_skill') && (
+        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 text-center space-y-4 my-4">
+          <EyeOff className="w-16 h-16 text-rose-400 mx-auto animate-bounce" />
+          <h3 className="text-xl font-black text-white">
+            請將裝置交給 【Player 2】！
+          </h3>
+          <p className="text-xs text-slate-400">
+            Player 1 已完成操作。請確保 Player 1 未觀看畫面後點擊下方按鈕繼續！
+          </p>
+          <button
+            onClick={() => setStage(stage === 'switch_p2_play' ? 'p2_play' : 'p2_skill')}
+            className="px-6 py-3 bg-rose-600 hover:bg-rose-500 text-white font-bold text-sm rounded-2xl shadow-xl transition-all cursor-pointer flex items-center gap-2 mx-auto"
+          >
+            <UserCheck className="w-5 h-5" /> 準備好，進入【Player 2】的回合！
+          </button>
+        </div>
+      )}
+
       {/* 主對決桌面區域 */}
-      {!isFinished && (
+      {!isFinished && stage !== 'switch_p2_play' && stage !== 'switch_p2_skill' && (
         <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-4 space-y-4 relative">
           {/* P2 狀態欄 */}
           <div className="flex justify-between items-center border-b border-slate-800/80 pb-3">
@@ -494,11 +546,11 @@ export default function ActivityFloorGame({ mode = 'single', onGameOver }) {
             )}
           </div>
 
-          {/* 下方 P1 手牌 */}
+          {/* 下方手牌顯示 */}
           <div className="border-t border-slate-800/80 pt-3 space-y-2">
             <div className="flex justify-between items-center">
               <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-400">
-                🛡️ Player 1 (分值：{p1Score} PTS)
+                🛡️ {(stage === 'p2_play' || stage === 'p2_skill') ? 'Player 2 (您的手牌)' : 'Player 1 (您的手牌)'}
               </span>
             </div>
 
