@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy, RefreshCw, Zap, Flame, Swords, HelpCircle, ArrowRight, EyeOff, UserCheck } from 'lucide-react';
+import { Trophy, RefreshCw, Zap, Flame, Swords, HelpCircle, UserCheck } from 'lucide-react';
 
 // 15 種金屬活性資料庫
 const METALS = [
@@ -34,16 +34,8 @@ export default function ActivityFloorGame({ mode = 'single', onGameOver }) {
   const [currentRound, setCurrentRound] = useState(1);
   const [isFinished, setIsFinished] = useState(false);
 
-  // 流程狀態:
-  // 'turn1_play' (先手蓋牌) -> 'turn1_skill' (先手技能) -> 'switch' (換人遮蔽) -> 'turn2_play' (後手蓋牌) -> 'turn2_skill' (後手技能) -> 'reveal' (開牌結算)
-  const [flowState, setFlowState] = useState('turn1_play');
-
-  // 本回合先手是誰：奇數回合 P1 先，偶數回合 P2 先
-  const firstPlayer = currentRound % 2 !== 0 ? 'p1' : 'p2';
-  const secondPlayer = firstPlayer === 'p1' ? 'p2' : 'p1';
-
-  // 當前正在操作的玩家
-  const activePlayer = (flowState.startsWith('turn1')) ? firstPlayer : secondPlayer;
+  // 階段定義：'p1_play' (階段1) -> 'p2_play' (階段2) -> 'p1_skill' (階段3) -> 'p2_skill' (階段4) -> 'reveal' (階段5 結算)
+  const [stage, setStage] = useState('p1_play');
 
   // 氧化物目標 (當前與下一回合)
   const [targetOxide, setTargetOxide] = useState(null);
@@ -57,7 +49,7 @@ export default function ActivityFloorGame({ mode = 'single', onGameOver }) {
   const [p1Hand, setP1Hand] = useState(dealInitialHand());
   const [p2Hand, setP2Hand] = useState(dealInitialHand());
 
-  // 蓋牌選卡
+  // 打出的牌
   const [p1PlayedCard, setP1PlayedCard] = useState(null);
   const [p2PlayedCard, setP2PlayedCard] = useState(null);
 
@@ -69,7 +61,7 @@ export default function ActivityFloorGame({ mode = 'single', onGameOver }) {
   const [p1ActiveSkill, setP1ActiveSkill] = useState(null);
   const [p2ActiveSkill, setP2ActiveSkill] = useState(null);
 
-  // 回合結果訊息
+  // 結算動態訊息
   const [roundResultMsg, setRoundResultMsg] = useState('');
 
   // 初始化氧化物目標
@@ -78,147 +70,124 @@ export default function ActivityFloorGame({ mode = 'single', onGameOver }) {
     setNextOxide(getRandomCard());
   }, []);
 
-  // 單人 AI 自動進行 Turn2 流程
-  const handleAiTurn = () => {
-    // 1. AI 隨機選卡蓋牌
-    const randomIndex = Math.floor(Math.random() * p2Hand.length);
-    const aiCard = p2Hand[randomIndex];
-    setP2PlayedCard(aiCard);
+  // 單人 AI 在階段 2 (出牌) 與 階段 4 (技能) 的自動操作
+  useEffect(() => {
+    if (mode === 'single' && stage === 'p2_play') {
+      const randomIndex = Math.floor(Math.random() * p2Hand.length);
+      setP2PlayedCard(p2Hand[randomIndex]);
+      setTimeout(() => setStage('p1_skill'), 400);
+    } else if (mode === 'single' && stage === 'p2_skill') {
+      const unusedSkills = [];
+      if (!p2Skills.s1) unusedSkills.push('s1');
+      if (!p2Skills.s2) unusedSkills.push('s2');
+      if (!p2Skills.s3) unusedSkills.push('s3');
 
-    // 2. AI 隨機選擇技能
-    const unusedSkills = [];
-    if (!p2Skills.s1) unusedSkills.push('s1');
-    if (!p2Skills.s2) unusedSkills.push('s2');
-    if (!p2Skills.s3) unusedSkills.push('s3');
-
-    if (unusedSkills.length > 0 && Math.random() > 0.5) {
-      const chosenSkill = unusedSkills[Math.floor(Math.random() * unusedSkills.length)];
-      setP2ActiveSkill(chosenSkill);
-    } else {
-      setP2ActiveSkill(null);
+      if (unusedSkills.length > 0 && Math.random() > 0.5) {
+        const chosen = unusedSkills[Math.floor(Math.random() * unusedSkills.length)];
+        setP2ActiveSkill(chosen);
+      } else {
+        setP2ActiveSkill(null);
+      }
+      setTimeout(() => resolveRound(), 400);
     }
-  };
+  }, [stage, mode]);
 
   // 選牌蓋牌
   const handleSelectCard = (player, card) => {
-    if (player !== activePlayer) return;
-    if (player === 'p1') setP1PlayedCard(card);
-    else setP2PlayedCard(card);
-  };
-
-  // 確認蓋牌，進入技能階段
-  const confirmPlay = () => {
-    const currentCard = activePlayer === 'p1' ? p1PlayedCard : p2PlayedCard;
-    if (!currentCard) return;
-
-    if (flowState === 'turn1_play') setFlowState('turn1_skill');
-    else if (flowState === 'turn2_play') setFlowState('turn2_skill');
+    if (player === 'p1' && stage === 'p1_play') setP1PlayedCard(card);
+    if (player === 'p2' && stage === 'p2_play') setP2PlayedCard(card);
   };
 
   // 切換技能選擇
   const handleToggleSkill = (player, skillType) => {
-    if (player !== activePlayer) return;
-
-    const skills = player === 'p1' ? p1Skills : p2Skills;
-    if (skills[skillType]) return; // 已使用過
-
-    if (player === 'p1') {
+    if (player === 'p1' && stage === 'p1_skill') {
+      if (p1Skills[skillType]) return;
       setP1ActiveSkill((prev) => (prev === skillType ? null : skillType));
-    } else {
+    }
+    if (player === 'p2' && stage === 'p2_skill') {
+      if (p2Skills[skillType]) return;
       setP2ActiveSkill((prev) => (prev === skillType ? null : skillType));
     }
   };
 
-  // 確認技能完成，推進流程
-  const confirmSkill = () => {
-    if (flowState === 'turn1_skill') {
-      if (mode === 'single') {
-        // 單人模式：AI 直接完成 Turn 2
-        handleAiTurn();
-        resolveRound();
-      } else {
-        // 雙人 PK 模式：切換至遮蔽準備頁，等後手登場
-        setFlowState('switch');
-      }
-    } else if (flowState === 'turn2_skill') {
-      // 雙人模式後手完成，直接進入開牌結算
-      resolveRound();
-    }
+  // 推進至下一階段
+  const nextStage = () => {
+    if (stage === 'p1_play' && p1PlayedCard) setStage('p2_play');
+    else if (stage === 'p2_play' && p2PlayedCard) setStage('p1_skill');
+    else if (stage === 'p1_skill') setStage('p2_skill');
+    else if (stage === 'p2_skill') resolveRound();
   };
 
-  // 開始後手回合
-  const startTurn2 = () => {
-    setFlowState('turn2_play');
-  };
-
-  // 開牌結算邏輯
+  // 階段 5：結算階段
   const resolveRound = () => {
-    let p1Card = { ...p1PlayedCard };
-    let p2Card = { ...p2PlayedCard };
+    let finalP1Card = { ...p1PlayedCard };
+    let finalP2Card = { ...p2PlayedCard };
 
-    let p1SkillText = '';
-    let p2SkillText = '';
+    let p1SkillNotice = '';
+    let p2SkillNotice = '';
 
-    // 1. 處理技能 1 (退牌重新換牌) - 正確更新 State 與卡牌
+    // 處理 P1 換牌技能 (針對 P2 的牌進行隨機更換)
     if (p1ActiveSkill === 's1') {
       setP1Skills((prev) => ({ ...prev, s1: true }));
-      const remainP2Hand = p2Hand.filter((c) => c.uid !== p2Card.uid);
+      const remainP2Hand = p2Hand.filter((c) => c.uid !== finalP2Card.uid);
       if (remainP2Hand.length > 0) {
-        p2Card = remainP2Hand[Math.floor(Math.random() * remainP2Hand.length)];
-        setP2PlayedCard(p2Card); // 正確同步狀態寫回 State
-        p1SkillText = '🌀 P1 發動技能：強制對手換牌！';
+        finalP2Card = remainP2Hand[Math.floor(Math.random() * remainP2Hand.length)];
+        setP2PlayedCard(finalP2Card);
+        p1SkillNotice = '🌀 P1 發動換牌技能！P2 的牌被更換！';
       }
     }
+
+    // 處理 P2 換牌技能 (針對 P1 的牌進行隨機更換)
     if (p2ActiveSkill === 's1') {
       setP2Skills((prev) => ({ ...prev, s1: true }));
-      const remainP1Hand = p1Hand.filter((c) => c.uid !== p1Card.uid);
+      const remainP1Hand = p1Hand.filter((c) => c.uid !== finalP1Card.uid);
       if (remainP1Hand.length > 0) {
-        p1Card = remainP1Hand[Math.floor(Math.random() * remainP1Hand.length)];
-        setP1PlayedCard(p1Card); // 正確同步狀態寫回 State
-        p2SkillText = '🌀 P2 發動技能：強制對手換牌！';
+        finalP1Card = remainP1Hand[Math.floor(Math.random() * remainP1Hand.length)];
+        setP1PlayedCard(finalP1Card);
+        p2SkillNotice = '🌀 P2 發動換牌技能！P1 的牌被更換！';
       }
     }
 
-    // 2. 處理技能 2 (+1) 與技能 3 (-1)
-    let p1Rank = p1Card.rank;
-    let p2Rank = p2Card.rank;
+    // 處理活性 +1 / -1 技能
+    let p1Rank = finalP1Card.rank;
+    let p2Rank = finalP2Card.rank;
 
-    if (p1ActiveSkill === 's2') { p1Rank += 1; setP1Skills((prev) => ({ ...prev, s2: true })); p1SkillText = '⚡ P1 發動技能：活性 +1！'; }
-    if (p1ActiveSkill === 's3') { p1Rank -= 1; setP1Skills((prev) => ({ ...prev, s3: true })); p1SkillText = '🧪 P1 發動技能：活性 -1！'; }
+    if (p1ActiveSkill === 's2') { p1Rank += 1; setP1Skills((prev) => ({ ...prev, s2: true })); p1SkillNotice = '⚡ P1 發動技能：活性 +1！'; }
+    if (p1ActiveSkill === 's3') { p1Rank -= 1; setP1Skills((prev) => ({ ...prev, s3: true })); p1SkillNotice = '🧪 P1 發動技能：活性 -1！'; }
 
-    if (p2ActiveSkill === 's2') { p2Rank += 1; setP2Skills((prev) => ({ ...prev, s2: true })); p2SkillText = '⚡ P2 發動技能：活性 +1！'; }
-    if (p2ActiveSkill === 's3') { p2Rank -= 1; setP2Skills((prev) => ({ ...prev, s3: true })); p2SkillText = '🧪 P2 發動技能：活性 -1！'; }
+    if (p2ActiveSkill === 's2') { p2Rank += 1; setP2Skills((prev) => ({ ...prev, s2: true })); p2SkillNotice = '⚡ P2 發動技能：活性 +1！'; }
+    if (p2ActiveSkill === 's3') { p2Rank -= 1; setP2Skills((prev) => ({ ...prev, s3: true })); p2SkillNotice = '🧪 P2 發動技能：活性 -1！'; }
 
-    // 3. 結算勝負與積分
+    // 勝負與得分計算
     const targetRank = targetOxide.rank;
     const oxideBaseScore = targetOxide.score;
 
     let p1Earned = 0;
     let p2Earned = 0;
-    let msg = '';
+    let resultText = '';
 
-    const skillNotice = [p1SkillText, p2SkillText].filter(Boolean).join(' ｜ ');
+    const skillNotice = [p1SkillNotice, p2SkillNotice].filter(Boolean).join(' ｜ ');
 
     if (p1Rank > p2Rank) {
       p1Earned += oxideBaseScore;
       let isPrecise = (p1Rank === targetRank + 1);
       if (isPrecise) p1Earned += 5;
 
-      msg = `🎉 P1 打出【${p1Card.name} (活性${p1Rank})】擊敗 P2【${p2Card.name} (活性${p2Rank})】！成功奪走 氧化${targetOxide.name} 的氧氣！(${isPrecise ? '⚡精準奪氧暴擊 +5分！' : `+${oxideBaseScore}分`})`;
+      resultText = `🎉 P1【${finalP1Card.name} (活性${p1Rank})】擊敗 P2【${finalP2Card.name} (活性${p2Rank})】！奪走 氧化${targetOxide.name}！(${isPrecise ? '⚡精準奪氧暴擊 +5分！' : `+${oxideBaseScore}分`})`;
       setP1Score((prev) => prev + p1Earned);
     } else if (p2Rank > p1Rank) {
       p2Earned += oxideBaseScore;
       let isPrecise = (p2Rank === targetRank + 1);
       if (isPrecise) p2Earned += 5;
 
-      msg = `🎉 P2 打出【${p2Card.name} (活性${p2Rank})】擊敗 P1【${p1Card.name} (活性${p1Rank})】！成功奪走 氧化${targetOxide.name} 的氧氣！(${isPrecise ? '⚡精準奪氧暴擊 +5分！' : `+${oxideBaseScore}分`})`;
+      resultText = `🎉 P2【${finalP2Card.name} (活性${p2Rank})】擊敗 P1【${finalP1Card.name} (活性${p1Rank})】！奪走 氧化${targetOxide.name}！(${isPrecise ? '⚡精準奪氧暴擊 +5分！' : `+${oxideBaseScore}分`})`;
       setP2Score((prev) => prev + p2Earned);
     } else {
-      msg = `🤝 雙方活性點數相同 (${p1Rank})，反應互相抵銷，無人得分！`;
+      resultText = `🤝 雙方活性點數相同 (${p1Rank})，反應抵銷，無人得分！`;
     }
 
-    setRoundResultMsg(skillNotice ? `${skillNotice}\n${msg}` : msg);
-    setFlowState('reveal');
+    setRoundResultMsg(skillNotice ? `${skillNotice}\n${resultText}` : resultText);
+    setStage('reveal');
   };
 
   // 進入下一回合
@@ -228,7 +197,7 @@ export default function ActivityFloorGame({ mode = 'single', onGameOver }) {
       return;
     }
 
-    // 補充手牌 (維持 5 張)
+    // 消耗牌並補充 1 張手牌 (維持 5 張)
     setP1Hand((prev) => prev.filter((c) => c.uid !== p1PlayedCard.uid).concat(getRandomCard()));
     setP2Hand((prev) => prev.filter((c) => c.uid !== p2PlayedCard.uid).concat(getRandomCard()));
 
@@ -244,7 +213,7 @@ export default function ActivityFloorGame({ mode = 'single', onGameOver }) {
     setNextOxide(getRandomCard());
 
     setCurrentRound((prev) => prev + 1);
-    setFlowState('turn1_play');
+    setStage('p1_play');
   };
 
   const handleExit = () => {
@@ -252,7 +221,7 @@ export default function ActivityFloorGame({ mode = 'single', onGameOver }) {
     if (onGameOver) onGameOver(gainedExp);
   };
 
-  // 渲染卡牌資訊模組
+  // 渲染卡牌
   const renderCard = (card, isHidden = false, isSelected = false) => {
     if (!card) return null;
 
@@ -292,7 +261,7 @@ export default function ActivityFloorGame({ mode = 'single', onGameOver }) {
         <div>
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-black bg-amber-500/20 text-amber-400 border border-amber-500/40 px-2.5 py-1 rounded-lg uppercase tracking-wider">
-              Heaven's Arena • Floor 60F ({mode === 'pvp' ? '雙人輪流吹牛 PK' : '單人對決'})
+              Heaven's Arena • Floor 60F ({mode === 'pvp' ? '雙人同屏吹牛 PK' : '單人對決'})
             </span>
           </div>
           <h2 className="text-lg md:text-xl font-black text-white mt-1 flex items-center gap-2">
@@ -345,39 +314,15 @@ export default function ActivityFloorGame({ mode = 'single', onGameOver }) {
         </div>
       )}
 
-      {/* 換人中間遮蔽頁 (避免後手偷看) */}
-      {flowState === 'switch' && (
-        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 text-center space-y-4 my-4">
-          <EyeOff className="w-16 h-16 text-purple-400 mx-auto animate-bounce" />
-          <h3 className="text-xl font-black text-white">
-            請將裝置交給 【{secondPlayer === 'p1' ? 'Player 1' : 'Player 2'}】 進行回答！
-          </h3>
-          <p className="text-xs text-slate-400">
-            先手已完成蓋牌與技能階段。請確保對手未觀看畫面後點擊下方按鈕繼續！
-          </p>
-          <button
-            onClick={startTurn2}
-            className="px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold text-sm rounded-2xl shadow-xl transition-all cursor-pointer flex items-center gap-2 mx-auto"
-          >
-            <UserCheck className="w-5 h-5" /> 準備好，進入【{secondPlayer === 'p1' ? 'Player 1' : 'Player 2'}】的回合！
-          </button>
-        </div>
-      )}
-
       {/* 主對決桌面區域 */}
-      {!isFinished && flowState !== 'switch' && (
+      {!isFinished && (
         <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-4 space-y-4 relative">
-          {/* 對手狀態欄 */}
+          {/* P2 狀態欄 */}
           <div className="flex justify-between items-center border-b border-slate-800/80 pb-3">
             <div className="flex items-center gap-3">
               <span className="text-xs font-black px-2.5 py-1 rounded-full bg-rose-500/20 text-rose-300 border border-rose-400">
                 ⚔️ Player 2 (分值：{p2Score} PTS)
               </span>
-              {firstPlayer === 'p2' && (
-                <span className="text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded">
-                  👑 本回合先手
-                </span>
-              )}
             </div>
 
             <div className="flex gap-1.5">
@@ -393,103 +338,148 @@ export default function ActivityFloorGame({ mode = 'single', onGameOver }) {
           <div className="flex justify-center items-center gap-8 py-2 min-h-[120px]">
             <div className="text-center space-y-1">
               <span className="text-[10px] text-indigo-300 block">Player 1 出牌</span>
-              {renderCard(p1PlayedCard, flowState !== 'reveal')}
+              {renderCard(p1PlayedCard, stage !== 'reveal')}
             </div>
 
             <Swords className="w-8 h-8 text-amber-400 animate-pulse" />
 
             <div className="text-center space-y-1">
               <span className="text-[10px] text-rose-300 block">Player 2 出牌</span>
-              {renderCard(p2PlayedCard, flowState !== 'reveal')}
+              {renderCard(p2PlayedCard, stage !== 'reveal')}
             </div>
           </div>
 
-          {/* 操作指示與技能控制面板 */}
+          {/* 五階段指示與技能面板 */}
           <div className="bg-slate-950 border border-slate-800 p-3.5 rounded-2xl text-center space-y-2">
-            {(flowState === 'turn1_play' || flowState === 'turn2_play') && (
+            {stage === 'p1_play' && (
               <div className="flex justify-between items-center">
-                <p className="text-xs text-slate-300 font-bold">
-                  【階段 1：蓋牌】請 <span className="text-amber-300">{activePlayer === 'p1' ? 'Player 1' : 'Player 2'}</span> 從下方手牌選擇 1 張暗牌打出：
+                <p className="text-xs text-indigo-300 font-bold">
+                  【階段 1：P1 出牌】請 Player 1 從下方手牌選擇 1 張暗牌打出：
                 </p>
                 <button
-                  onClick={confirmPlay}
-                  disabled={(activePlayer === 'p1' && !p1PlayedCard) || (activePlayer === 'p2' && !p2PlayedCard)}
-                  className="px-4 py-2 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-slate-950 font-black text-xs rounded-xl transition-all cursor-pointer"
+                  onClick={nextStage}
+                  disabled={!p1PlayedCard}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white font-black text-xs rounded-xl transition-all cursor-pointer"
                 >
-                  確認蓋牌 ➔
+                  確認蓋牌進階段 2 ➔
                 </button>
               </div>
             )}
 
-            {(flowState === 'turn1_skill' || flowState === 'turn2_skill') && (
+            {stage === 'p2_play' && mode === 'pvp' && (
+              <div className="flex justify-between items-center">
+                <p className="text-xs text-rose-300 font-bold">
+                  【階段 2：P2 出牌】請 Player 2 從下方手牌選擇 1 張暗牌打出：
+                </p>
+                <button
+                  onClick={nextStage}
+                  disabled={!p2PlayedCard}
+                  className="px-4 py-2 bg-rose-600 hover:bg-rose-500 disabled:opacity-40 text-white font-black text-xs rounded-xl transition-all cursor-pointer"
+                >
+                  確認蓋牌進階段 3 ➔
+                </button>
+              </div>
+            )}
+
+            {stage === 'p1_skill' && (
               <div className="space-y-2">
-                <p className="text-xs text-amber-300 font-bold">
-                  【階段 2：技能】請 <span className="text-amber-300">{activePlayer === 'p1' ? 'Player 1' : 'Player 2'}</span> 選擇是否發動 1 項一次性技能（每場限 1 次）：
+                <p className="text-xs text-indigo-300 font-bold">
+                  【階段 3：P1 技能】請 Player 1 選擇是否使用技能（每場限 1 次）：
                 </p>
-
                 <div className="flex justify-center gap-2">
-                  {(() => {
-                    const skills = activePlayer === 'p1' ? p1Skills : p2Skills;
-                    const activeSkill = activePlayer === 'p1' ? p1ActiveSkill : p2ActiveSkill;
-
-                    return (
-                      <>
-                        <button
-                          onClick={() => handleToggleSkill(activePlayer, 's1')}
-                          disabled={skills.s1}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                            activeSkill === 's1'
-                              ? 'bg-purple-600 text-white border-purple-400 ring-2 ring-purple-300'
-                              : skills.s1
-                              ? 'bg-slate-900 text-slate-600 border-slate-800 cursor-not-allowed'
-                              : 'bg-slate-900 text-purple-300 border-purple-500/40 hover:bg-purple-950/40'
-                          }`}
-                        >
-                          🌀 技能1：強制對手換牌 {skills.s1 && '(已用)'}
-                        </button>
-
-                        <button
-                          onClick={() => handleToggleSkill(activePlayer, 's2')}
-                          disabled={skills.s2}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                            activeSkill === 's2'
-                              ? 'bg-emerald-600 text-white border-emerald-400 ring-2 ring-emerald-300'
-                              : skills.s2
-                              ? 'bg-slate-900 text-slate-600 border-slate-800 cursor-not-allowed'
-                              : 'bg-slate-900 text-emerald-300 border-emerald-500/40 hover:bg-emerald-950/40'
-                          }`}
-                        >
-                          ⚡ 技能2：活性 +1 {skills.s2 && '(已用)'}
-                        </button>
-
-                        <button
-                          onClick={() => handleToggleSkill(activePlayer, 's3')}
-                          disabled={skills.s3}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                            activeSkill === 's3'
-                              ? 'bg-rose-600 text-white border-rose-400 ring-2 ring-rose-300'
-                              : skills.s3
-                              ? 'bg-slate-900 text-slate-600 border-slate-800 cursor-not-allowed'
-                              : 'bg-slate-900 text-rose-300 border-rose-500/40 hover:bg-rose-950/40'
-                          }`}
-                        >
-                          🧪 技能3：活性 -1 {skills.s3 && '(已用)'}
-                        </button>
-                      </>
-                    );
-                  })()}
+                  <button
+                    onClick={() => handleToggleSkill('p1', 's1')}
+                    disabled={p1Skills.s1}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                      p1ActiveSkill === 's1'
+                        ? 'bg-purple-600 text-white border-purple-400 ring-2 ring-purple-300'
+                        : p1Skills.s1 ? 'bg-slate-900 text-slate-600 border-slate-800 cursor-not-allowed' : 'bg-slate-900 text-purple-300 border-purple-500/40 hover:bg-purple-950/40'
+                    }`}
+                  >
+                    🌀 強制 P2 換牌 {p1Skills.s1 && '(已用)'}
+                  </button>
+                  <button
+                    onClick={() => handleToggleSkill('p1', 's2')}
+                    disabled={p1Skills.s2}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                      p1ActiveSkill === 's2'
+                        ? 'bg-emerald-600 text-white border-emerald-400 ring-2 ring-emerald-300'
+                        : p1Skills.s2 ? 'bg-slate-900 text-slate-600 border-slate-800 cursor-not-allowed' : 'bg-slate-900 text-emerald-300 border-emerald-500/40 hover:bg-emerald-950/40'
+                    }`}
+                  >
+                    ⚡ 活性 +1 {p1Skills.s2 && '(已用)'}
+                  </button>
+                  <button
+                    onClick={() => handleToggleSkill('p1', 's3')}
+                    disabled={p1Skills.s3}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                      p1ActiveSkill === 's3'
+                        ? 'bg-rose-600 text-white border-rose-400 ring-2 ring-rose-300'
+                        : p1Skills.s3 ? 'bg-slate-900 text-slate-600 border-slate-800 cursor-not-allowed' : 'bg-slate-900 text-rose-300 border-rose-500/40 hover:bg-rose-950/40'
+                    }`}
+                  >
+                    🧪 活性 -1 {p1Skills.s3 && '(已用)'}
+                  </button>
                 </div>
-
                 <button
-                  onClick={confirmSkill}
-                  className="px-6 py-2 bg-gradient-to-r from-amber-500 to-rose-500 text-slate-950 font-black text-xs rounded-xl shadow-lg hover:brightness-110 transition-all cursor-pointer mt-1"
+                  onClick={nextStage}
+                  className="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs rounded-xl shadow-lg transition-all cursor-pointer mt-1"
                 >
-                  🛑 完成回合選擇 ➔
+                  確認進階段 4 ➔
                 </button>
               </div>
             )}
 
-            {flowState === 'reveal' && (
+            {stage === 'p2_skill' && mode === 'pvp' && (
+              <div className="space-y-2">
+                <p className="text-xs text-rose-300 font-bold">
+                  【階段 4：P2 技能】請 Player 2 選擇是否使用技能（每場限 1 次）：
+                </p>
+                <div className="flex justify-center gap-2">
+                  <button
+                    onClick={() => handleToggleSkill('p2', 's1')}
+                    disabled={p2Skills.s1}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                      p2ActiveSkill === 's1'
+                        ? 'bg-purple-600 text-white border-purple-400 ring-2 ring-purple-300'
+                        : p2Skills.s1 ? 'bg-slate-900 text-slate-600 border-slate-800 cursor-not-allowed' : 'bg-slate-900 text-purple-300 border-purple-500/40 hover:bg-purple-950/40'
+                    }`}
+                  >
+                    🌀 強制 P1 換牌 {p2Skills.s1 && '(已用)'}
+                  </button>
+                  <button
+                    onClick={() => handleToggleSkill('p2', 's2')}
+                    disabled={p2Skills.s2}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                      p2ActiveSkill === 's2'
+                        ? 'bg-emerald-600 text-white border-emerald-400 ring-2 ring-emerald-300'
+                        : p2Skills.s2 ? 'bg-slate-900 text-slate-600 border-slate-800 cursor-not-allowed' : 'bg-slate-900 text-emerald-300 border-emerald-500/40 hover:bg-emerald-950/40'
+                    }`}
+                  >
+                    ⚡ 活性 +1 {p2Skills.s2 && '(已用)'}
+                  </button>
+                  <button
+                    onClick={() => handleToggleSkill('p2', 's3')}
+                    disabled={p2Skills.s3}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                      p2ActiveSkill === 's3'
+                        ? 'bg-rose-600 text-white border-rose-400 ring-2 ring-rose-300'
+                        : p2Skills.s3 ? 'bg-slate-900 text-slate-600 border-slate-800 cursor-not-allowed' : 'bg-slate-900 text-rose-300 border-rose-500/40 hover:bg-rose-950/40'
+                    }`}
+                  >
+                    🧪 活性 -1 {p2Skills.s3 && '(已用)'}
+                  </button>
+                </div>
+                <button
+                  onClick={nextStage}
+                  className="px-6 py-2 bg-rose-600 hover:bg-rose-500 text-white font-black text-xs rounded-xl shadow-lg transition-all cursor-pointer mt-1"
+                >
+                  🛑 鎖定技能！進階段 5 翻牌結算 ➔
+                </button>
+              </div>
+            )}
+
+            {stage === 'reveal' && (
               <div className="space-y-2">
                 <p className="text-xs md:text-sm font-bold text-amber-300 whitespace-pre-line animate-bounce">
                   {roundResultMsg}
@@ -504,26 +494,21 @@ export default function ActivityFloorGame({ mode = 'single', onGameOver }) {
             )}
           </div>
 
-          {/* 下方玩家手牌 */}
+          {/* 下方 P1 手牌 */}
           <div className="border-t border-slate-800/80 pt-3 space-y-2">
             <div className="flex justify-between items-center">
               <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-400">
                 🛡️ Player 1 (分值：{p1Score} PTS)
               </span>
-              {firstPlayer === 'p1' && (
-                <span className="text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded">
-                  👑 本回合先手
-                </span>
-              )}
             </div>
 
             <div className="flex justify-center gap-2">
-              {(activePlayer === 'p1' ? p1Hand : (mode === 'pvp' ? p2Hand : p1Hand)).map((card) => {
-                const currentPlayedCard = activePlayer === 'p1' ? p1PlayedCard : p2PlayedCard;
+              {(stage === 'p2_play' || stage === 'p2_skill' ? p2Hand : p1Hand).map((card) => {
+                const currentPlayedCard = (stage === 'p2_play' || stage === 'p2_skill') ? p2PlayedCard : p1PlayedCard;
                 return (
                   <div
                     key={card.uid}
-                    onClick={() => handleSelectCard(activePlayer, card)}
+                    onClick={() => handleSelectCard((stage === 'p2_play' || stage === 'p2_skill') ? 'p2' : 'p1', card)}
                     className="cursor-pointer"
                   >
                     {renderCard(card, false, currentPlayedCard?.uid === card.uid)}
