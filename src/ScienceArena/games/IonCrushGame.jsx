@@ -67,8 +67,8 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
   const [p1SkillCharges, setP1SkillCharges] = useState(0);
   const [p2SkillCharges, setP2SkillCharges] = useState(0);
 
-  const [p1BlindTimer, setP1BlindTimer] = useState(0); // P1 被遮蔽的倒數時間 (秒)
-  const [p2BlindTimer, setP2BlindTimer] = useState(0); // P2 被遮蔽的倒數時間 (秒)
+  const [p1BlindTimer, setP1BlindTimer] = useState(0); // P1 被遮蔽倒數 (秒)
+  const [p2BlindTimer, setP2BlindTimer] = useState(0); // P2 被遮蔽倒數 (秒)
 
   // 60 秒倒數計時器
   useEffect(() => {
@@ -106,12 +106,12 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
 
     if (player === 'p1' && p1SkillCharges > 0) {
       setP1SkillCharges((prev) => prev - 1);
-      setP2BlindTimer(10); // 讓 P2 隱藏價數 10 秒
+      setP2BlindTimer(10);
       setP1Msg('🌀 發動【障眼法】！對手價數隱藏 10 秒！');
       setTimeout(() => setP1Msg(''), 2000);
     } else if (player === 'p2' && p2SkillCharges > 0) {
       setP2SkillCharges((prev) => prev - 1);
-      setP1BlindTimer(10); // 讓 P1 隱藏價數 10 秒
+      setP1BlindTimer(10);
       setP2Msg('🌀 發動【障眼法】！對手價數隱藏 10 秒！');
       setTimeout(() => setP2Msg(''), 2000);
     }
@@ -178,12 +178,12 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
       // === 消除成功 ===
       const comboCount = selection.length;
 
+      // 修正：精準計算累計組數與技能充能，防止多重觸發
       setClearedCount((prev) => {
         const nextCount = prev + 1;
-        // 每滿 5 組可獲得 1 次障眼法技能
-        if (nextCount % 5 === 0) {
+        if (nextCount > 0 && nextCount % 5 === 0) {
           setSkillCharges((charges) => charges + 1);
-          setMsg(`⚡ 電中性！技能充能完成 (獲得 1 次障眼法)！`);
+          setMsg(`⚡ 電中性！技能充能完成 (+1 次障眼法)！`);
         } else {
           setMsg(`⚡ 電中性！消除 ${comboCount} 個離子！`);
         }
