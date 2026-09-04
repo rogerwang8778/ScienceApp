@@ -9,6 +9,7 @@ import LensFocalGame from './games/LensFocalGame';               // 30F 光學�
 import ThermalFloorGame from './games/ThermalFloorGame';         // 40F 熱學擂台
 import IonCrushGame from './games/IonCrushGame';                 // 50F 化合物擂台 (新增)
 import ActivityFloorGame from './games/ActivityFloorGame'; // 60F 活性擂台
+import AcidBaseFloorGame from './games/AcidBaseFloorGame'; // 70F 酸鹼擂台
 
 export default function ScienceArena() {
   const [playerExp, setPlayerExp] = useState(1200);
@@ -80,6 +81,15 @@ export default function ScienceArena() {
       badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
       desc: '吹牛賽局與金屬活性順序結合！手牌博弈搶奪氧化物，配合技能發動精準奪氧暴擊！',
       component: ActivityFloorGame
+    },
+    {
+      id: '70F',
+      name: '70F 酸鹼擂台：中和KO強攻戰',
+      icon: '🧪',
+      color: 'from-rose-600/20 to-blue-600/20 border-rose-500/40',
+      badgeColor: 'bg-rose-500/20 text-rose-300 border-rose-500/30',
+      desc: '計算解離莫耳數與充能體積稀釋，精準揮出酸鹼拳完全中和 KO 怪獸！',
+      component: AcidBaseFloorGame
     }
   ];
 
