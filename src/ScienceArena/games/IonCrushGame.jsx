@@ -63,12 +63,12 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
   const [p1Msg, setP1Msg] = useState('');
   const [p2Msg, setP2Msg] = useState('');
 
-  // 技能狀態 (10 秒隱藏價數技能)
-  const [p1SkillUsed, setP1SkillUsed] = useState(false);
-  const [p2SkillUsed, setP2SkillUsed] = useState(false);
+  // 技能次數與倒數狀態 (每消除 5 組增加 1 次技能)
+  const [p1SkillCharges, setP1SkillCharges] = useState(0);
+  const [p2SkillCharges, setP2SkillCharges] = useState(0);
 
-  const [p1BlindTimer, setP1BlindTimer] = useState(0); // P1 被遮蔽的倒數時間
-  const [p2BlindTimer, setP2BlindTimer] = useState(0); // P2 被遮蔽的倒數時間
+  const [p1BlindTimer, setP1BlindTimer] = useState(0); // P1 被遮蔽的倒數時間 (秒)
+  const [p2BlindTimer, setP2BlindTimer] = useState(0); // P2 被遮蔽的倒數時間 (秒)
 
   // 60 秒倒數計時器
   useEffect(() => {
@@ -81,7 +81,7 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
     return () => clearInterval(timer);
   }, [timeLeft, isFinished]);
 
-  // 技能倒數計時器 (P1 / P2 障眼法)
+  // 技能遮蔽倒數計時器
   useEffect(() => {
     let blindInterval = null;
     if (!isFinished) {
@@ -100,19 +100,19 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
     }
   }, [p1ClearedCount, mode, isFinished]);
 
-  // 使用對手遮蔽技能
+  // 使用障眼法技能 (扣除 1 次次數，讓對手隱藏價數 10 秒)
   const handleUseSkill = (player) => {
     if (mode !== 'pvp' || isFinished) return;
 
-    if (player === 'p1' && !p1SkillUsed) {
-      setP1SkillUsed(true);
+    if (player === 'p1' && p1SkillCharges > 0) {
+      setP1SkillCharges((prev) => prev - 1);
       setP2BlindTimer(10); // 讓 P2 隱藏價數 10 秒
-      setP1Msg('🌀 成功對對手施放【障眼法】！');
+      setP1Msg('🌀 發動【障眼法】！對手價數隱藏 10 秒！');
       setTimeout(() => setP1Msg(''), 2000);
-    } else if (player === 'p2' && !p2SkillUsed) {
-      setP2SkillUsed(true);
+    } else if (player === 'p2' && p2SkillCharges > 0) {
+      setP2SkillCharges((prev) => prev - 1);
       setP1BlindTimer(10); // 讓 P1 隱藏價數 10 秒
-      setP2Msg('🌀 成功對對手施放【障眼法】！');
+      setP2Msg('🌀 發動【障眼法】！對手價數隱藏 10 秒！');
       setTimeout(() => setP2Msg(''), 2000);
     }
   };
@@ -163,6 +163,7 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
     const setClearedCount = isP1 ? setP1ClearedCount : setP2ClearedCount;
     const setScore = isP1 ? setP1Score : setP2Score;
     const setMsg = isP1 ? setP1Msg : setP2Msg;
+    const setSkillCharges = isP1 ? setP1SkillCharges : setP2SkillCharges;
 
     if (selection.length < 2) {
       setSelection([]);
@@ -176,10 +177,20 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
     if (totalCharge === 0 && hasCat && hasAni) {
       // === 消除成功 ===
       const comboCount = selection.length;
-      setClearedCount((prev) => prev + 1);
-      setScore((prev) => prev + comboCount * 20);
 
-      setMsg(`⚡ 電中性！消除 ${comboCount} 個離子！`);
+      setClearedCount((prev) => {
+        const nextCount = prev + 1;
+        // 每滿 5 組可獲得 1 次障眼法技能
+        if (nextCount % 5 === 0) {
+          setSkillCharges((charges) => charges + 1);
+          setMsg(`⚡ 電中性！技能充能完成 (獲得 1 次障眼法)！`);
+        } else {
+          setMsg(`⚡ 電中性！消除 ${comboCount} 個離子！`);
+        }
+        return nextCount;
+      });
+
+      setScore((prev) => prev + comboCount * 20);
       setTimeout(() => setMsg(''), 1500);
 
       // 複製 Grid 並清空選中項
@@ -227,7 +238,7 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
     const isBlinded = isP1 ? p1BlindTimer > 0 : p2BlindTimer > 0;
     const blindTimer = isP1 ? p1BlindTimer : p2BlindTimer;
 
-    const skillUsed = isP1 ? p1SkillUsed : p2SkillUsed;
+    const skillCharges = isP1 ? p1SkillCharges : p2SkillCharges;
 
     return (
       <div className={`p-4 rounded-3xl border space-y-3 relative overflow-hidden ${
@@ -250,19 +261,21 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
               {isP1 ? '🛡️ Player 1 (左側選手)' : '⚔️ Player 2 (右側選手)'}
             </span>
 
-            {/* 技能觸發按鈕 (雙人模式顯示) */}
+            {/* 技能按鈕 (每消除 5 組獲得 1 次技能) */}
             {mode === 'pvp' && (
               <button
                 onClick={() => handleUseSkill(player)}
-                disabled={skillUsed}
-                className={`px-2.5 py-0.5 rounded-lg text-[10px] font-bold border flex items-center gap-1 transition-all ${
-                  skillUsed 
-                    ? 'bg-slate-800 text-slate-500 border-slate-700 cursor-not-allowed' 
-                    : 'bg-purple-600/30 text-purple-300 border-purple-500/50 hover:bg-purple-600/50 cursor-pointer active:scale-95'
+                disabled={skillCharges === 0}
+                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border flex items-center gap-1 transition-all ${
+                  skillCharges > 0
+                    ? 'bg-purple-600 text-white border-purple-400 hover:bg-purple-500 shadow-lg animate-pulse cursor-pointer active:scale-95'
+                    : 'bg-slate-900 text-slate-500 border-slate-800 cursor-not-allowed'
                 }`}
               >
-                <EyeOff className="w-3 h-3 text-purple-300" />
-                {skillUsed ? '技能已使用' : '🌀 障眼法技能 (10s)'}
+                <EyeOff className="w-3.5 h-3.5" />
+                {skillCharges > 0
+                  ? `🌀 障眼法技能 (可對敵 ${skillCharges} 次)`
+                  : `🌀 充能中 (${clearedCount % 5}/5)`}
               </button>
             )}
           </div>
@@ -324,7 +337,7 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
                       : 'hover:scale-105 opacity-90'
                   }`}
                 >
-                  {/* 若正受障眼法影響，隱藏價數，僅顯示基本元素名稱 */}
+                  {/* 若正在承受障眼法效果，隱藏價數，僅顯示基本元素名稱 */}
                   {isBlinded ? ion.baseSymbol : ion.symbol}
                 </button>
               );
@@ -380,7 +393,7 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
           <p className="text-slate-400 text-[11px]">
             {mode === 'single'
               ? '60 秒內消除 15 組離子化合物即可通關！'
-              : '雙人對決各擁有 1 次【🌀 障眼法技能】，可隱藏對手價數 10 秒！'}
+              : '雙人對決每消除 5 組獲得 1 次【🌀 障眼法技能】，可讓對手價數隱藏 10 秒！'}
           </p>
         </div>
       )}
