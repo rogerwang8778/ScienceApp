@@ -1,18 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Trophy, RefreshCw, Zap, Flame, Timer, Swords, Sparkles, CheckCircle2 } from 'lucide-react';
+import { Trophy, RefreshCw, Zap, Flame, Timer, Swords, Sparkles, EyeOff, ShieldAlert } from 'lucide-react';
 
 // 離子清單定義
 const IONS = [
-  { symbol: 'Na⁺', charge: 1, type: 'cat', color: 'bg-blue-600 border-blue-400 text-blue-100' },
-  { symbol: 'K⁺', charge: 1, type: 'cat', color: 'bg-indigo-600 border-indigo-400 text-indigo-100' },
-  { symbol: 'Ca²⁺', charge: 2, type: 'cat', color: 'bg-amber-600 border-amber-400 text-amber-100' },
-  { symbol: 'Mg²⁺', charge: 2, type: 'cat', color: 'bg-orange-600 border-orange-400 text-orange-100' },
-  { symbol: 'Al³⁺', charge: 3, type: 'cat', color: 'bg-purple-600 border-purple-400 text-purple-100' },
-  { symbol: 'Cl⁻', charge: -1, type: 'ani', color: 'bg-teal-600 border-teal-400 text-teal-100' },
-  { symbol: 'NO₃⁻', charge: -1, type: 'ani', color: 'bg-emerald-600 border-emerald-400 text-emerald-100' },
-  { symbol: 'O²⁻', charge: -2, type: 'ani', color: 'bg-rose-600 border-rose-400 text-rose-100' },
-  { symbol: 'SO₄²⁻', charge: -2, type: 'ani', color: 'bg-pink-600 border-pink-400 text-pink-100' },
-  { symbol: 'PO₄³⁻', charge: -3, type: 'ani', color: 'bg-red-700 border-red-400 text-red-100' }
+  { symbol: 'Na⁺', baseSymbol: 'Na', charge: 1, type: 'cat', color: 'bg-blue-600 border-blue-400 text-blue-100' },
+  { symbol: 'K⁺', baseSymbol: 'K', charge: 1, type: 'cat', color: 'bg-indigo-600 border-indigo-400 text-indigo-100' },
+  { symbol: 'Ca²⁺', baseSymbol: 'Ca', charge: 2, type: 'cat', color: 'bg-amber-600 border-amber-400 text-amber-100' },
+  { symbol: 'Mg²⁺', baseSymbol: 'Mg', charge: 2, type: 'cat', color: 'bg-orange-600 border-orange-400 text-orange-100' },
+  { symbol: 'Al³⁺', baseSymbol: 'Al', charge: 3, type: 'cat', color: 'bg-purple-600 border-purple-400 text-purple-100' },
+  { symbol: 'Cl⁻', baseSymbol: 'Cl', charge: -1, type: 'ani', color: 'bg-teal-600 border-teal-400 text-teal-100' },
+  { symbol: 'NO₃⁻', baseSymbol: 'NO₃', charge: -1, type: 'ani', color: 'bg-emerald-600 border-emerald-400 text-emerald-100' },
+  { symbol: 'O²⁻', baseSymbol: 'O', charge: -2, type: 'ani', color: 'bg-rose-600 border-rose-400 text-rose-100' },
+  { symbol: 'SO₄²⁻', baseSymbol: 'SO₄', charge: -2, type: 'ani', color: 'bg-pink-600 border-pink-400 text-pink-100' },
+  { symbol: 'PO₄³⁻', baseSymbol: 'PO₄', charge: -3, type: 'ani', color: 'bg-red-700 border-red-400 text-red-100' }
 ];
 
 const GRID_SIZE = 6;
@@ -53,7 +53,7 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
   const [p2Grid, setP2Grid] = useState(createInitialGrid());
 
   // 連線選擇 State
-  const [p1Selection, setP1Selection] = useState([]); // [{r, c, ion}]
+  const [p1Selection, setP1Selection] = useState([]);
   const [p2Selection, setP2Selection] = useState([]);
 
   const isDraggingP1 = useRef(false);
@@ -62,6 +62,13 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
   // 反饋訊息
   const [p1Msg, setP1Msg] = useState('');
   const [p2Msg, setP2Msg] = useState('');
+
+  // 技能狀態 (10 秒隱藏價數技能)
+  const [p1SkillUsed, setP1SkillUsed] = useState(false);
+  const [p2SkillUsed, setP2SkillUsed] = useState(false);
+
+  const [p1BlindTimer, setP1BlindTimer] = useState(0); // P1 被遮蔽的倒數時間
+  const [p2BlindTimer, setP2BlindTimer] = useState(0); // P2 被遮蔽的倒數時間
 
   // 60 秒倒數計時器
   useEffect(() => {
@@ -74,12 +81,41 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
     return () => clearInterval(timer);
   }, [timeLeft, isFinished]);
 
-  // 單人模式滿 15 組判定
+  // 技能倒數計時器 (P1 / P2 障眼法)
+  useEffect(() => {
+    let blindInterval = null;
+    if (!isFinished) {
+      blindInterval = setInterval(() => {
+        setP1BlindTimer((prev) => Math.max(0, prev - 1));
+        setP2BlindTimer((prev) => Math.max(0, prev - 1));
+      }, 1000);
+    }
+    return () => clearInterval(blindInterval);
+  }, [isFinished]);
+
+  // 單人模式滿 15 組通關判定
   useEffect(() => {
     if (mode === 'single' && p1ClearedCount >= 15 && !isFinished) {
       setIsFinished(true);
     }
   }, [p1ClearedCount, mode, isFinished]);
+
+  // 使用對手遮蔽技能
+  const handleUseSkill = (player) => {
+    if (mode !== 'pvp' || isFinished) return;
+
+    if (player === 'p1' && !p1SkillUsed) {
+      setP1SkillUsed(true);
+      setP2BlindTimer(10); // 讓 P2 隱藏價數 10 秒
+      setP1Msg('🌀 成功對對手施放【障眼法】！');
+      setTimeout(() => setP1Msg(''), 2000);
+    } else if (player === 'p2' && !p2SkillUsed) {
+      setP2SkillUsed(true);
+      setP1BlindTimer(10); // 讓 P1 隱藏價數 10 秒
+      setP2Msg('🌀 成功對對手施放【障眼法】！');
+      setTimeout(() => setP2Msg(''), 2000);
+    }
+  };
 
   // 判斷兩位置是否相鄰 (包含對角)
   const isAdjacent = (pos1, pos2) => {
@@ -101,7 +137,6 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
     const existingIndex = selection.findIndex((item) => item.r === r && item.c === c);
 
     if (existingIndex !== -1) {
-      // 若點選已選擇的倒數第二個，則退回上一步
       if (existingIndex === selection.length - 2) {
         setSelection(selection.slice(0, selection.length - 1));
       }
@@ -144,7 +179,7 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
       setClearedCount((prev) => prev + 1);
       setScore((prev) => prev + comboCount * 20);
 
-      setMsg(`⚡ 正負電抵銷電中性！消除 ${comboCount} 個離子！`);
+      setMsg(`⚡ 電中性！消除 ${comboCount} 個離子！`);
       setTimeout(() => setMsg(''), 1500);
 
       // 複製 Grid 並清空選中項
@@ -171,7 +206,7 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
 
       setGrid(newGrid);
     } else {
-      // === 電荷不平或缺乏正負離子 ===
+      // === 電荷不平衡 ===
       setMsg(`❌ 電荷總和 = ${totalCharge > 0 ? `+${totalCharge}` : totalCharge} (非電中性)`);
       setTimeout(() => setMsg(''), 1200);
     }
@@ -189,17 +224,49 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
     const isP1 = player === 'p1';
     const currentCharge = selection.reduce((sum, item) => sum + item.ion.charge, 0);
 
+    const isBlinded = isP1 ? p1BlindTimer > 0 : p2BlindTimer > 0;
+    const blindTimer = isP1 ? p1BlindTimer : p2BlindTimer;
+
+    const skillUsed = isP1 ? p1SkillUsed : p2SkillUsed;
+
     return (
-      <div className={`p-4 rounded-3xl border space-y-3 ${
+      <div className={`p-4 rounded-3xl border space-y-3 relative overflow-hidden ${
         isP1 ? 'bg-indigo-950/20 border-indigo-500/30' : 'bg-rose-950/20 border-rose-500/30'
       }`}>
+        {/* 被障眼法迷霧遮蔽提示標籤 */}
+        {isBlinded && (
+          <div className="absolute top-2 left-1/2 -translate-x-1/2 z-30 bg-purple-600 text-white font-black text-xs px-3 py-1 rounded-full shadow-xl border border-purple-300 animate-bounce flex items-center gap-1.5">
+            <EyeOff className="w-4 h-4 text-amber-300" />
+            障眼法作用中！價數隱藏 ({blindTimer}s)
+          </div>
+        )}
+
         {/* 面板標頭與成績 */}
         <div className="flex justify-between items-center border-b border-slate-800 pb-2">
-          <span className={`text-xs font-black px-2.5 py-0.5 rounded-full border ${
-            isP1 ? 'bg-indigo-500/20 text-indigo-300 border-indigo-400' : 'bg-rose-500/20 text-rose-300 border-rose-400'
-          }`}>
-            {isP1 ? '🛡️ Player 1 (左側選手)' : '⚔️ Player 2 (右側選手)'}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className={`text-xs font-black px-2.5 py-0.5 rounded-full border ${
+              isP1 ? 'bg-indigo-500/20 text-indigo-300 border-indigo-400' : 'bg-rose-500/20 text-rose-300 border-rose-400'
+            }`}>
+              {isP1 ? '🛡️ Player 1 (左側選手)' : '⚔️ Player 2 (右側選手)'}
+            </span>
+
+            {/* 技能觸發按鈕 (雙人模式顯示) */}
+            {mode === 'pvp' && (
+              <button
+                onClick={() => handleUseSkill(player)}
+                disabled={skillUsed}
+                className={`px-2.5 py-0.5 rounded-lg text-[10px] font-bold border flex items-center gap-1 transition-all ${
+                  skillUsed 
+                    ? 'bg-slate-800 text-slate-500 border-slate-700 cursor-not-allowed' 
+                    : 'bg-purple-600/30 text-purple-300 border-purple-500/50 hover:bg-purple-600/50 cursor-pointer active:scale-95'
+                }`}
+              >
+                <EyeOff className="w-3 h-3 text-purple-300" />
+                {skillUsed ? '技能已使用' : '🌀 障眼法技能 (10s)'}
+              </button>
+            )}
+          </div>
+
           <div className="text-right">
             <span className="text-xs text-slate-400">已消除：</span>
             <span className="text-base font-black font-mono text-amber-400">{clearedCount} 組</span>
@@ -257,7 +324,8 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
                       : 'hover:scale-105 opacity-90'
                   }`}
                 >
-                  {ion.symbol}
+                  {/* 若正受障眼法影響，隱藏價數，僅顯示基本元素名稱 */}
+                  {isBlinded ? ion.baseSymbol : ion.symbol}
                 </button>
               );
             })
@@ -271,7 +339,7 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
               {msg}
             </span>
           ) : (
-            <span className="text-slate-500">用手指/滑鼠劃線連續選取相鄰離子</span>
+            <span className="text-slate-500">劃線連續選取相鄰離子，電荷總和 = 0 消除</span>
           )}
         </div>
       </div>
@@ -307,10 +375,12 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
       {!isFinished && (
         <div className="bg-slate-900 border border-slate-800 p-3 rounded-2xl text-center text-xs space-y-1">
           <p className="font-bold text-amber-300">
-            🎯 電中性規則：連結相鄰的離子球，使「正負電荷總和恰好 = 0」即可消除！
+            🎯 電中性規則：連結相鄰離子，使「正負電荷總和恰好 = 0」即可消除！
           </p>
           <p className="text-slate-400 text-[11px]">
-            {mode === 'single' ? '60 秒內消除 15 組離子化合物即可通關！' : '60 秒內消除組數較多者獲得勝利！'}
+            {mode === 'single'
+              ? '60 秒內消除 15 組離子化合物即可通關！'
+              : '雙人對決各擁有 1 次【🌀 障眼法技能】，可隱藏對手價數 10 秒！'}
           </p>
         </div>
       )}
