@@ -151,18 +151,22 @@ export default function ActivityFloorGame({ mode = 'single', onGameOver }) {
     setFlowState('turn2_play');
   };
 
-  // 開牌結算 logic
+  // 開牌結算邏輯
   const resolveRound = () => {
     let p1Card = { ...p1PlayedCard };
     let p2Card = { ...p2PlayedCard };
 
-    // 1. 處理技能 1 (退牌重新換牌)
+    let p1SkillText = '';
+    let p2SkillText = '';
+
+    // 1. 處理技能 1 (退牌重新換牌) - 正確更新 State 與卡牌
     if (p1ActiveSkill === 's1') {
       setP1Skills((prev) => ({ ...prev, s1: true }));
       const remainP2Hand = p2Hand.filter((c) => c.uid !== p2Card.uid);
       if (remainP2Hand.length > 0) {
         p2Card = remainP2Hand[Math.floor(Math.random() * remainP2Hand.length)];
-        setP2PlayedCard(p2Card);
+        setP2PlayedCard(p2Card); // 正確同步狀態寫回 State
+        p1SkillText = '🌀 P1 發動技能：強制對手換牌！';
       }
     }
     if (p2ActiveSkill === 's1') {
@@ -170,7 +174,8 @@ export default function ActivityFloorGame({ mode = 'single', onGameOver }) {
       const remainP1Hand = p1Hand.filter((c) => c.uid !== p1Card.uid);
       if (remainP1Hand.length > 0) {
         p1Card = remainP1Hand[Math.floor(Math.random() * remainP1Hand.length)];
-        setP1PlayedCard(p1Card);
+        setP1PlayedCard(p1Card); // 正確同步狀態寫回 State
+        p2SkillText = '🌀 P2 發動技能：強制對手換牌！';
       }
     }
 
@@ -178,11 +183,11 @@ export default function ActivityFloorGame({ mode = 'single', onGameOver }) {
     let p1Rank = p1Card.rank;
     let p2Rank = p2Card.rank;
 
-    if (p1ActiveSkill === 's2') { p1Rank += 1; setP1Skills((prev) => ({ ...prev, s2: true })); }
-    if (p1ActiveSkill === 's3') { p1Rank -= 1; setP1Skills((prev) => ({ ...prev, s3: true })); }
+    if (p1ActiveSkill === 's2') { p1Rank += 1; setP1Skills((prev) => ({ ...prev, s2: true })); p1SkillText = '⚡ P1 發動技能：活性 +1！'; }
+    if (p1ActiveSkill === 's3') { p1Rank -= 1; setP1Skills((prev) => ({ ...prev, s3: true })); p1SkillText = '🧪 P1 發動技能：活性 -1！'; }
 
-    if (p2ActiveSkill === 's2') { p2Rank += 1; setP2Skills((prev) => ({ ...prev, s2: true })); }
-    if (p2ActiveSkill === 's3') { p2Rank -= 1; setP2Skills((prev) => ({ ...prev, s3: true })); }
+    if (p2ActiveSkill === 's2') { p2Rank += 1; setP2Skills((prev) => ({ ...prev, s2: true })); p2SkillText = '⚡ P2 發動技能：活性 +1！'; }
+    if (p2ActiveSkill === 's3') { p2Rank -= 1; setP2Skills((prev) => ({ ...prev, s3: true })); p2SkillText = '🧪 P2 發動技能：活性 -1！'; }
 
     // 3. 結算勝負與積分
     const targetRank = targetOxide.rank;
@@ -191,6 +196,8 @@ export default function ActivityFloorGame({ mode = 'single', onGameOver }) {
     let p1Earned = 0;
     let p2Earned = 0;
     let msg = '';
+
+    const skillNotice = [p1SkillText, p2SkillText].filter(Boolean).join(' ｜ ');
 
     if (p1Rank > p2Rank) {
       p1Earned += oxideBaseScore;
@@ -204,13 +211,13 @@ export default function ActivityFloorGame({ mode = 'single', onGameOver }) {
       let isPrecise = (p2Rank === targetRank + 1);
       if (isPrecise) p2Earned += 5;
 
-      msg = `🎉 P2 打出【${p2Card.name} (活性${p2Rank})】擊敗 P1【${p1Card.name} (活性${p2Rank})】！成功奪走 氧化${targetOxide.name} 的氧氣！(${isPrecise ? '⚡精準奪氧暴擊 +5分！' : `+${oxideBaseScore}分`})`;
+      msg = `🎉 P2 打出【${p2Card.name} (活性${p2Rank})】擊敗 P1【${p1Card.name} (活性${p1Rank})】！成功奪走 氧化${targetOxide.name} 的氧氣！(${isPrecise ? '⚡精準奪氧暴擊 +5分！' : `+${oxideBaseScore}分`})`;
       setP2Score((prev) => prev + p2Earned);
     } else {
       msg = `🤝 雙方活性點數相同 (${p1Rank})，反應互相抵銷，無人得分！`;
     }
 
-    setRoundResultMsg(msg);
+    setRoundResultMsg(skillNotice ? `${skillNotice}\n${msg}` : msg);
     setFlowState('reveal');
   };
 
@@ -484,7 +491,7 @@ export default function ActivityFloorGame({ mode = 'single', onGameOver }) {
 
             {flowState === 'reveal' && (
               <div className="space-y-2">
-                <p className="text-xs md:text-sm font-bold text-amber-300 animate-bounce">
+                <p className="text-xs md:text-sm font-bold text-amber-300 whitespace-pre-line animate-bounce">
                   {roundResultMsg}
                 </p>
                 <button
@@ -510,7 +517,6 @@ export default function ActivityFloorGame({ mode = 'single', onGameOver }) {
               )}
             </div>
 
-            {/* 當前活躍玩家手牌可點選，否則呈現在手牌視角 */}
             <div className="flex justify-center gap-2">
               {(activePlayer === 'p1' ? p1Hand : (mode === 'pvp' ? p2Hand : p1Hand)).map((card) => {
                 const currentPlayedCard = activePlayer === 'p1' ? p1PlayedCard : p2PlayedCard;
