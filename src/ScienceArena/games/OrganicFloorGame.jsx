@@ -1,27 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy, RefreshCw, Eye, Sparkles, UserCheck, Flame, Zap } from 'lucide-react';
+import { Trophy, RefreshCw, Eye, Sparkles } from 'lucide-react';
 
-// 15 種有機化合物資料庫 (更新：包含丙酸與甲酸乙酯)
+// 15 種有機化合物結構式資料庫 (純結構式表示)
 const ORGANIC_COMPOUNDS = [
-  { name: '甲烷', formula: 'CH₄', structure: 'H-C(H₂)-H' },
-  { name: '乙烷', formula: 'C₂H₆', structure: 'CH₃-CH₃' },
-  { name: '丙烷', formula: 'C₃H₈', structure: 'CH₃-CH₂-CH₃' },
+  { structure: 'H-C(H₂)-H' },
+  { structure: 'CH₃-CH₃' },
+  { structure: 'CH₃-CH₂-CH₃' },
 
-  { name: '乙烯', formula: 'C₂H₄', structure: 'CH₂=CH₂' },
-  { name: '丙烯', formula: 'C₃H₆', structure: 'CH₂=CH-CH₃' },
+  { structure: 'CH₂=CH₂' },
+  { structure: 'CH₂=CH-CH₃' },
 
-  { name: '甲醇', formula: 'CH₃OH', structure: 'CH₃-OH' },
-  { name: '乙醇', formula: 'C₂H₅OH', structure: 'CH₃-CH₂-OH' },
-  { name: '丙醇', formula: 'C₃H₇OH', structure: 'CH₃-CH₂-CH₂-OH' },
+  { structure: 'CH₃-OH' },
+  { structure: 'CH₃-CH₂-OH' },
+  { structure: 'CH₃-CH₂-CH₂-OH' },
 
-  { name: '甲酸', formula: 'HCOOH', structure: 'H-COOH' },
-  { name: '乙酸', formula: 'CH₃COOH', structure: 'CH₃-COOH' },
-  { name: '丙酸', formula: 'C₂H₅COOH', structure: 'CH₃-CH₂-COOH' },
+  { structure: 'H-COOH' },
+  { structure: 'CH₃-COOH' },
+  { structure: 'CH₃-CH₂-COOH' },
 
-  { name: '甲酸甲酯', formula: 'HCOOCH₃', structure: 'H-COO-CH₃' },
-  { name: '甲酸乙酯', formula: 'HCOOC₂H₅', structure: 'H-COO-CH₂CH₃' },
-  { name: '乙酸甲酯', formula: 'CH₃COOCH₃', structure: 'CH₃-COO-CH₃' },
-  { name: '乙酸乙酯', formula: 'CH₃COOC₂H₅', structure: 'CH₃-COO-CH₂CH₃' }
+  { structure: 'H-COO-CH₃' },
+  { structure: 'H-COO-CH₂CH₃' },
+  { structure: 'CH₃-COO-CH₃' },
+  { structure: 'CH₃-COO-CH₂CH₃' }
 ];
 
 // 初始化生成 30 張卡牌 (15 對，隨機洗牌)
@@ -150,17 +150,17 @@ export default function OrganicFloorGame({ mode = 'single', onGameOver }) {
         <div>
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-black bg-purple-500/20 text-purple-400 border border-purple-500/40 px-2.5 py-1 rounded-lg uppercase tracking-wider">
-              Heaven's Arena • Floor 90F ({mode === 'pvp' ? '雙人翻牌對對碰 PK' : '單人闖關'})
+              Heaven's Arena • Floor 90F ({mode === 'pvp' ? 'PK' : 'Single'})
             </span>
           </div>
           <h2 className="text-lg md:text-xl font-black text-white mt-1 flex items-center gap-2">
-            🧬 90F 有機擂台：官能基結構翻牌對對碰
+            🧬 90F Structure Memory Match
           </h2>
         </div>
 
         <div className="flex items-center gap-4">
           <div className="bg-slate-900 border border-slate-800 px-3.5 py-1.5 rounded-2xl text-center">
-            <p className="text-[10px] text-slate-400">當前回合玩家</p>
+            <p className="text-[10px] text-slate-400">Turn</p>
             <p className={`text-sm font-black ${activePlayer === 'p1' ? 'text-indigo-400' : 'text-rose-400'}`}>
               {activePlayer === 'p1' ? '🛡️ Player 1' : '⚔️ Player 2'}
             </p>
@@ -171,7 +171,7 @@ export default function OrganicFloorGame({ mode = 'single', onGameOver }) {
       {isMemorizing && (
         <div className="bg-amber-500/20 border border-amber-500/40 p-3 rounded-2xl text-center space-y-1 animate-pulse">
           <p className="text-xs font-bold text-amber-300 flex items-center justify-center gap-1.5">
-            <Eye className="w-4 h-4" /> 記憶透視時間！卡牌翻開中：最後 {memorizeTimer} 秒！
+            <Eye className="w-4 h-4" /> Preview Time: {memorizeTimer}s
           </p>
         </div>
       )}
@@ -179,17 +179,17 @@ export default function OrganicFloorGame({ mode = 'single', onGameOver }) {
       {!isFinished && (
         <div className="flex justify-between items-center bg-slate-900 border border-slate-800 px-4 py-2 rounded-2xl text-xs font-bold">
           <div className={`flex items-center gap-2 px-3 py-1 rounded-xl border ${activePlayer === 'p1' ? 'bg-indigo-500/20 border-indigo-400 text-indigo-300' : 'text-slate-400 border-transparent'}`}>
-            <span>🛡️ Player 1：</span>
-            <span className="text-amber-400 font-mono text-sm">{p1Score} 對</span>
+            <span>🛡️ Player 1:</span>
+            <span className="text-amber-400 font-mono text-sm">{p1Score}</span>
           </div>
 
           <div className="text-slate-500 text-[11px]">
-            剩餘對數：<strong className="text-cyan-300 font-mono">{15 - matchedPairs.length} / 15</strong>
+            Remaining: <strong className="text-cyan-300 font-mono">{15 - matchedPairs.length} / 15</strong>
           </div>
 
           <div className={`flex items-center gap-2 px-3 py-1 rounded-xl border ${activePlayer === 'p2' ? 'bg-rose-500/20 border-rose-400 text-rose-300' : 'text-slate-400 border-transparent'}`}>
-            <span>⚔️ Player 2：</span>
-            <span className="text-amber-400 font-mono text-sm">{p2Score} 對</span>
+            <span>⚔️ Player 2:</span>
+            <span className="text-amber-400 font-mono text-sm">{p2Score}</span>
           </div>
         </div>
       )}
@@ -204,7 +204,7 @@ export default function OrganicFloorGame({ mode = 'single', onGameOver }) {
               <div
                 key={card.id}
                 onClick={() => handleCardClick(card)}
-                className={`h-20 md:h-24 rounded-2xl border-2 p-1 flex flex-col justify-between items-center transition-all cursor-pointer select-none relative ${
+                className={`h-20 md:h-24 rounded-2xl border-2 p-1 flex items-center justify-center transition-all cursor-pointer select-none relative ${
                   isMatched
                     ? 'bg-slate-900/40 border-slate-800/50 opacity-20 cursor-default scale-95'
                     : isFlipped
@@ -213,21 +213,12 @@ export default function OrganicFloorGame({ mode = 'single', onGameOver }) {
                 }`}
               >
                 {isFlipped && !isMatched ? (
-                  <>
-                    <span className="text-[10px] font-bold text-amber-300 bg-amber-500/20 px-1.5 py-0.5 rounded border border-amber-500/30 w-full text-center truncate">
-                      {card.name}
-                    </span>
-                    <span className="text-[11px] font-mono text-cyan-300 font-black my-auto">
-                      {card.formula}
-                    </span>
-                    <span className="text-[9px] font-mono text-slate-300 truncate w-full text-center bg-black/40 rounded px-1">
-                      {card.structure}
-                    </span>
-                  </>
+                  <span className="text-xs md:text-sm font-mono text-amber-300 font-black text-center break-all p-1">
+                    {card.structure}
+                  </span>
                 ) : !isMatched ? (
                   <div className="my-auto text-center space-y-1">
                     <Sparkles className="w-5 h-5 text-indigo-400 mx-auto" />
-                    <span className="text-[10px] text-slate-500 font-bold block">🧪 有機</span>
                   </div>
                 ) : null}
               </div>
@@ -241,24 +232,21 @@ export default function OrganicFloorGame({ mode = 'single', onGameOver }) {
           <Trophy className="w-16 h-16 text-amber-400 mx-auto animate-bounce" />
           <div>
             <h3 className="text-2xl font-black text-white">
-              {p1Score > p2Score ? '🎉 Player 1 贏得有機對對碰對決！' : p2Score > p1Score ? '🎉 Player 2 贏得有機對對碰對決！' : '🤝 雙方配對數相同，平手！'}
+              {p1Score > p2Score ? '🎉 Player 1 Victory!' : p2Score > p1Score ? '🎉 Player 2 Victory!' : '🤝 Draw!'}
             </h3>
-            <p className="text-xs text-slate-400 mt-1">
-              熟記有機化合物的碳鏈數量與官能基結構式！
-            </p>
           </div>
 
           <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-2 text-xs font-mono">
             <div className="flex justify-between py-1 border-b border-slate-800">
-              <span className="text-slate-400">P1 配對成功：</span>
-              <span className="font-bold text-amber-400">{p1Score} 對</span>
+              <span className="text-slate-400">P1 Score:</span>
+              <span className="font-bold text-amber-400">{p1Score}</span>
             </div>
             <div className="flex justify-between py-1 border-b border-slate-800">
-              <span className="text-slate-400">P2 配對成功：</span>
-              <span className="font-bold text-rose-400">{p2Score} 對</span>
+              <span className="text-slate-400">P2 Score:</span>
+              <span className="font-bold text-rose-400">{p2Score}</span>
             </div>
             <div className="flex justify-between py-1">
-              <span className="text-slate-400">獲得經驗值 EXP：</span>
+              <span className="text-slate-400">EXP:</span>
               <span className="font-bold text-amber-400">+{p1Score * 20 + (p1Score > p2Score ? 100 : 20)}</span>
             </div>
           </div>
@@ -267,7 +255,7 @@ export default function OrganicFloorGame({ mode = 'single', onGameOver }) {
             onClick={handleExit}
             className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
-            <RefreshCw className="w-4 h-4" /> 返回競技場大廳
+            <RefreshCw className="w-4 h-4" /> Exit
           </button>
         </div>
       )}
