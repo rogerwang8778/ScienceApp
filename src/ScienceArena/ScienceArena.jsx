@@ -10,6 +10,7 @@ import ThermalFloorGame from './games/ThermalFloorGame';         // 40F 熱學�
 import IonCrushGame from './games/IonCrushGame';                 // 50F 化合物擂台 (新增)
 import ActivityFloorGame from './games/ActivityFloorGame'; // 60F 活性擂台
 import AcidBaseFloorGame from './games/AcidBaseFloorGame'; // 70F 酸鹼擂台
+import EquilibriumFloorGame from './games/EquilibriumFloorGame'; // 80F 平衡擂台
 
 export default function ScienceArena() {
   const [playerExp, setPlayerExp] = useState(1200);
@@ -90,6 +91,15 @@ export default function ScienceArena() {
       badgeColor: 'bg-rose-500/20 text-rose-300 border-rose-500/30',
       desc: '計算解離莫耳數與充能體積稀釋，精準揮出酸鹼拳完全中和 KO 怪獸！',
       component: AcidBaseFloorGame
+    },
+    {
+      id: '80F',
+      name: '80F 平衡擂台：勒沙特列記憶大師',
+      icon: '⚖️',
+      color: 'from-emerald-600/20 to-teal-600/20 border-emerald-500/40',
+      badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+      desc: '記憶與反應雙重考驗！勒沙特列原理破壞條件連續閃現，完美還原平衡移動方向！',
+      component: EquilibriumFloorGame
     }
   ];
 
