@@ -41,12 +41,12 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
   const [timeLeft, setTimeLeft] = useState(60);
   const [isFinished, setIsFinished] = useState(false);
 
-  // 得分與消除計數
+  // 得分與消除離子總個數
   const [p1Score, setP1Score] = useState(0);
-  const [p1ClearedCount, setP1ClearedCount] = useState(0);
+  const [p1ClearedIonCount, setP1ClearedIonCount] = useState(0);
 
   const [p2Score, setP2Score] = useState(0);
-  const [p2ClearedCount, setP2ClearedCount] = useState(0);
+  const [p2ClearedIonCount, setP2ClearedIonCount] = useState(0);
 
   // 離子棋盤 State
   const [p1Grid, setP1Grid] = useState(createInitialGrid());
@@ -55,6 +55,13 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
   // 連線選擇 State
   const [p1Selection, setP1Selection] = useState([]);
   const [p2Selection, setP2Selection] = useState([]);
+
+  // 消除特效 State：記錄正在觸發消除動畫的座標 [(r,c), ...] 與浮動數字特效
+  const [p1ClearingTiles, setP1ClearingTiles] = useState([]);
+  const [p2ClearingTiles, setP2ClearingTiles] = useState([]);
+
+  const [p1FloatText, setP1FloatText] = useState(null);
+  const [p2FloatText, setP2FloatText] = useState(null);
 
   // 沉澱狀態：紀錄哪幾排（Row Index 0~5）處於沉澱封鎖中
   const [p1PrecipitatedRows, setP1PrecipitatedRows] = useState([]);
@@ -101,12 +108,12 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
     return () => clearInterval(blindInterval);
   }, [isFinished]);
 
-  // 單人模式滿 15 組通關判定
+  // 單人模式滿 30 個離子通關判定（約當原本 15 組）
   useEffect(() => {
-    if (mode === 'single' && p1ClearedCount >= 15 && !isFinished) {
+    if (mode === 'single' && p1ClearedIonCount >= 30 && !isFinished) {
       setIsFinished(true);
     }
-  }, [p1ClearedCount, mode, isFinished]);
+  }, [p1ClearedIonCount, mode, isFinished]);
 
   // 主動發動障眼法技能 (扣除 1 次次數，讓對手隱藏價數 10 秒)
   const handleUseSkill = (player) => {
@@ -178,10 +185,12 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
     const setSelection = isP1 ? setP1Selection : setP2Selection;
     const grid = isP1 ? p1Grid : p2Grid;
     const setGrid = isP1 ? setP1Grid : setP2Grid;
-    const setClearedCount = isP1 ? setP1ClearedCount : setP2ClearedCount;
+    const setClearedIonCount = isP1 ? setP1ClearedIonCount : setP2ClearedIonCount;
     const setScore = isP1 ? setP1Score : setP2Score;
     const setMsg = isP1 ? setP1Msg : setP2Msg;
     const setSkillCharges = isP1 ? setP1SkillCharges : setP2SkillCharges;
+    const setClearingTiles = isP1 ? setP1ClearingTiles : setP2ClearingTiles;
+    const setFloatText = isP1 ? setP1FloatText : setP2FloatText;
 
     const myPrecipitatedRows = isP1 ? p1PrecipitatedRows : p2PrecipitatedRows;
     const setMyPrecipitatedRows = isP1 ? setP1PrecipitatedRows : setP2PrecipitatedRows;
@@ -199,7 +208,11 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
 
     if (totalCharge === 0 && hasCat && hasAni) {
       // === 消除成功 ===
-      const comboCount = selection.length;
+      const comboCount = selection.length; // 消除的離子個數
+
+      // 觸發消除動畫與浮動特效
+      setClearingTiles(selection.map(({ r, c }) => ({ r, c })));
+      setFloatText({ count: comboCount, id: Date.now() });
 
       // 檢查是否包含 Ca²⁺ 與 SO₄²⁻ 生成硫酸鈣沉澱 (CaSO₄)
       const hasCa = selection.some((item) => item.ion.baseSymbol === 'Ca');
@@ -233,68 +246,73 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
         else setP1BlindTimer((prev) => prev + 5);
       }
 
-      // 2. 累計消除組數與訊息判定
-      setClearedCount((prevCount) => {
-        const nextCount = prevCount + 1;
-        const prevMilestone = Math.floor(prevCount / 5);
-        const nextMilestone = Math.floor(nextCount / 5);
+      // 2. 累計消除離子個數與充能判定 (每累計滿 10 個離子增加 1 次技能)
+      setClearedIonCount((prevCount) => {
+        const nextCount = prevCount + comboCount;
+        const prevMilestone = Math.floor(prevCount / 10);
+        const nextMilestone = Math.floor(nextCount / 10);
 
         if (mode === 'pvp' && isPrecipitateCombo) {
-          setMsg(`🧊 生成 CaSO₄ 硫酸鈣沉澱！對手隨機一排被沉澱凍結！`);
+          setMsg(`🧊 生成 CaSO₄ 沉澱！對手一排被凍結！`);
         } else if (mode === 'pvp' && comboCount >= 5) {
-          setMsg(`⚡ 單次消 5 顆以上！對手價數隱藏 5 秒！`);
+          setMsg(`⚡ 單次爆破 ${comboCount} 離子！對手價數隱藏 5 秒！`);
         } else if (nextMilestone > prevMilestone) {
           setSkillCharges((charges) => charges + 1);
           setMsg(`⚡ 電中性！技能充能完成 (+1 次障眼法)！`);
         } else {
-          setMsg(`⚡ 電中性！消除 ${comboCount} 個離子！`);
+          setMsg(`✨ 電中性！成功消除 ${comboCount} 個離子！`);
         }
         return nextCount;
       });
 
-      setScore((prev) => prev + comboCount * 20);
+      setScore((prev) => prev + comboCount * 25);
       setTimeout(() => setMsg(''), 1800);
 
-      // 複製 Grid 並清空選中項
-      const newGrid = grid.map((row) => [...row]);
-      selection.forEach(({ r, c }) => {
-        newGrid[r][c] = null;
-      });
+      // 延遲 300ms 播放消除爆裂動畫後再進行下落 (Drop & Refill)
+      setTimeout(() => {
+        const newGrid = grid.map((row) => [...row]);
+        selection.forEach(({ r, c }) => {
+          newGrid[r][c] = null;
+        });
 
-      // 離子球由上方落下遞補 (Drop & Refill)
-      for (let c = 0; c < GRID_SIZE; c++) {
-        let emptyCount = 0;
-        for (let r = GRID_SIZE - 1; r >= 0; r--) {
-          if (newGrid[r][c] === null) {
-            emptyCount++;
-          } else if (emptyCount > 0) {
-            newGrid[r + emptyCount][c] = newGrid[r][c];
-            newGrid[r][c] = null;
+        for (let c = 0; c < GRID_SIZE; c++) {
+          let emptyCount = 0;
+          for (let r = GRID_SIZE - 1; r >= 0; r--) {
+            if (newGrid[r][c] === null) {
+              emptyCount++;
+            } else if (emptyCount > 0) {
+              newGrid[r + emptyCount][c] = newGrid[r][c];
+              newGrid[r][c] = null;
+            }
+          }
+          for (let r = 0; r < emptyCount; r++) {
+            newGrid[r][c] = getRandomIon();
           }
         }
-        for (let r = 0; r < emptyCount; r++) {
-          newGrid[r][c] = getRandomIon();
-        }
-      }
 
-      setGrid(newGrid);
+        setGrid(newGrid);
+        setClearingTiles([]);
+        setFloatText(null);
+        setSelection([]);
+        processingRef.current = false;
+      }, 350);
+      return;
     } else {
       // === 電荷不平衡 ===
       setMsg(`❌ 電荷總和 = ${totalCharge > 0 ? `+${totalCharge}` : totalCharge} (非電中性)`);
       setTimeout(() => setMsg(''), 1200);
+      setSelection([]);
+      processingRef.current = false;
     }
-
-    setSelection([]);
-    processingRef.current = false;
   };
 
   const handleExit = () => {
-    const gainedExp = p1Score + (p1ClearedCount >= 15 ? 100 : 20);
+    const gainedExp = p1Score + (p1ClearedIonCount >= 30 ? 100 : 20);
     if (onGameOver) onGameOver(gainedExp);
   };
 
   // 渲染獨立 6x6 離子消除盤面
-  const renderBoard = (player, grid, selection, msg, clearedCount, score) => {
+  const renderBoard = (player, grid, selection, msg, clearedIonCount, score) => {
     const isP1 = player === 'p1';
     const currentCharge = selection.reduce((sum, item) => sum + item.ion.charge, 0);
 
@@ -303,9 +321,11 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
 
     const skillCharges = isP1 ? p1SkillCharges : p2SkillCharges;
     const precipitatedRows = isP1 ? p1PrecipitatedRows : p2PrecipitatedRows;
+    const clearingTiles = isP1 ? p1ClearingTiles : p2ClearingTiles;
+    const floatText = isP1 ? p1FloatText : p2FloatText;
 
     return (
-      <div className={`p-4 rounded-3xl border space-y-3 relative overflow-hidden ${
+      <div className={`p-4 rounded-3xl border space-y-3 relative overflow-hidden transition-all ${
         isP1 ? 'bg-indigo-950/20 border-indigo-500/30' : 'bg-rose-950/20 border-rose-500/30'
       }`}>
         {/* 被障眼法迷霧遮蔽提示標籤 */}
@@ -313,6 +333,15 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
           <div className="absolute top-2 left-1/2 -translate-x-1/2 z-30 bg-purple-600 text-white font-black text-xs px-3 py-1 rounded-full shadow-xl border border-purple-300 animate-bounce flex items-center gap-1.5">
             <EyeOff className="w-4 h-4 text-amber-300" />
             障眼法作用中！價數隱藏 ({blindTimer}s)
+          </div>
+        )}
+
+        {/* 消除時浮動顯示的 +N 分數粒子動畫 */}
+        {floatText && (
+          <div className="absolute inset-0 z-40 pointer-events-none flex items-center justify-center">
+            <span className="text-3xl md:text-4xl font-black text-amber-300 drop-shadow-[0_0_12px_rgba(251,191,36,0.9)] animate-bounce">
+              +{floatText.count} 離子！
+            </span>
           </div>
         )}
 
@@ -339,14 +368,14 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
                 <EyeOff className="w-3.5 h-3.5" />
                 {skillCharges > 0
                   ? `🌀 障眼法技能 (可對敵 ${skillCharges} 次)`
-                  : `🌀 充能中 (${clearedCount % 5}/5)`}
+                  : `🌀 充能中 (${clearedIonCount % 10}/10)`}
               </button>
             )}
           </div>
 
           <div className="text-right">
-            <span className="text-xs text-slate-400">已消除：</span>
-            <span className="text-base font-black font-mono text-amber-400">{clearedCount} 組</span>
+            <span className="text-xs text-slate-400">已消除離子：</span>
+            <span className="text-base font-black font-mono text-amber-400">{clearedIonCount} 個</span>
           </div>
         </div>
 
@@ -362,7 +391,7 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
 
         {/* 6x6 離子棋盤 */}
         <div
-          className="grid grid-cols-6 gap-1.5 bg-slate-950 p-2 rounded-2xl border border-slate-800 touch-none select-none"
+          className="grid grid-cols-6 gap-1.5 bg-slate-950 p-2 rounded-2xl border border-slate-800 touch-none select-none relative"
           onMouseUp={() => {
             if (isP1) isDraggingP1.current = false;
             else isDraggingP2.current = false;
@@ -379,6 +408,8 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
 
             return row.map((ion, c) => {
               const isSelected = selection.some((item) => item.r === r && item.c === c);
+              const isClearing = clearingTiles.some((item) => item.r === r && item.c === c);
+
               return (
                 <button
                   key={`${r}-${c}`}
@@ -401,9 +432,11 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
                   className={`w-11 h-11 md:w-12 md:h-12 rounded-2xl font-black text-xs md:text-sm border-2 flex items-center justify-center transition-all cursor-pointer relative ${
                     isRowPrecipitated
                       ? 'bg-slate-800/90 border-slate-600 text-slate-500 cursor-not-allowed opacity-60'
-                      : ion.color
+                      : ion ? ion.color : 'bg-slate-900 border-slate-800'
                   } ${
-                    isSelected
+                    isClearing
+                      ? 'bg-amber-300 border-white text-slate-950 scale-125 z-30 shadow-[0_0_25px_rgba(251,191,36,1)] animate-ping'
+                      : isSelected
                       ? 'ring-4 ring-amber-300 scale-110 z-20 shadow-[0_0_15px_rgba(251,191,36,0.9)]'
                       : 'hover:scale-105 opacity-90'
                   }`}
@@ -411,9 +444,9 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
                   {/* 若排被沉澱凍結，呈現雪花結晶覆蓋狀態 */}
                   {isRowPrecipitated ? (
                     <Snowflake className="w-5 h-5 text-cyan-300 animate-spin" />
-                  ) : (
+                  ) : ion ? (
                     isBlinded ? ion.baseSymbol : ion.symbol
-                  )}
+                  ) : null}
                 </button>
               );
             });
@@ -423,7 +456,7 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
         {/* 消除反饋訊息 */}
         <div className="h-6 text-center text-xs font-bold">
           {msg ? (
-            <span className={msg.includes('🧊') ? 'text-cyan-300 animate-bounce' : msg.includes('⚡') ? 'text-emerald-400 animate-bounce' : 'text-rose-400'}>
+            <span className={msg.includes('🧊') ? 'text-cyan-300 animate-bounce' : msg.includes('✨') || msg.includes('⚡') ? 'text-emerald-400 animate-bounce font-black' : 'text-rose-400'}>
               {msg}
             </span>
           ) : (
@@ -467,7 +500,7 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
           </p>
           <p className="text-slate-400 text-[11px]">
             {mode === 'single'
-              ? '60 秒內消除 15 組離子化合物即可通關！'
+              ? '60 秒內消除 30 個離子即可通關！'
               : '🧊 沉澱Combo：消除 Ca²⁺ 與 SO₄²⁻ (CaSO₄) 可隨機封鎖對手一排！在相鄰排消除即可解凍！'}
           </p>
         </div>
@@ -478,13 +511,13 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
         mode === 'pvp' ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* 左側 P1 */}
-            {renderBoard('p1', p1Grid, p1Selection, p1Msg, p1ClearedCount, p1Score)}
+            {renderBoard('p1', p1Grid, p1Selection, p1Msg, p1ClearedIonCount, p1Score)}
             {/* 右側 P2 */}
-            {renderBoard('p2', p2Grid, p2Selection, p2Msg, p2ClearedCount, p2Score)}
+            {renderBoard('p2', p2Grid, p2Selection, p2Msg, p2ClearedIonCount, p2Score)}
           </div>
         ) : (
           <div className="max-w-md mx-auto">
-            {renderBoard('p1', p1Grid, p1Selection, p1Msg, p1ClearedCount, p1Score)}
+            {renderBoard('p1', p1Grid, p1Selection, p1Msg, p1ClearedIonCount, p1Score)}
           </div>
         )
       )}
@@ -496,8 +529,8 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
           <div>
             <h3 className="text-2xl font-black text-white">
               {mode === 'single'
-                ? p1ClearedCount >= 15 ? '🎉 50F 化合物擂台突破成功！' : '⚔️ 擂台時間到！'
-                : p1ClearedCount > p2ClearedCount ? '🎉 Player 1 (左側) 消除勝出！' : p2ClearedCount > p1ClearedCount ? '🎉 Player 2 (右側) 消除勝出！' : '🤝 雙方平手！'
+                ? p1ClearedIonCount >= 30 ? '🎉 50F 化合物擂台突破成功！' : '⚔️ 擂台時間到！'
+                : p1ClearedIonCount > p2ClearedIonCount ? '🎉 Player 1 (左側) 消除勝出！' : p2ClearedIonCount > p1ClearedIonCount ? '🎉 Player 2 (右側) 消除勝出！' : '🤝 雙方平手！'
               }
             </h3>
             <p className="text-xs text-slate-400 mt-1">
@@ -507,18 +540,18 @@ export default function IonCrushGame({ mode = 'single', onGameOver }) {
 
           <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-2 text-xs font-mono">
             <div className="flex justify-between py-1 border-b border-slate-800">
-              <span className="text-slate-400">P1 成功消除：</span>
-              <span className="font-bold text-amber-400">{p1ClearedCount} 組</span>
+              <span className="text-slate-400">P1 成功消除離子：</span>
+              <span className="font-bold text-amber-400">{p1ClearedIonCount} 個</span>
             </div>
             {mode === 'pvp' && (
               <div className="flex justify-between py-1 border-b border-slate-800">
-                <span className="text-slate-400">P2 成功消除：</span>
-                <span className="font-bold text-rose-400">{p2ClearedCount} 組</span>
+                <span className="text-slate-400">P2 成功消除離子：</span>
+                <span className="font-bold text-rose-400">{p2ClearedIonCount} 個</span>
               </div>
             )}
             <div className="flex justify-between py-1">
               <span className="text-slate-400">獲得經驗值 EXP：</span>
-              <span className="font-bold text-amber-400">+{p1Score + (p1ClearedCount >= 15 ? 100 : 20)}</span>
+              <span className="font-bold text-amber-400">+{p1Score + (p1ClearedIonCount >= 30 ? 100 : 20)}</span>
             </div>
           </div>
 
