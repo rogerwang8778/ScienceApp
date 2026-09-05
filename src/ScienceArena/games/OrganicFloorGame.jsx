@@ -43,7 +43,8 @@ const createDeck = () => {
 export default function OrganicFloorGame({ mode = 'single', onGameOver }) {
   const [deck, setDeck] = useState(createDeck());
 
-  const [memorizeTimer, setMemorizeTimer] = useState(5);
+  // 修改：開局記憶時間改為 10 秒
+  const [memorizeTimer, setMemorizeTimer] = useState(10);
   const [isMemorizing, setIsMemorizing] = useState(true);
 
   const [activePlayer, setActivePlayer] = useState('p1');
