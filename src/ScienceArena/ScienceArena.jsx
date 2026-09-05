@@ -11,6 +11,7 @@ import IonCrushGame from './games/IonCrushGame';                 // 50F 化合�
 import ActivityFloorGame from './games/ActivityFloorGame'; // 60F 活性擂台
 import AcidBaseFloorGame from './games/AcidBaseFloorGame'; // 70F 酸鹼擂台
 import EquilibriumFloorGame from './games/EquilibriumFloorGame'; // 80F 平衡擂台
+import OrganicFloorGame from './games/OrganicFloorGame'; // 90F 有機擂台
 
 export default function ScienceArena() {
   const [playerExp, setPlayerExp] = useState(1200);
@@ -100,6 +101,15 @@ export default function ScienceArena() {
       badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
       desc: '記憶與反應雙重考驗！勒沙特列原理破壞條件連續閃現，完美還原平衡移動方向！',
       component: EquilibriumFloorGame
+    },
+    {
+      id: '90F',
+      name: '90F 有機擂台：官能基結構翻牌對對碰',
+      icon: '🧬',
+      color: 'from-purple-600/20 to-indigo-600/20 border-purple-500/40',
+      badgeColor: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
+      desc: '30 張有機化合物結構卡牌！5 秒透視記憶，輪流翻牌配對烷、烯、醇、酸、酯！',
+      component: OrganicFloorGame
     }
   ];
 
