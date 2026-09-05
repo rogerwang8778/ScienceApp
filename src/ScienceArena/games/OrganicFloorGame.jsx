@@ -43,7 +43,7 @@ const createDeck = () => {
 export default function OrganicFloorGame({ mode = 'single', onGameOver }) {
   const [deck, setDeck] = useState(createDeck());
 
-  // 修改：開局記憶時間改為 10 秒
+  // 開局 10 秒透視記憶
   const [memorizeTimer, setMemorizeTimer] = useState(10);
   const [isMemorizing, setIsMemorizing] = useState(true);
 
@@ -145,6 +145,57 @@ export default function OrganicFloorGame({ mode = 'single', onGameOver }) {
     if (onGameOver) onGameOver(gainedExp);
   };
 
+  // 官能基與化學鍵高亮著色渲染函數
+  const renderHighlightedStructure = (structure) => {
+    // 依據官能基優先順序切割與著色
+    // 羧基 / 酯基 (-COOH, -COO-)
+    if (structure.includes('COOH')) {
+      const parts = structure.split('COOH');
+      return (
+        <span>
+          {parts[0]}
+          <span className="text-rose-400 font-extrabold drop-shadow-[0_0_8px_rgba(251,113,133,0.8)]">COOH</span>
+          {parts[1]}
+        </span>
+      );
+    }
+    if (structure.includes('COO')) {
+      const parts = structure.split('COO');
+      return (
+        <span>
+          {parts[0]}
+          <span className="text-rose-400 font-extrabold drop-shadow-[0_0_8px_rgba(251,113,133,0.8)]">COO</span>
+          {parts[1]}
+        </span>
+      );
+    }
+    // 醇基 (-OH)
+    if (structure.includes('OH')) {
+      const parts = structure.split('OH');
+      return (
+        <span>
+          {parts[0]}
+          <span className="text-cyan-400 font-extrabold drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]">OH</span>
+          {parts[1]}
+        </span>
+      );
+    }
+    // 雙鍵 (=)
+    if (structure.includes('=')) {
+      const parts = structure.split('=');
+      return (
+        <span>
+          {parts[0]}
+          <span className="text-amber-300 font-extrabold text-base px-0.5">=</span>
+          {parts[1]}
+        </span>
+      );
+    }
+
+    // 普通烷類
+    return <span className="text-slate-200">{structure}</span>;
+  };
+
   return (
     <div className="bg-slate-950 border border-slate-800 rounded-3xl p-4 md:p-6 max-w-6xl mx-auto space-y-4 text-slate-100 select-none overflow-hidden">
       <div className="flex justify-between items-center border-b border-slate-800 pb-3">
@@ -176,6 +227,19 @@ export default function OrganicFloorGame({ mode = 'single', onGameOver }) {
           </p>
         </div>
       )}
+
+      {/* 官能基顏色圖例說明 */}
+      <div className="flex justify-center gap-4 text-[10px] font-bold bg-slate-900/60 py-1.5 px-3 rounded-xl border border-slate-800">
+        <span className="flex items-center gap-1">
+          <span className="w-2 h-2 rounded-full bg-rose-400"></span> 羧基/酯基 (-COOH, -COO-)
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="w-2 h-2 rounded-full bg-cyan-400"></span> 羥基/醇基 (-OH)
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="w-2 h-2 rounded-full bg-amber-300"></span> 雙鍵 (=)
+        </span>
+      </div>
 
       {!isFinished && (
         <div className="flex justify-between items-center bg-slate-900 border border-slate-800 px-4 py-2 rounded-2xl text-xs font-bold">
@@ -214,8 +278,8 @@ export default function OrganicFloorGame({ mode = 'single', onGameOver }) {
                 }`}
               >
                 {isFlipped && !isMatched ? (
-                  <span className="text-xs md:text-sm font-mono text-amber-300 font-black text-center break-all p-1">
-                    {card.structure}
+                  <span className="text-xs md:text-sm font-mono font-black text-center break-all p-1">
+                    {renderHighlightedStructure(card.structure)}
                   </span>
                 ) : !isMatched ? (
                   <div className="my-auto text-center space-y-1">
